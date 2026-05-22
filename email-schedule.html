@@ -121,6 +121,9 @@
         <option value="monthly">Monthly</option>
       </select>
 
+      <label class="form-label">Time of Day</label>
+      <input type="time" class="form-input" id="fTime" value="08:00">
+
       <label class="form-label">Report Type</label>
       <div class="radio-group">
         <label class="radio-option" id="optOpen" onclick="selectType('open')">
@@ -158,9 +161,9 @@
     <div class="card">
       <h2>How It Works</h2>
       <ul style="font-size:13px;color:#555;line-height:2;padding-left:20px;">
-        <li><strong>Daily:</strong> Email sent every day at 8:00 AM EST</li>
-        <li><strong>Weekly:</strong> Email sent every Monday at 8:00 AM EST</li>
-        <li><strong>Monthly:</strong> Email sent on the 1st of each month at 8:00 AM EST</li>
+        <li><strong>Daily:</strong> Email sent every day at your selected time</li>
+        <li><strong>Weekly:</strong> Email sent every Monday at your selected time</li>
+        <li><strong>Monthly:</strong> Email sent on the 1st of each month at your selected time</li>
         <li><strong>Open Issues Only:</strong> Lists all unresolved issues. If none, sends a "all clear" confirmation.</li>
         <li><strong>Full History:</strong> Includes all issues (open + resolved) as a summary report.</li>
         <li>Schedules are managed via Google Apps Script triggers. Use "Send Test Email" to verify.</li>
@@ -176,7 +179,7 @@
 const URL_KEY = 'fwa_script_url';
 const SCHEDULES_KEY = 'fwa_email_schedules';
 let scriptUrl = '', schedules = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwFym0Kz15Fl-FYEy5wPrScTOe6iplFIP2VvrRUGTrZ6bsSxjiDVUm2PZNbvoEUVzFCmw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbx93DDXVinqUavsjI0fMYaOIJ8-pv2U-5dxvZ3lr9FJWtmygSQjCkFtK57vfVmUDFs-SA/exec'; } catch(e) {}
 try { schedules = JSON.parse(localStorage.getItem(SCHEDULES_KEY)) || []; } catch(e) { schedules = []; }
 
 function jsonpRequest(url, params) {
@@ -219,8 +222,10 @@ function renderSchedules() {
   }
   container.innerHTML = schedules.map((s, i) => {
     const typeBadge = s.type === 'open' ? '<span class="sched-badge badge-open">Open Only</span>' : '<span class="sched-badge badge-all">Full History</span>';
+    const timeDisplay = s.time || '08:00';
     return '<div class="schedule-item">'
-      + '<div style="flex:1;"><div class="sched-email">' + s.email + '</div><div class="sched-meta">' + s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1) + ' ' + typeBadge + '</div></div>'
+      + '<div style="flex:1;"><div class="sched-email">' + s.email + '</div><div class="sched-meta">' + s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1) + ' at ' + timeDisplay + ' ' + typeBadge + '</div></div>'
+      + '<button onclick="testSchedule(' + i + ')" style="padding:4px 12px;background:#6f42c1;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:8px;">Test</button>'
       + '<button class="btn-remove" onclick="removeSchedule(' + i + ')">Remove</button>'
       + '</div>';
   }).join('');
@@ -229,6 +234,7 @@ function renderSchedules() {
 function addSchedule() {
   const email = document.getElementById('fEmail').value.trim();
   const frequency = document.getElementById('fFrequency').value;
+  const time = document.getElementById('fTime').value || '08:00';
   const type = document.querySelector('input[name="reportType"]:checked').value;
 
   if (!email) { setMsg('Email address is required', 'error'); return; }
@@ -239,10 +245,10 @@ function addSchedule() {
     setMsg('This schedule already exists', 'error'); return;
   }
 
-  schedules.push({ email, frequency, type });
+  schedules.push({ email, frequency, time, type });
   localStorage.setItem(SCHEDULES_KEY, JSON.stringify(schedules));
   renderSchedules();
-  setMsg('Schedule added for ' + email, 'success');
+  setMsg('Schedule added for ' + email + ' at ' + time, 'success');
   document.getElementById('fEmail').value = '';
 
   // Also save to Google Sheet for the trigger to use
@@ -261,6 +267,23 @@ async function saveSchedulesToSheet() {
   try {
     await jsonpRequest(scriptUrl, { action: 'saveschedules', schedules: JSON.stringify(schedules) });
   } catch(e) {}
+}
+
+async function testSchedule(idx) {
+  const s = schedules[idx];
+  if (!s) return;
+  if (!scriptUrl) { setMsg('No Apps Script URL configured', 'error'); return; }
+  setMsg('Sending test email to ' + s.email + '...', 'pending');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'sendemail', email: s.email, type: s.type });
+    if (json.success) {
+      setMsg('Test email sent to ' + s.email, 'success');
+    } else {
+      setMsg('Failed: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch(err) {
+    setMsg('Error: ' + err.message, 'error');
+  }
 }
 
 async function sendTestEmail() {
@@ -290,14 +313,20 @@ async function sendTestEmail() {
   btn.disabled = false; btn.textContent = 'Send Test Email';
 }
 
-// Check connection on load
-async function checkConnection() {
+// Check connection and load schedules from sheet on load
+async function init() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL'); return; }
   try {
-    const json = await jsonpRequest(scriptUrl, {});
-    if (json.success) setStatus('connected', 'Connected');
-    else setStatus('disconnected', 'Error');
-  } catch(e) { setStatus('disconnected', 'Connection failed'); }
+    const json = await jsonpRequest(scriptUrl, { action: 'readschedules' });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      if (json.data && json.data.length) {
+        schedules = json.data;
+        localStorage.setItem(SCHEDULES_KEY, JSON.stringify(schedules));
+      }
+      renderSchedules();
+    } else { setStatus('disconnected', 'Error'); }
+  } catch(e) { setStatus('disconnected', 'Connection failed'); renderSchedules(); }
 }
 
 function showToast(msg, type) {
@@ -311,7 +340,7 @@ function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 
 renderSchedules();
-checkConnection();
+init();
 </script>
 </body>
 </html>

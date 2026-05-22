@@ -138,7 +138,7 @@ function doGet(e) {
       } else {
         body = '<h2>' + (type === 'open' ? 'Open Issues (' + issues.length + ')' : 'Issue History (' + issues.length + ' total)') + '</h2>';
         body += '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;">';
-        body += '<tr style="background:#1a3a5c;color:white;"><th>Tester ID</th><th>Type</th><th>Severity</th><th>Issue Note</th><th>Reported By</th><th>Time of Issue</th><th>Status</th></tr>';
+        body += '<tr style="background:#1a3a5c;color:white;"><th>Tester ID</th><th>Type</th><th>Severity</th><th>Issue Note</th><th>Reported By</th><th>Time of Issue</th><th>Resolved By</th><th>Resolution Note</th><th>Time of Resolution</th><th>Status</th></tr>';
         issues.forEach(function(i) {
           var sevColor = i['Severity'] === 'Critical' ? '#dc3545' : i['Severity'] === 'Major' ? '#fd7e14' : '#17a2b8';
           body += '<tr>';
@@ -148,7 +148,11 @@ function doGet(e) {
           body += '<td>' + (i['Issue Note'] || '—') + '</td>';
           body += '<td>' + (i['Reported By'] || '—') + '</td>';
           body += '<td>' + (i['Time of Issue'] || '—') + '</td>';
-          body += '<td>' + (i['Status'] || '—') + '</td>';
+          body += '<td>' + (i['Resolved By'] || '—') + '</td>';
+          body += '<td>' + (i['Resolution Note'] || '—') + '</td>';
+          body += '<td>' + (i['Time of Resolution'] || '—') + '</td>';
+          var statusColor = (i['Status'] || '').trim() === 'Resolved' ? '#28a745' : '#dc3545';
+          body += '<td style="background:' + statusColor + ';color:white;font-weight:bold;text-align:center;">' + (i['Status'] || '—') + '</td>';
           body += '</tr>';
         });
         body += '</table>';
@@ -168,9 +172,43 @@ function doGet(e) {
     // ---- SAVE SCHEDULES ----
     if (action === 'saveschedules') {
       var schedulesJson = (e.parameter.schedules || '[]').toString();
-      var props = PropertiesService.getScriptProperties();
-      props.setProperty('email_schedules', schedulesJson);
+      var schedData = JSON.parse(schedulesJson);
+      
+      // Get or create Email Schedules tab
+      var schedSheet = ss.getSheetByName('Email Schedules');
+      if (!schedSheet) {
+        schedSheet = ss.insertSheet('Email Schedules');
+        schedSheet.getRange(1, 1, 1, 4).setValues([['Email', 'Frequency', 'Time', 'Report Type']]);
+      }
+      
+      // Clear existing data (keep header)
+      var lastRow = schedSheet.getLastRow();
+      if (lastRow > 1) {
+        schedSheet.getRange(2, 1, lastRow - 1, 4).clearContent();
+      }
+      
+      // Write new schedules
+      if (schedData.length > 0) {
+        var rows = schedData.map(function(s) {
+          return [s.email || '', s.frequency || '', s.time || '08:00', s.type || 'open'];
+        });
+        schedSheet.getRange(2, 1, rows.length, 4).setValues(rows);
+      }
+      
       return _respond({ success: true }, callback);
+    }
+
+    // ---- READ SCHEDULES ----
+    if (action === 'readschedules') {
+      var schedSheet = ss.getSheetByName('Email Schedules');
+      if (!schedSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = schedSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = schedSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+      var rows = data.filter(function(row) { return row[0]; }).map(function(row) {
+        return { email: row[0].toString(), frequency: row[1].toString(), time: row[2].toString(), type: row[3].toString() };
+      });
+      return _respond({ success: true, data: rows }, callback);
     }
 
     // ---- READ TESTER TYPES ----
