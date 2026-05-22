@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Email Schedule</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #6f42c1; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 800px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; margin-top: 16px; letter-spacing: 0.5px; }
+  .form-label:first-child { margin-top: 0; }
+  .form-input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; transition: border-color 0.2s; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+  select.form-input { background: white; }
+
+  .radio-group { display: flex; gap: 16px; margin-top: 8px; }
+  .radio-option { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 16px; border: 2px solid #ddd; border-radius: 8px; transition: all 0.15s; }
+  .radio-option:hover { border-color: #1a3a5c; }
+  .radio-option.selected { border-color: #1a3a5c; background: #e8f0fe; }
+  .radio-option input { margin: 0; }
+  .radio-option .radio-label { font-size: 13px; font-weight: 500; }
+  .radio-option .radio-desc { font-size: 11px; color: #888; margin-top: 2px; }
+
+  .schedule-list { margin-top: 16px; }
+  .schedule-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 10px; }
+  .schedule-item .sched-email { font-size: 14px; font-weight: 600; color: #1a3a5c; font-family: Consolas, monospace; flex: 1; }
+  .schedule-item .sched-meta { font-size: 12px; color: #888; }
+  .schedule-item .sched-badge { font-size: 10px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+  .badge-open { background: #fff3cd; color: #856404; }
+  .badge-all { background: #e3f2fd; color: #0d47a1; }
+  .btn-remove { padding: 4px 12px; background: #fce4ec; color: #b71c1c; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .btn-remove:hover { background: #f8bbd0; }
+
+  .btn-save { padding: 12px 28px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+  .btn-save:hover { background: #218838; }
+  .btn-test { padding: 12px 28px; background: #6f42c1; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; margin-left: 10px; }
+  .btn-test:hover { background: #5a32a3; }
+  .btn-test:disabled { background: #ccc; }
+
+  .status-msg { margin-top: 16px; padding: 12px 16px; border-radius: 6px; font-size: 13px; display: none; }
+  .status-msg.success { display: block; background: #d4edda; color: #155724; }
+  .status-msg.error { display: block; background: #f8d7da; color: #721c24; }
+  .status-msg.pending { display: block; background: #fff3cd; color: #856404; }
+
+  .empty-state { text-align: center; padding: 30px; color: #aaa; font-size: 13px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .radio-group { flex-direction: column; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">System</div>
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html" class="active"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Email Schedule</h1><div class="header-sub">Configure automated issue report emails</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- ADD SCHEDULE -->
+    <div class="card">
+      <h2>Add Email Schedule</h2>
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="fEmail" placeholder="name@ctdi.com">
+
+      <label class="form-label">Frequency</label>
+      <select class="form-input" id="fFrequency">
+        <option value="daily">Daily</option>
+        <option value="weekly" selected>Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+
+      <label class="form-label">Report Type</label>
+      <div class="radio-group">
+        <label class="radio-option" id="optOpen" onclick="selectType('open')">
+          <input type="radio" name="reportType" value="open" checked>
+          <div>
+            <div class="radio-label">Open Issues Only</div>
+            <div class="radio-desc">Only active/unresolved issues. Sends "no open issues" if all clear.</div>
+          </div>
+        </label>
+        <label class="radio-option" id="optAll" onclick="selectType('all')">
+          <input type="radio" name="reportType" value="all">
+          <div>
+            <div class="radio-label">Full Issue History</div>
+            <div class="radio-desc">All issues regardless of status.</div>
+          </div>
+        </label>
+      </div>
+
+      <div>
+        <button class="btn-save" onclick="addSchedule()">Add Schedule</button>
+        <button class="btn-test" id="testBtn" onclick="sendTestEmail()">Send Test Email</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <!-- CURRENT SCHEDULES -->
+    <div class="card">
+      <h2>Active Schedules</h2>
+      <div id="scheduleList" class="schedule-list">
+        <div class="empty-state">No email schedules configured yet.</div>
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="card">
+      <h2>How It Works</h2>
+      <ul style="font-size:13px;color:#555;line-height:2;padding-left:20px;">
+        <li><strong>Daily:</strong> Email sent every day at 8:00 AM EST</li>
+        <li><strong>Weekly:</strong> Email sent every Monday at 8:00 AM EST</li>
+        <li><strong>Monthly:</strong> Email sent on the 1st of each month at 8:00 AM EST</li>
+        <li><strong>Open Issues Only:</strong> Lists all unresolved issues. If none, sends a "all clear" confirmation.</li>
+        <li><strong>Full History:</strong> Includes all issues (open + resolved) as a summary report.</li>
+        <li>Schedules are managed via Google Apps Script triggers. Use "Send Test Email" to verify.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+const SCHEDULES_KEY = 'fwa_email_schedules';
+let scriptUrl = '', schedules = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwFym0Kz15Fl-FYEy5wPrScTOe6iplFIP2VvrRUGTrZ6bsSxjiDVUm2PZNbvoEUVzFCmw/exec'; } catch(e) {}
+try { schedules = JSON.parse(localStorage.getItem(SCHEDULES_KEY)) || []; } catch(e) { schedules = []; }
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 30000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function setMsg(text, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = text;
+  el.className = 'status-msg ' + type;
+}
+
+function selectType(type) {
+  document.getElementById('optOpen').classList.toggle('selected', type === 'open');
+  document.getElementById('optAll').classList.toggle('selected', type === 'all');
+}
+selectType('open');
+
+function renderSchedules() {
+  const container = document.getElementById('scheduleList');
+  if (!schedules.length) {
+    container.innerHTML = '<div class="empty-state">No email schedules configured yet.</div>';
+    return;
+  }
+  container.innerHTML = schedules.map((s, i) => {
+    const typeBadge = s.type === 'open' ? '<span class="sched-badge badge-open">Open Only</span>' : '<span class="sched-badge badge-all">Full History</span>';
+    return '<div class="schedule-item">'
+      + '<div style="flex:1;"><div class="sched-email">' + s.email + '</div><div class="sched-meta">' + s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1) + ' ' + typeBadge + '</div></div>'
+      + '<button class="btn-remove" onclick="removeSchedule(' + i + ')">Remove</button>'
+      + '</div>';
+  }).join('');
+}
+
+function addSchedule() {
+  const email = document.getElementById('fEmail').value.trim();
+  const frequency = document.getElementById('fFrequency').value;
+  const type = document.querySelector('input[name="reportType"]:checked').value;
+
+  if (!email) { setMsg('Email address is required', 'error'); return; }
+  if (!email.includes('@')) { setMsg('Enter a valid email address', 'error'); return; }
+
+  // Check for duplicate
+  if (schedules.some(s => s.email === email && s.frequency === frequency && s.type === type)) {
+    setMsg('This schedule already exists', 'error'); return;
+  }
+
+  schedules.push({ email, frequency, type });
+  localStorage.setItem(SCHEDULES_KEY, JSON.stringify(schedules));
+  renderSchedules();
+  setMsg('Schedule added for ' + email, 'success');
+  document.getElementById('fEmail').value = '';
+
+  // Also save to Google Sheet for the trigger to use
+  saveSchedulesToSheet();
+}
+
+function removeSchedule(idx) {
+  schedules.splice(idx, 1);
+  localStorage.setItem(SCHEDULES_KEY, JSON.stringify(schedules));
+  renderSchedules();
+  saveSchedulesToSheet();
+}
+
+async function saveSchedulesToSheet() {
+  if (!scriptUrl) return;
+  try {
+    await jsonpRequest(scriptUrl, { action: 'saveschedules', schedules: JSON.stringify(schedules) });
+  } catch(e) {}
+}
+
+async function sendTestEmail() {
+  const email = document.getElementById('fEmail').value.trim();
+  const type = document.querySelector('input[name="reportType"]:checked').value;
+
+  if (!email) { setMsg('Enter an email address first', 'error'); return; }
+  if (!email.includes('@')) { setMsg('Enter a valid email address', 'error'); return; }
+  if (!scriptUrl) { setMsg('No Apps Script URL configured', 'error'); return; }
+
+  const btn = document.getElementById('testBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  setMsg('Sending test email to ' + email + '...', 'pending');
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'sendemail', email: email, type: type });
+    if (json.success) {
+      setMsg('Test email sent to ' + email, 'success');
+      setStatus('connected', 'Connected');
+    } else {
+      setMsg('Failed: ' + (json.error || 'Unknown error'), 'error');
+    }
+  } catch(err) {
+    setMsg('Error: ' + err.message, 'error');
+    setStatus('disconnected', 'Connection failed');
+  }
+  btn.disabled = false; btn.textContent = 'Send Test Email';
+}
+
+// Check connection on load
+async function checkConnection() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL'); return; }
+  try {
+    const json = await jsonpRequest(scriptUrl, {});
+    if (json.success) setStatus('connected', 'Connected');
+    else setStatus('disconnected', 'Error');
+  } catch(e) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+renderSchedules();
+checkConnection();
+</script>
+</body>
+</html>

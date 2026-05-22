@@ -109,6 +109,7 @@
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
     <div class="nav-section">System</div>
     <a href="testers.html" class="active"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
   </div>
 </nav>
@@ -200,7 +201,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allTesters = [], testerTypes = [], editRow = -1, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwFym0Kz15Fl-FYEy5wPrScTOe6iplFIP2VvrRUGTrZ6bsSxjiDVUm2PZNbvoEUVzFCmw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
