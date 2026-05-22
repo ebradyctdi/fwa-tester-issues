@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Testers</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #17a2b8; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 28px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .search-box { padding: 8px 14px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 200px; }
+  .search-box:focus { border-color: #1a3a5c; outline: none; }
+  .filter-select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; }
+
+  .tester-table { width: 100%; border-collapse: collapse; }
+  .tester-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .tester-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .tester-table tr:hover td { background: #f8f9fa; }
+  .tester-table .id-cell { font-weight: 600; font-family: Consolas, monospace; color: #1a3a5c; cursor: pointer; text-decoration: underline; }
+  .tester-table .id-cell:hover { color: #17a2b8; }
+  .tester-table .meta { font-family: Consolas, monospace; font-size: 12px; color: #555; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .badge-active { background: #d4edda; color: #155724; }
+  .badge-inactive { background: #e9ecef; color: #495057; }
+  .badge-repair { background: #fff3cd; color: #856404; }
+
+  .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .btn-edit { background: #e3f2fd; color: #0d47a1; }
+  .btn-edit:hover { background: #bbdefb; }
+  .btn-add { padding: 10px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-add:hover { background: #218838; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; }
+  .modal-header { background: #1a3a5c; color: white; padding: 16px 24px; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-footer button { padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-cancel { background: #e9ecef; color: #333; }
+  .btn-save { background: #28a745; color: white; }
+  .btn-save:disabled { background: #ccc; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; margin-top: 14px; }
+  .form-label:first-child { margin-top: 0; }
+  .form-input { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+  select.form-input { font-family: 'Segoe UI', Arial, sans-serif; }
+
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .tester-table { display: block; overflow-x: auto; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">System</div>
+    <a href="testers.html" class="active"><span class="icon">🖥️</span> Testers</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Testers</h1><div class="header-sub">Manage FWA test equipment inventory</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiActive">—</div><div class="kpi-label">Active</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiRepair">—</div><div class="kpi-label">In Repair</div></div>
+      <div class="kpi" style="border-top:4px solid #6c757d;"><div class="kpi-val" id="kpiInactive">—</div><div class="kpi-label">Inactive</div></div>
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-label">Total Testers</div></div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h2 style="margin:0;border:none;padding:0;">All Testers</h2>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="search-box" id="searchBox" placeholder="Search..." oninput="renderTable()">
+          <select class="filter-select" id="filterType" onchange="renderTable()">
+            <option value="">All Types</option>
+          </select>
+          <select class="filter-select" id="filterStatus" onchange="renderTable()">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="In Repair">In Repair</option>
+          </select>
+          <button class="refresh-btn" onclick="loadTesters()">Refresh</button>
+          <button class="btn-add" onclick="openAddModal()">+ Add Tester</button>
+        </div>
+      </div>
+      <table class="tester-table">
+        <thead><tr>
+          <th>Tester ID</th>
+          <th>Tester Type</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th>Notes</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tableBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalTitle">Add Tester</h3></div>
+    <div class="modal-body">
+      <label class="form-label">Tester ID</label>
+      <input type="text" class="form-input" id="mTesterID" placeholder="e.g. FT-05, RF-11">
+      <label class="form-label">Tester Type</label>
+      <select class="form-input" id="mTesterType">
+        <option value="">— Select Type —</option>
+      </select>
+      <label class="form-label">Status</label>
+      <select class="form-input" id="mStatus">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+        <option value="In Repair">In Repair</option>
+      </select>
+      <label class="form-label">Location</label>
+      <input type="text" class="form-input" id="mLocation" placeholder="e.g. Coatesville">
+      <label class="form-label">Notes</label>
+      <input type="text" class="form-input" id="mNotes" placeholder="Optional notes...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="saveBtn" onclick="saveTester()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allTesters = [], testerTypes = [], editRow = -1, _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadTesters() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [testersJson, typesJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readtesters' }),
+      jsonpRequest(scriptUrl, { action: 'readtestertypes' })
+    ]);
+    if (testersJson.success) {
+      setStatus('connected', 'Connected');
+      allTesters = testersJson.data || [];
+      renderKPIs();
+      populateTypeFilter();
+      renderTable();
+    } else { throw new Error(testersJson.error); }
+    if (typesJson.success) {
+      testerTypes = typesJson.data || [];
+      populateTypeDropdown();
+    }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function populateTypeDropdown() {
+  const sel = document.getElementById('mTesterType');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select Type —</option>' + testerTypes.map(t => '<option value="'+t+'">'+t+'</option>').join('');
+  if (current) sel.value = current;
+}
+
+function renderKPIs() {
+  const active = allTesters.filter(t => (t['Status']||'').trim() === 'Active').length;
+  const repair = allTesters.filter(t => (t['Status']||'').trim() === 'In Repair').length;
+  const inactive = allTesters.filter(t => (t['Status']||'').trim() === 'Inactive').length;
+  document.getElementById('kpiActive').textContent = active;
+  document.getElementById('kpiRepair').textContent = repair;
+  document.getElementById('kpiInactive').textContent = inactive;
+  document.getElementById('kpiTotal').textContent = allTesters.length;
+}
+
+function populateTypeFilter() {
+  const types = [...new Set(allTesters.map(t => (t['Tester Type']||'').trim()).filter(Boolean))];
+  const sel = document.getElementById('filterType');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Types</option>' + types.map(t => '<option value="'+t+'">'+t+'</option>').join('');
+  sel.value = current;
+}
+
+function statusBadge(s) {
+  const cls = { 'Active':'badge-active', 'Inactive':'badge-inactive', 'In Repair':'badge-repair' };
+  return '<span class="badge ' + (cls[s]||'') + '">' + (s||'—') + '</span>';
+}
+
+function renderTable() {
+  const search = (document.getElementById('searchBox').value || '').toLowerCase();
+  const typeFilter = document.getElementById('filterType').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+
+  let filtered = allTesters.filter((t, i) => {
+    t._row = i; // track row index for editing
+    const id = (t['Tester ID']||'').toLowerCase();
+    const type = (t['Tester Type']||'').trim();
+    const status = (t['Status']||'').trim();
+    const loc = (t['Location']||'').toLowerCase();
+    const notes = (t['Notes']||'').toLowerCase();
+    if (search && !id.includes(search) && !type.toLowerCase().includes(search) && !loc.includes(search) && !notes.includes(search)) return false;
+    if (typeFilter && type !== typeFilter) return false;
+    if (statusFilter && status !== statusFilter) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No testers match your filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(t => {
+    const notes = (t['Notes']||'').toString();
+    const shortNotes = notes.length > 40 ? notes.substring(0, 40) + '...' : notes;
+    return '<tr>'
+      + '<td class="id-cell" onclick="openEditModal(' + t._row + ')">' + (t['Tester ID']||'—') + '</td>'
+      + '<td class="meta">' + (t['Tester Type']||'—') + '</td>'
+      + '<td>' + statusBadge(t['Status']) + '</td>'
+      + '<td class="meta">' + (t['Location']||'—') + '</td>'
+      + '<td style="font-size:12px;color:#666;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + notes.replace(/"/g,'&quot;') + '">' + (shortNotes||'—') + '</td>'
+      + '<td><button class="btn btn-edit" onclick="openEditModal(' + t._row + ')">Edit</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+// ---- ADD/EDIT MODAL ----
+function openAddModal() {
+  editRow = -1;
+  document.getElementById('modalTitle').textContent = 'Add Tester';
+  document.getElementById('mTesterID').value = '';
+  document.getElementById('mTesterType').value = '';
+  document.getElementById('mStatus').value = 'Active';
+  document.getElementById('mLocation').value = 'Coatesville';
+  document.getElementById('mNotes').value = '';
+  document.getElementById('mTesterID').readOnly = false;
+  document.getElementById('saveBtn').textContent = 'Add Tester';
+  document.getElementById('editModal').classList.add('show');
+  document.getElementById('mTesterID').focus();
+}
+
+function openEditModal(rowIdx) {
+  editRow = rowIdx;
+  const t = allTesters[rowIdx];
+  if (!t) return;
+  document.getElementById('modalTitle').textContent = 'Edit Tester — ' + (t['Tester ID']||'');
+  document.getElementById('mTesterID').value = t['Tester ID'] || '';
+  populateTypeDropdown();
+  document.getElementById('mTesterType').value = t['Tester Type'] || '';
+  document.getElementById('mStatus').value = t['Status'] || 'Active';
+  document.getElementById('mLocation').value = t['Location'] || '';
+  document.getElementById('mNotes').value = t['Notes'] || '';
+  document.getElementById('mTesterID').readOnly = true;
+  document.getElementById('saveBtn').textContent = 'Save Changes';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('editModal').classList.remove('show'); }
+
+async function saveTester() {
+  const testerID = document.getElementById('mTesterID').value.trim();
+  const testerType = document.getElementById('mTesterType').value.trim();
+  const status = document.getElementById('mStatus').value;
+  const location = document.getElementById('mLocation').value.trim();
+  const notes = document.getElementById('mNotes').value.trim();
+
+  if (!testerID) { showToast('Tester ID is required', 'error'); return; }
+  if (!testerType) { showToast('Tester Type is required', 'error'); return; }
+  if (!scriptUrl) { showToast('Configure URL in Settings', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const action = editRow >= 0 ? 'updatetester' : 'addtester';
+  const params = { action, testerid: testerID, testertype: testerType, status, location, notes };
+  if (editRow >= 0) params.row = editRow;
+
+  try {
+    const json = await jsonpRequest(scriptUrl, params);
+    if (json.success) {
+      showToast(editRow >= 0 ? 'Tester updated' : 'Tester added', 'success');
+      closeModal();
+      loadTesters();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = editRow >= 0 ? 'Save Changes' : 'Add Tester';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+loadTesters();
+</script>
+</body>
+</html>

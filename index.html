@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Overview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 32px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .type-row { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 14px; }
+  .type-row-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .type-row-label { font-size: 14px; font-weight: 700; color: white; padding: 4px 14px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .type-row-count { font-size: 12px; color: #888; }
+  .tester-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .tester-cell { width: 70px; height: 70px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; font-size: 13px; font-weight: 700; font-family: Consolas, monospace; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .tester-cell:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .tester-cell.green { background: #28a745; }
+  .tester-cell.red { background: #dc3545; animation: pulse-red 2s infinite; }
+  @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 520px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .modal-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; }
+  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .issue-item { padding: 12px 16px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid; }
+  .issue-item.open { background: #fff5f5; border-color: #dc3545; }
+  .issue-item.resolved { background: #f0fff0; border-color: #28a745; }
+  .issue-item .issue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .issue-item .issue-severity { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .issue-item .issue-date { font-size: 11px; color: #888; font-family: Consolas, monospace; }
+  .issue-item .issue-desc { font-size: 13px; color: #333; margin-top: 4px; line-height: 1.4; }
+  .issue-item .issue-reporter { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .no-issues { text-align: center; padding: 20px; color: #28a745; font-size: 14px; font-weight: 600; }
+
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .tester-cell { width: 56px; height: 56px; font-size: 11px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="index.html" class="active"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">System</div>
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>FWA Tester Issues</h1><div class="header-sub">CTDI — Tester Status Overview</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- KPIs -->
+    <div class="kpi-row" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiHealthy">—</div><div class="kpi-label">Healthy</div></div>
+      <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiWithIssues">—</div><div class="kpi-label">With Issues</div></div>
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-label">Total Testers</div></div>
+    </div>
+
+    <!-- TESTER ROWS -->
+    <div id="testerRows">
+      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#0d6efd;">Functional</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
+      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#fd7e14;">RF</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
+      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#6f42c1;">Firmware</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
+      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#17a2b8;">CIC</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header" id="modalHeader" style="background:#1a3a5c;">
+      <h3 id="modalTitle">Tester Details</h3>
+      <div class="modal-sub" id="modalSub"></div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer"><button onclick="closeModal()">Close</button></div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allTesters = [], allIssues = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+const typeOrder = ['Functional', 'RF', 'Firmware', 'CIC'];
+const typeColors = { 'Functional': '#0d6efd', 'RF': '#fd7e14', 'Firmware': '#6f42c1', 'CIC': '#17a2b8' };
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function getIssuesForTester(testerID) {
+  return allIssues.filter(i => (i['Tester ID']||'').trim() === testerID);
+}
+
+function getOpenIssuesForTester(testerID) {
+  return allIssues.filter(i => (i['Tester ID']||'').trim() === testerID && (i['Status']||'').trim() !== 'Resolved');
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [testersJson, issuesJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readtesters' }),
+      jsonpRequest(scriptUrl, {})
+    ]);
+    if (testersJson.success) {
+      setStatus('connected', 'Connected');
+      allTesters = testersJson.data || [];
+    } else { throw new Error(testersJson.error); }
+    if (issuesJson.success) {
+      allIssues = issuesJson.data || [];
+    }
+    renderKPIs();
+    renderRows();
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderKPIs() {
+  const activeTesters = allTesters.filter(t => (t['Status']||'').trim() === 'Active');
+  const testersWithIssues = new Set();
+  allIssues.forEach(i => { if ((i['Status']||'').trim() !== 'Resolved') testersWithIssues.add((i['Tester ID']||'').trim()); });
+  const healthy = activeTesters.filter(t => !testersWithIssues.has((t['Tester ID']||'').trim())).length;
+  const withIssues = activeTesters.filter(t => testersWithIssues.has((t['Tester ID']||'').trim())).length;
+
+  document.getElementById('kpiHealthy').textContent = healthy;
+  document.getElementById('kpiWithIssues').textContent = withIssues;
+  document.getElementById('kpiTotal').textContent = activeTesters.length;
+}
+
+function renderRows() {
+  const container = document.getElementById('testerRows');
+  let html = '';
+
+  typeOrder.forEach(type => {
+    const color = typeColors[type] || '#6c757d';
+    const testers = allTesters.filter(t => (t['Tester Type']||'').trim() === type && (t['Status']||'').trim() === 'Active');
+
+    html += '<div class="type-row">';
+    html += '<div class="type-row-header"><span class="type-row-label" style="background:' + color + ';">' + type + '</span><span class="type-row-count">' + testers.length + ' testers</span></div>';
+    html += '<div class="tester-grid">';
+
+    if (!testers.length) {
+      html += '<span style="color:#aaa;font-size:13px;">No active testers</span>';
+    } else {
+      testers.forEach(t => {
+        const id = (t['Tester ID']||'').trim();
+        const openIssues = getOpenIssuesForTester(id);
+        const hasIssue = openIssues.length > 0;
+        const cls = hasIssue ? 'red' : 'green';
+        html += '<div class="tester-cell ' + cls + '" onclick="showDetail(\'' + id.replace(/'/g,"\\'") + '\',\'' + type.replace(/'/g,"\\'") + '\')" title="' + id + (hasIssue ? ' — ' + openIssues.length + ' open issue(s)' : ' — No issues') + '">' + id + '</div>';
+      });
+    }
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function showDetail(testerID, testerType) {
+  const openIssues = getOpenIssuesForTester(testerID);
+  const allTesterIssues = getIssuesForTester(testerID);
+  const hasOpen = openIssues.length > 0;
+
+  document.getElementById('modalTitle').textContent = testerID;
+  document.getElementById('modalSub').textContent = testerType;
+  document.getElementById('modalHeader').style.background = hasOpen ? '#dc3545' : '#28a745';
+
+  let bodyHtml = '';
+
+  if (hasOpen) {
+    bodyHtml += '<div style="font-size:12px;font-weight:600;color:#dc3545;text-transform:uppercase;margin-bottom:10px;">Active Issues (' + openIssues.length + ')</div>';
+    openIssues.forEach(i => {
+      const sevColors = { 'Critical':'#dc3545', 'Major':'#fd7e14', 'Minor':'#17a2b8' };
+      bodyHtml += '<div class="issue-item open">'
+        + '<div class="issue-header"><span class="issue-severity" style="background:' + (sevColors[i['Severity']]||'#888') + ';color:white;">' + (i['Severity']||'—') + '</span><span class="issue-date">' + fmtDate(i['Time of Issue']) + '</span></div>'
+        + '<div class="issue-desc">' + (i['Issue Note']||'—').replace(/</g,'&lt;') + '</div>'
+        + '<div class="issue-reporter">Reported by: ' + (i['Reported By']||'—') + '</div>'
+        + '</div>';
+    });
+  } else {
+    bodyHtml += '<div class="no-issues">No active issues</div>';
+  }
+
+  // Show recent resolved issues
+  const resolved = allTesterIssues.filter(i => (i['Status']||'').trim() === 'Resolved').sort((a, b) => new Date(b['Time of Resolution']||0) - new Date(a['Time of Resolution']||0)).slice(0, 5);
+  if (resolved.length) {
+    bodyHtml += '<div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;margin-top:20px;margin-bottom:10px;padding-top:12px;border-top:1px solid #eee;">Recent Resolved (' + resolved.length + ')</div>';
+    resolved.forEach(i => {
+      bodyHtml += '<div class="issue-item resolved">'
+        + '<div class="issue-header"><span class="issue-severity" style="background:#28a745;color:white;">Resolved</span><span class="issue-date">' + fmtDate(i['Time of Resolution']) + '</span></div>'
+        + '<div class="issue-desc">' + (i['Issue Note']||'—').replace(/</g,'&lt;') + '</div>'
+        + '<div class="issue-reporter">Reported by: ' + (i['Reported By']||'—') + ' | Started: ' + fmtDate(i['Time of Issue']) + '</div>'
+        + '</div>';
+    });
+  } else if (!hasOpen) {
+    bodyHtml += '<div style="text-align:center;padding:12px;color:#aaa;font-size:13px;">No issue history for this tester.</div>';
+  }
+
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+loadData();
+</script>
+</body>
+</html>

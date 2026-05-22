@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Report An Issue</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #dc3545; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .column { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+  .column-header { padding: 14px 16px; font-size: 14px; font-weight: 700; color: white; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+  .column-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 200px; }
+
+  .tester-card { padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .tester-card:hover { border-color: #1a3a5c; background: #f0f4ff; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .tester-card.has-issue { border-color: #dc3545; background: #fff5f5; }
+  .tester-card .card-info { }
+  .tester-card .card-id { font-size: 15px; font-weight: 700; font-family: Consolas, monospace; color: #1a3a5c; }
+  .tester-card .card-issue { font-size: 10px; color: #dc3545; font-weight: 600; margin-top: 4px; }
+
+  .badge-sm { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; }
+  .badge-active { background: #d4edda; color: #155724; }
+  .badge-repair { background: #fff3cd; color: #856404; }
+  .badge-inactive { background: #e9ecef; color: #495057; }
+
+  .empty-col { text-align: center; padding: 30px 10px; color: #ccc; font-size: 12px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; }
+  .modal-header { background: #dc3545; color: white; padding: 16px 24px; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .modal-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-footer button { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-cancel { background: #e9ecef; color: #333; }
+  .btn-cancel:hover { background: #dee2e6; }
+  .btn-submit { background: #dc3545; color: white; }
+  .btn-submit:hover { background: #c82333; }
+  .btn-submit:disabled { background: #ccc; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; margin-top: 14px; }
+  .form-label:first-child { margin-top: 0; }
+  .form-input { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; }
+  .form-input:focus { border-color: #dc3545; outline: none; }
+  select.form-input { background: white; }
+  textarea.form-input { resize: vertical; min-height: 80px; font-family: 'Segoe UI', Arial, sans-serif; }
+
+  @media (max-width: 1000px) { .columns { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .columns { grid-template-columns: 1fr; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html" class="active"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">System</div>
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Report An Issue</h1><div class="header-sub">Select a tester to report a problem</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:#666;">Click a tester to report an issue</div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:12px;font-weight:600;color:#666;">Location:</label>
+        <select id="locationFilter" onchange="renderColumns()" style="padding:8px 12px;border:1px solid #ddd;border-radius:4px;font-size:13px;background:white;">
+          <option value="">All Locations</option>
+        </select>
+        <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+      </div>
+    </div>
+    <div class="columns" id="columnsContainer">
+      <div class="column"><div class="column-header" style="background:#0d6efd;">Functional</div><div class="column-body empty-col">Loading...</div></div>
+      <div class="column"><div class="column-header" style="background:#fd7e14;">RF</div><div class="column-body empty-col">Loading...</div></div>
+      <div class="column"><div class="column-header" style="background:#6f42c1;">Firmware</div><div class="column-body empty-col">Loading...</div></div>
+      <div class="column"><div class="column-header" style="background:#17a2b8;">CIC</div><div class="column-body empty-col">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT ISSUE MODAL -->
+<div class="modal-overlay" id="issueModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Report Issue</h3>
+      <div class="modal-sub" id="modalSub"></div>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">Reported By</label>
+      <input type="text" class="form-input" id="mReportedBy" placeholder="Your name">
+      <label class="form-label">Severity</label>
+      <select class="form-input" id="mSeverity">
+        <option value="">— Select —</option>
+        <option value="Critical">Critical</option>
+        <option value="Major">Major</option>
+        <option value="Minor">Minor</option>
+      </select>
+      <label class="form-label">Issue Start Time</label>
+      <input type="datetime-local" class="form-input" id="mStartTime">
+      <label class="form-label">Description</label>
+      <textarea class="form-input" id="mDescription" placeholder="Describe the issue..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-submit" id="submitBtn" onclick="submitIssue()">Submit Issue</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allTesters = [], allIssues = [], selectedTester = null, _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+const typeColors = { 'Functional': '#0d6efd', 'RF': '#fd7e14', 'Firmware': '#6f42c1', 'CIC': '#17a2b8' };
+const typeOrder = ['Functional', 'RF', 'Firmware', 'CIC'];
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [testersJson, issuesJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readtesters' }),
+      jsonpRequest(scriptUrl, {})
+    ]);
+    if (testersJson.success) {
+      setStatus('connected', 'Connected');
+      allTesters = testersJson.data || [];
+      populateLocationFilter();
+    } else { throw new Error(testersJson.error); }
+    if (issuesJson.success) {
+      allIssues = issuesJson.data || [];
+    }
+    renderColumns();
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function getOpenIssuesForTester(testerID) {
+  return allIssues.filter(i => (i['Tester ID']||'').trim() === testerID && (i['Status']||'').trim() === 'Open');
+}
+
+function populateLocationFilter() {
+  const locations = [...new Set(allTesters.map(t => (t['Location']||'').trim()).filter(Boolean))];
+  const sel = document.getElementById('locationFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Locations</option>' + locations.map(l => '<option value="'+l+'">'+l+'</option>').join('');
+  if (current) sel.value = current;
+}
+
+function renderColumns() {
+  const container = document.getElementById('columnsContainer');
+  const locationFilter = document.getElementById('locationFilter').value;
+  let html = '';
+
+  typeOrder.forEach(type => {
+    const color = typeColors[type] || '#6c757d';
+    let testers = allTesters.filter(t => (t['Tester Type']||'').trim() === type && (t['Status']||'').trim() === 'Active');
+    if (locationFilter) {
+      testers = testers.filter(t => (t['Location']||'').trim() === locationFilter);
+    }
+
+    html += '<div class="column">';
+    html += '<div class="column-header" style="background:' + color + ';">' + type + ' (' + testers.length + ')</div>';
+    html += '<div class="column-body">';
+
+    if (!testers.length) {
+      html += '<div class="empty-col">No active ' + type + ' testers</div>';
+    } else {
+      testers.forEach(t => {
+        const id = (t['Tester ID']||'').trim();
+        const openIssues = getOpenIssuesForTester(id);
+        const hasIssue = openIssues.length > 0;
+        html += '<div class="tester-card' + (hasIssue ? ' has-issue' : '') + '" onclick="openIssueModal(\'' + id.replace(/'/g,"\\'") + '\',\'' + type.replace(/'/g,"\\'") + '\')">';
+        html += '<div class="card-info">';
+        html += '<div class="card-id">' + id + '</div>';
+        if (hasIssue) {
+          html += '<div class="card-issue">' + openIssues.length + ' open issue' + (openIssues.length > 1 ? 's' : '') + '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function openIssueModal(testerID, testerType) {
+  selectedTester = { id: testerID, type: testerType };
+  document.getElementById('modalSub').textContent = testerID + ' — ' + testerType;
+  document.getElementById('mReportedBy').value = '';
+  document.getElementById('mSeverity').value = '';
+  document.getElementById('mDescription').value = '';
+  // Default start time to now
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  document.getElementById('mStartTime').value = local;
+  document.getElementById('issueModal').classList.add('show');
+  document.getElementById('mReportedBy').focus();
+}
+
+function closeModal() {
+  document.getElementById('issueModal').classList.remove('show');
+  selectedTester = null;
+}
+
+async function submitIssue() {
+  if (!selectedTester) return;
+  const reportedBy = document.getElementById('mReportedBy').value.trim();
+  const severity = document.getElementById('mSeverity').value;
+  const startTime = document.getElementById('mStartTime').value;
+  const description = document.getElementById('mDescription').value.trim();
+
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!severity) { showToast('Select a severity', 'error'); return; }
+  if (!description) { showToast('Description is required', 'error'); return; }
+  if (!scriptUrl) { showToast('Configure URL in Settings', 'error'); return; }
+
+  // Format start time
+  let issueStart = '';
+  if (startTime) {
+    const d = new Date(startTime);
+    issueStart = (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logissue',
+      reportedby: reportedBy,
+      testertype: selectedTester.type,
+      testerid: selectedTester.id,
+      severity: severity,
+      type: '',
+      description: description,
+      issuestart: issueStart
+    });
+    if (json.success) {
+      showToast('Issue reported for ' + selectedTester.id, 'success');
+      closeModal();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Submit Issue';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+loadData();
+</script>
+</body>
+</html>
