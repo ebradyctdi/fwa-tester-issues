@@ -250,6 +250,18 @@ function doGet(e) {
       var lastRow = riSheet.getLastRow();
       riSheet.getRange(lastRow, 3).setNumberFormat('@');
       riSheet.getRange(lastRow, 3).setValue(cart);
+
+      // Also add unit to Device Location sheet
+      if (cart) {
+        var dlSheet = ss.getSheetByName('Device Location');
+        if (dlSheet) {
+          dlSheet.appendRow([cart, imei, serial, deviceModel, ts, '', 'On Cart']);
+          var dlLastRow = dlSheet.getLastRow();
+          dlSheet.getRange(dlLastRow, 1).setNumberFormat('@');
+          dlSheet.getRange(dlLastRow, 1).setValue(cart);
+        }
+      }
+
       return _respond({ success: true }, callback);
     }
 
@@ -296,14 +308,25 @@ function doGet(e) {
       if (!cartsSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = cartsSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = cartsSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-      var headers = ['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed'];
+      var data = cartsSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+      var headers = ['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed', 'Note'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
         return obj;
       });
       return _respond({ success: true, data: rows }, callback);
+    }
+
+    if (action === 'updatecartnote') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var note = (e.parameter.note || '').toString().trim();
+      var sheetRow = row + 2;
+      cartsSheet.getRange(sheetRow, 6).setValue(note);
+      return _respond({ success: true }, callback);
     }
 
     if (action === 'retirecart') {
@@ -327,10 +350,11 @@ function doGet(e) {
       var cartId = (e.parameter.cartid || '').toString().trim();
       var location = (e.parameter.location || '').toString().trim();
       var status = (e.parameter.status || 'Active').toString().trim();
+      var note = (e.parameter.note || '').toString().trim();
       if (!cartId) return _respond({ success: false, error: 'Cart ID required' }, callback);
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
-      cartsSheet.appendRow([cartId, location, status, ts, '']);
+      cartsSheet.appendRow([cartId, location, status, ts, '', note]);
       var lastRow = cartsSheet.getLastRow();
       cartsSheet.getRange(lastRow, 1).setNumberFormat('@');
       cartsSheet.getRange(lastRow, 1).setValue(cartId);

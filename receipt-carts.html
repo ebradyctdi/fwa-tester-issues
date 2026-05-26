@@ -140,9 +140,10 @@
           <th style="padding:10px 14px;text-align:left;">Location</th>
           <th style="padding:10px 14px;text-align:left;">Status</th>
           <th style="padding:10px 14px;text-align:center;">Units</th>
+          <th style="padding:10px 14px;text-align:left;">Note</th>
           <th style="padding:10px 14px;text-align:left;">Last Added</th>
         </tr></thead>
-        <tbody id="cartBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="cartBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -176,6 +177,8 @@
         <option value="Active">Active</option>
         <option value="Inactive">Inactive</option>
       </select>
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;margin-top:12px;">Note (optional)</label>
+      <input type="text" id="newCartNote" placeholder="e.g. Titan 3 units, Row B" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;">
     </div>
     <div class="modal-footer">
       <button onclick="closeCreateCart()" style="padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
@@ -191,7 +194,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allCartInfo = [], allCarts = [], cartSummary = {}, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbytpOhWOW-7O__4HpauhBnREGOH_Wm_uha2xCeDOhhrJ0qUKZBRTmix_Zd012vhJT52sg/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxZsfQSV6t5Fh9Et63p3EpNw28Fs1bNwQNPwnDhFsbl2YlwT_LPur3JrTCSDtICTuFBnQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -262,12 +265,12 @@ function renderCartTable() {
     const cartId = (c['Cart ID']||'').trim();
     const units = cartSummary[cartId] ? cartSummary[cartId].units.length : 0;
     const lastAdded = cartSummary[cartId] ? cartSummary[cartId].lastAdded : '';
-    return { cartId, location: c['Location']||'', status: c['Cart Status']||'', units, lastAdded };
+    return { cartId, location: c['Location']||'', status: c['Cart Status']||'', note: c['Note']||'', units, lastAdded };
   });
   // Also include carts from Device Location that aren't in the Carts sheet
   Object.keys(cartSummary).forEach(cartId => {
     if (!activeCarts.some(c => (c['Cart ID']||'').trim() === cartId)) {
-      carts.push({ cartId, location: '', status: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
+      carts.push({ cartId, location: '', status: '', note: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
     }
   });
   carts.sort((a, b) => a.cartId.localeCompare(b.cartId));
@@ -275,7 +278,7 @@ function renderCartTable() {
   document.getElementById('cartCount').textContent = carts.length ? '(' + carts.length + ')' : '';
   const tbody = document.getElementById('cartBody');
   if (!carts.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No carts found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No carts found.</td></tr>';
     return;
   }
   tbody.innerHTML = carts.map(c => {
@@ -285,6 +288,7 @@ function renderCartTable() {
       + '<td style="padding:12px 14px;font-size:13px;">' + (c.location||'—') + '</td>'
       + '<td style="padding:12px 14px;"><span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;' + statusStyle + '">' + (c.status||'—') + '</span></td>'
       + '<td style="padding:12px 14px;font-weight:700;font-size:16px;text-align:center;">' + c.units + '</td>'
+      + '<td style="padding:12px 14px;font-size:12px;color:#555;">' + (c.note||'—') + '</td>'
       + '<td style="padding:12px 14px;font-size:12px;font-family:Consolas,monospace;color:#888;">' + fmtDate(c.lastAdded) + '</td>'
       + '</tr>';
   }).join('');
@@ -349,6 +353,17 @@ function showCartDetail(cartId) {
 
   // Retire button — only enabled when no units
   html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee;">';
+
+  // Edit Note
+  const currentNote = cartInfo ? (cartInfo['Note']||'') : '';
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Cart Note</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<input type="text" id="editCartNote" value="' + currentNote.replace(/"/g,'&quot;') + '" placeholder="Add a note..." style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">';
+  html += '<button onclick="saveCartNote(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
+  html += '</div>';
+  html += '<div id="noteUpdateFeedback" style="margin-top:4px;font-size:11px;"></div>';
+  html += '</div>';
 
   // Batch Add
   html += '<div style="margin-bottom:16px;">';
@@ -482,6 +497,21 @@ async function batchRemoveUnit(cartId) {
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
 }
 
+async function saveCartNote(cartId) {
+  const note = document.getElementById('editCartNote').value.trim();
+  const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
+  if (idx < 0) { return; }
+  const fb = document.getElementById('noteUpdateFeedback');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecartnote', row: idx, note: note });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Note saved</span>';
+      allCarts[idx]['Note'] = note;
+      renderCartTable();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
+}
+
 function openCreateCart() {
   document.getElementById('newCartId').value = '';
   document.getElementById('newCartLocation').value = 'Coatesville';
@@ -496,12 +526,13 @@ async function submitCreateCart() {
   const cartId = document.getElementById('newCartId').value.trim();
   const location = document.getElementById('newCartLocation').value.trim();
   const status = document.getElementById('newCartStatus').value;
+  const note = document.getElementById('newCartNote').value.trim();
   if (!cartId) { alert('Cart ID is required'); return; }
 
   const btn = document.getElementById('createCartBtn');
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status });
+    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status, note: note });
     if (json.success) {
       closeCreateCart();
       loadData();
