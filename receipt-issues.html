@@ -475,7 +475,7 @@ async function submitBatch() {
     if (json.success) {
       batchSessionCount++;
       document.getElementById('batchCount').textContent = batchSessionCount;
-      batchLog.unshift({ imei, serial, time: new Date() });
+      batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length });
       if (batchLog.length > 10) batchLog.pop();
       renderBatchLog();
       showBatchFeedback('✓ Logged — ' + imei, 'success');
@@ -498,20 +498,37 @@ function renderBatchLog() {
   const el = document.getElementById('batchLog');
   if (!batchLog.length) { el.innerHTML = ''; return; }
   let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th></tr>';
+  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th></th></tr>';
   batchLog.forEach((entry, i) => {
     const num = batchSessionCount - i;
     const t = entry.time;
     const timeStr = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0') + ':' + String(t.getSeconds()).padStart(2,'0');
+    const rowIdx = entry.rowIdx !== undefined ? entry.rowIdx : -1;
+    const delBtn = rowIdx >= 0 ? '<button onclick="deleteBatchRecord(' + rowIdx + ',' + i + ')" style="padding:3px 8px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Delete</button>' : '';
     html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '">'
       + '<td style="padding:6px 10px;color:#888;">' + num + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + timeStr + '</td>'
+      + '<td style="padding:6px 10px;">' + delBtn + '</td>'
       + '</tr>';
   });
   html += '</table>';
   el.innerHTML = html;
+}
+
+async function deleteBatchRecord(rowIdx, logIdx) {
+  if (!confirm('Delete this record?')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'deletereceiptissue', row: rowIdx });
+    if (json.success) {
+      batchLog.splice(logIdx, 1);
+      batchSessionCount--;
+      document.getElementById('batchCount').textContent = batchSessionCount;
+      renderBatchLog();
+      showBatchFeedback('Record deleted', 'success');
+    } else { showBatchFeedback(json.error || 'Failed', 'error'); }
+  } catch(err) { showBatchFeedback('Error: ' + err.message, 'error'); }
 }
 
 async function deleteRecord(rowIdx) {
