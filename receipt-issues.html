@@ -80,7 +80,7 @@
     <div class="nav-section">Product/Device Issues</div>
     <a href="receipt-issues.html" class="active"><span class="icon">📦</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
-    <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
     <div class="nav-section">System</div>
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -141,7 +141,9 @@
           <div style="margin-bottom:12px;">
             <label class="form-label">Cart</label>
             <div style="display:flex;gap:10px;align-items:center;">
-              <input type="text" class="form-input" id="fCart" placeholder="Cart ID or location" style="flex:1;">
+              <select class="form-input" id="fCart" style="flex:1;">
+                <option value="">— Select Cart —</option>
+              </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="keepCart"> Keep</label>
             </div>
           </div>
@@ -209,7 +211,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzGC_vGxatknLwToEQUugpQh2eNj9k1s40CNf-jfVXJBm7He2p9Mfp-NzITWwgha963/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbytpOhWOW-7O__4HpauhBnREGOH_Wm_uha2xCeDOhhrJ0qUKZBRTmix_Zd012vhJT52sg/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -247,12 +249,22 @@ async function loadData() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
   setStatus('pending', 'Loading...');
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'readreceiptissues' });
-    if (json.success) {
+    const [issuesJson, cartsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readreceiptissues' }),
+      jsonpRequest(scriptUrl, { action: 'readcarts' }).catch(() => ({ success: false }))
+    ]);
+    if (issuesJson.success) {
       setStatus('connected', 'Connected');
-      allIssues = json.data || [];
+      allIssues = issuesJson.data || [];
       renderTable();
-    } else { throw new Error(json.error); }
+    } else { throw new Error(issuesJson.error); }
+    if (cartsJson.success && cartsJson.data) {
+      const activeCarts = cartsJson.data.filter(c => !(c['Date Removed']||'').trim());
+      const sel = document.getElementById('fCart');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">— Select Cart —</option>' + activeCarts.map(c => '<option value="' + (c['Cart ID']||'') + '">' + (c['Cart ID']||'') + (c['Location'] ? ' — ' + c['Location'] : '') + '</option>').join('');
+      if (current) sel.value = current;
+    }
   } catch(err) { setStatus('disconnected', 'Connection failed'); }
 }
 
@@ -271,7 +283,7 @@ function renderTable() {
     + '<td class="meta">' + fmtDate(i['Timestamp']) + '</td>'
     + '<td class="meta" style="font-weight:600;">' + (i['IMEI']||'—') + '</td>'
     + '<td class="meta">' + (i['Serial Number']||'—') + '</td>'
-    + '<td class="meta">' + (i['Cart']||'—') + '</td>'
+    + '<td class="meta">' + (i['Cart ID']||'—') + '</td>'
     + '<td class="meta">' + (i['Device Model']||'—') + '</td>'
     + '<td>' + (i['Reported By']||'—') + '</td>'
     + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (i['Note']||'').replace(/"/g,'&quot;') + '">' + (i['Note']||'—') + '</td>'

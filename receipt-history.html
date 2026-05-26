@@ -81,7 +81,7 @@
     <div class="nav-section">Product/Device Issues</div>
     <a href="receipt-issues.html"><span class="icon">📦</span> Issue Logger</a>
     <a href="receipt-history.html" class="active"><span class="icon">📜</span> Issue History</a>
-    <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
     <div class="nav-section">System</div>
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -145,7 +145,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzGC_vGxatknLwToEQUugpQh2eNj9k1s40CNf-jfVXJBm7He2p9Mfp-NzITWwgha963/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbytpOhWOW-7O__4HpauhBnREGOH_Wm_uha2xCeDOhhrJ0qUKZBRTmix_Zd012vhJT52sg/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -216,7 +216,7 @@ function renderTable() {
     if (statusFilter && status !== statusFilter) return false;
     if (modelFilter && model !== modelFilter) return false;
     if (search) {
-      const haystack = ((i['IMEI']||'') + ' ' + (i['Serial Number']||'') + ' ' + (i['Cart']||'') + ' ' + (i['Device Model']||'') + ' ' + (i['Reported By']||'') + ' ' + (i['Note']||'')).toLowerCase();
+      const haystack = ((i['IMEI']||'') + ' ' + (i['Serial Number']||'') + ' ' + (i['Cart ID']||'') + ' ' + (i['Device Model']||'') + ' ' + (i['Reported By']||'') + ' ' + (i['Note']||'')).toLowerCase();
       if (!haystack.includes(search)) return false;
     }
     if (fromDate || toDate) {
@@ -247,7 +247,7 @@ function renderTable() {
       + '<td class="meta">' + fmtDate(i['Timestamp']) + '</td>'
       + '<td class="meta" style="font-weight:600;">' + (i['IMEI']||'—') + '</td>'
       + '<td class="meta">' + (i['Serial Number']||'—') + '</td>'
-      + '<td class="meta">' + (i['Cart']||'—') + '</td>'
+      + '<td class="meta">' + (i['Cart ID']||'—') + '</td>'
       + '<td class="meta">' + (i['Device Model']||'—') + '</td>'
       + '<td>' + (i['Reported By']||'—') + '</td>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + note.replace(/"/g,'&quot;') + '">' + (shortNote||'—') + '</td>'
@@ -258,10 +258,10 @@ function renderTable() {
 
 function exportCSV() {
   if (!allIssues.length) return;
-  const headers = ['IMEI','Serial Number','Cart','Device Model','Reported By','Note','Timestamp','Status','Resolution Timestamp'];
+  const headers = ['IMEI','Serial Number','Cart ID','Device Model','Reported By','Note','Timestamp','Status','Resolution Timestamp'];
   const rows = allIssues.map(i => {
     return [
-      i['IMEI']||'', i['Serial Number']||'', i['Cart']||'', i['Device Model']||'',
+      i['IMEI']||'', i['Serial Number']||'', i['Cart ID']||'', i['Device Model']||'',
       i['Reported By']||'', i['Note']||'', i['Timestamp']||'', i['Status']||'', i['Resolution Timestamp']||''
     ].map(v => '"' + v.toString().replace(/"/g, '""') + '"').join(',');
   });

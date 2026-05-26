@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FWA - Issue Carts</title>
+<title>FWA - Carts</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -97,7 +97,7 @@
     <div class="nav-section">Product/Device Issues</div>
     <a href="receipt-issues.html"><span class="icon">📦</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
-    <a href="receipt-carts.html" class="active"><span class="icon">🛒</span> Issue Carts</a>
+    <a href="receipt-carts.html" class="active"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
     <div class="nav-section">System</div>
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -108,27 +108,42 @@
 <div class="main-wrap">
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
-    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Issue Carts</h1><div class="header-sub">Receipt issues grouped by cart</div></div>
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Carts</h1><div class="header-sub">Device inventory by cart — lookup and summary</div></div>
     <div class="header-right">
       <span class="status-dot disconnected" id="statusDot"></span>
       <span class="status-label" id="statusLabel">Not connected</span>
     </div>
   </div>
   <div class="container">
-    <!-- KPIs -->
-    <div class="kpi-row">
-      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiCarts">—</div><div class="kpi-label">Total Carts</div></div>
-      <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiCartsOpen">—</div><div class="kpi-label">Carts with Open Issues</div></div>
-      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiCartsClear">—</div><div class="kpi-label">Carts All Clear</div></div>
+    <!-- LOOKUP -->
+    <div class="card">
+      <h2>Lookup Device</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <input type="text" class="search-box" id="lookupInput" placeholder="Enter IMEI or Serial Number..." style="flex:1;min-width:200px;padding:10px 14px;font-size:15px;font-family:Consolas,monospace;" onkeydown="if(event.key==='Enter')doLookup()">
+        <button onclick="doLookup()" style="padding:10px 24px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;">Search</button>
+      </div>
+      <div id="lookupResult" style="margin-top:12px;"></div>
     </div>
 
-    <!-- CART GRID -->
+    <!-- CART SUMMARY -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;border:none;padding:0;">Carts</h2>
-        <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+        <h2 style="margin:0;border:none;padding:0;">Active Carts <span id="cartCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <div style="display:flex;gap:8px;">
+          <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+          <button onclick="openCreateCart()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create A Cart</button>
+        </div>
       </div>
-      <div class="cart-grid" id="cartGrid"><div class="empty-state">Loading...</div></div>
+      <table class="hist-table" id="cartTable" style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="padding:10px 14px;text-align:left;">Cart ID</th>
+          <th style="padding:10px 14px;text-align:left;">Location</th>
+          <th style="padding:10px 14px;text-align:left;">Status</th>
+          <th style="padding:10px 14px;text-align:center;">Units</th>
+          <th style="padding:10px 14px;text-align:left;">Last Added</th>
+        </tr></thead>
+        <tbody id="cartBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -145,14 +160,38 @@
   </div>
 </div>
 
+<!-- CREATE CART MODAL -->
+<div class="modal-overlay" id="createCartModal" onclick="if(event.target===this)closeCreateCart()">
+  <div class="modal">
+    <div class="modal-header" style="background:#28a745;">
+      <h3>Create A Cart</h3>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Cart ID</label>
+      <input type="text" id="newCartId" placeholder="e.g. FWA-001" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Location</label>
+      <input type="text" id="newCartLocation" placeholder="e.g. Coatesville" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Status</label>
+      <select id="newCartStatus" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeCreateCart()" style="padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+      <button onclick="submitCreateCart()" id="createCartBtn" style="padding:8px 24px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Create</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
 </body>
 </html>
 
 <script>
 const URL_KEY = 'fwa_script_url';
-let scriptUrl = '', allIssues = [], cartData = {}, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzGC_vGxatknLwToEQUugpQh2eNj9k1s40CNf-jfVXJBm7He2p9Mfp-NzITWwgha963/exec'; } catch(e) {}
+let scriptUrl = '', allCartInfo = [], allCarts = [], cartSummary = {}, _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbytpOhWOW-7O__4HpauhBnREGOH_Wm_uha2xCeDOhhrJ0qUKZBRTmix_Zd012vhJT52sg/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -185,91 +224,272 @@ async function loadData() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
   setStatus('pending', 'Loading...');
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'readreceiptissues' });
-    if (json.success) {
-      setStatus('connected', 'Connected');
-      allIssues = json.data || [];
-      buildCartData();
-      renderKPIs();
-      renderGrid();
-    } else { throw new Error(json.error); }
+    const [cartInfoJson, cartsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readcartinfo' }),
+      jsonpRequest(scriptUrl, { action: 'readcarts' })
+    ]);
+    if (cartInfoJson.success) {
+      allCartInfo = cartInfoJson.data || [];
+    }
+    if (cartsJson.success) {
+      allCarts = cartsJson.data || [];
+    }
+    setStatus('connected', 'Connected');
+    buildSummary();
+    renderCartTable();
   } catch(err) { setStatus('disconnected', 'Connection failed'); }
 }
 
-function buildCartData() {
-  cartData = {};
-  allIssues.forEach(i => {
-    const cart = (i['Cart']||'').trim() || 'Unassigned';
-    if (!cartData[cart]) cartData[cart] = { total: 0, open: 0, resolved: 0, issues: [] };
-    cartData[cart].total++;
-    if ((i['Status']||'').trim() === 'Resolved') cartData[cart].resolved++;
-    else cartData[cart].open++;
-    cartData[cart].issues.push(i);
+function buildSummary() {
+  cartSummary = {};
+  allCartInfo.forEach((item, idx) => {
+    item._row = idx;
+    const cartId = (item['Cart ID']||'').trim();
+    if (!cartId) return;
+    const removed = (item['Date Removed']||'').trim();
+    if (removed) return; // skip removed units
+    if (!cartSummary[cartId]) cartSummary[cartId] = { units: [], lastAdded: '' };
+    cartSummary[cartId].units.push(item);
+    const added = item['Date Added'] || '';
+    if (added > cartSummary[cartId].lastAdded) cartSummary[cartId].lastAdded = added;
   });
 }
 
-function renderKPIs() {
-  const carts = Object.keys(cartData);
-  const cartsWithOpen = carts.filter(c => cartData[c].open > 0).length;
-  document.getElementById('kpiCarts').textContent = carts.length;
-  document.getElementById('kpiCartsOpen').textContent = cartsWithOpen;
-  document.getElementById('kpiCartsClear').textContent = carts.length - cartsWithOpen;
-}
+function renderCartTable() {
+  // Merge cart info with carts sheet data
+  const activeCarts = allCarts.filter(c => !(c['Date Removed']||'').trim());
+  const carts = activeCarts.map(c => {
+    const cartId = (c['Cart ID']||'').trim();
+    const units = cartSummary[cartId] ? cartSummary[cartId].units.length : 0;
+    const lastAdded = cartSummary[cartId] ? cartSummary[cartId].lastAdded : '';
+    return { cartId, location: c['Location']||'', status: c['Cart Status']||'', units, lastAdded };
+  });
+  // Also include carts from Device Location that aren't in the Carts sheet
+  Object.keys(cartSummary).forEach(cartId => {
+    if (!activeCarts.some(c => (c['Cart ID']||'').trim() === cartId)) {
+      carts.push({ cartId, location: '', status: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
+    }
+  });
+  carts.sort((a, b) => a.cartId.localeCompare(b.cartId));
 
-function renderGrid() {
-  const container = document.getElementById('cartGrid');
-  const carts = Object.keys(cartData).sort((a, b) => cartData[b].open - cartData[a].open || cartData[b].total - cartData[a].total);
-
+  document.getElementById('cartCount').textContent = carts.length ? '(' + carts.length + ')' : '';
+  const tbody = document.getElementById('cartBody');
   if (!carts.length) {
-    container.innerHTML = '<div class="empty-state">No receipt issues logged yet.</div>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No carts found.</td></tr>';
     return;
   }
-
-  container.innerHTML = carts.map(cart => {
-    const d = cartData[cart];
-    const hasOpen = d.open > 0;
-    return '<div class="cart-card' + (hasOpen ? ' has-open' : '') + '" onclick="showCartDetail(\'' + cart.replace(/'/g,"\\'") + '\')">'
-      + '<div class="cart-name">' + cart + '</div>'
-      + '<div class="cart-stats">'
-      + '<div class="stat"><div class="stat-val" style="color:#1a3a5c;">' + d.total + '</div><div class="stat-label">Total</div></div>'
-      + '<div class="stat"><div class="stat-val" style="color:#dc3545;">' + d.open + '</div><div class="stat-label">Open</div></div>'
-      + '<div class="stat"><div class="stat-val" style="color:#28a745;">' + d.resolved + '</div><div class="stat-label">Resolved</div></div>'
-      + '</div></div>';
+  tbody.innerHTML = carts.map(c => {
+    const statusStyle = (c.status||'').toLowerCase() === 'active' ? 'background:#d4edda;color:#155724;' : 'background:#e9ecef;color:#495057;';
+    return '<tr style="cursor:pointer;border-bottom:1px solid #eee;" onclick="showCartDetail(\'' + c.cartId.replace(/'/g,"\\'") + '\')">'
+      + '<td style="padding:12px 14px;font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;font-size:14px;">' + c.cartId + '</td>'
+      + '<td style="padding:12px 14px;font-size:13px;">' + (c.location||'—') + '</td>'
+      + '<td style="padding:12px 14px;"><span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;' + statusStyle + '">' + (c.status||'—') + '</span></td>'
+      + '<td style="padding:12px 14px;font-weight:700;font-size:16px;text-align:center;">' + c.units + '</td>'
+      + '<td style="padding:12px 14px;font-size:12px;font-family:Consolas,monospace;color:#888;">' + fmtDate(c.lastAdded) + '</td>'
+      + '</tr>';
   }).join('');
 }
 
-function showCartDetail(cart) {
-  const d = cartData[cart];
-  if (!d) return;
+function doLookup() {
+  const query = document.getElementById('lookupInput').value.trim();
+  const resultEl = document.getElementById('lookupResult');
+  if (!query) { resultEl.innerHTML = ''; return; }
 
-  document.getElementById('modalTitle').textContent = 'Cart: ' + cart;
-  document.getElementById('modalSub').textContent = d.total + ' issues (' + d.open + ' open, ' + d.resolved + ' resolved)';
-
-  // Sort issues: open first, then by timestamp newest first
-  const sorted = [...d.issues].sort((a, b) => {
-    const aOpen = (a['Status']||'').trim() !== 'Resolved' ? 0 : 1;
-    const bOpen = (b['Status']||'').trim() !== 'Resolved' ? 0 : 1;
-    if (aOpen !== bOpen) return aOpen - bOpen;
-    return new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0);
+  const matches = allCartInfo.filter(item => {
+    const removed = (item['Date Removed']||'').trim();
+    if (removed) return false;
+    const imei = (item['IMEI']||'').toLowerCase();
+    const serial = (item['Serial Number']||'').toLowerCase();
+    return imei.includes(query.toLowerCase()) || serial.includes(query.toLowerCase());
   });
+
+  if (!matches.length) {
+    resultEl.innerHTML = '<div style="padding:12px 16px;background:#f8d7da;border-radius:6px;color:#721c24;font-size:13px;">No active cart found for "' + query.replace(/</g,'&lt;') + '"</div>';
+    return;
+  }
 
   let html = '';
-  sorted.forEach(i => {
-    const isOpen = (i['Status']||'').trim() !== 'Resolved';
-    const badge = isOpen ? '<span class="badge badge-open">Open</span>' : '<span class="badge badge-resolved">Resolved</span>';
-    const imei = (i['IMEI']||'').trim();
-    const serial = (i['Serial Number']||'').trim();
-    const ids = [imei ? 'IMEI: ' + imei : '', serial ? 'SN: ' + serial : ''].filter(Boolean).join(' | ');
-    html += '<div class="issue-row">'
-      + '<div class="ir-header"><span class="ir-ids">' + (ids || '—') + '</span>' + badge + '</div>'
-      + '<div class="ir-time">' + fmtDate(i['Timestamp']) + '</div>'
-      + (i['Note'] ? '<div class="ir-note">' + i['Note'].replace(/</g,'&lt;') + '</div>' : '')
-      + '<div class="ir-reporter">Reported by: ' + (i['Reported By']||'—') + '</div>'
+  matches.forEach(m => {
+    html += '<div style="padding:12px 16px;background:#d4edda;border-radius:6px;margin-bottom:8px;border-left:4px solid #28a745;">'
+      + '<div style="font-size:14px;font-weight:700;color:#1a3a5c;">Cart: ' + (m['Cart ID']||'—') + '</div>'
+      + '<div style="font-size:12px;color:#555;margin-top:4px;">IMEI: <strong>' + (m['IMEI']||'—') + '</strong> | Serial: <strong>' + (m['Serial Number']||'—') + '</strong> | Model: <strong>' + (m['Device Model']||'—') + '</strong></div>'
+      + '<div style="font-size:11px;color:#888;margin-top:2px;">Added: ' + fmtDate(m['Date Added']) + '</div>'
       + '</div>';
   });
+  resultEl.innerHTML = html;
+}
 
-  document.getElementById('modalBody').innerHTML = html || '<div class="empty-state">No issues.</div>';
+function showCartDetail(cartId) {
+  const d = cartSummary[cartId];
+  const units = d ? d.units : [];
+  const cartInfo = allCarts.find(c => (c['Cart ID']||'').trim() === cartId);
+  const location = cartInfo ? (cartInfo['Location']||'') : '';
+
+  document.getElementById('modalTitle').textContent = 'Cart: ' + cartId;
+  document.getElementById('modalSub').textContent = (location ? location + ' — ' : '') + units.length + ' unit' + (units.length !== 1 ? 's' : '');
+
+  let html = '';
+
+  if (units.length) {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;">IMEI</th><th style="padding:8px 10px;text-align:left;">Serial Number</th><th style="padding:8px 10px;text-align:left;">Device Model</th><th style="padding:8px 10px;text-align:left;">Date Added</th></tr>';
+    units.forEach(u => {
+      html += '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-weight:600;">' + (u['IMEI']||'—') + '</td>'
+        + '<td style="padding:8px 10px;font-family:Consolas,monospace;">' + (u['Serial Number']||'—') + '</td>'
+        + '<td style="padding:8px 10px;">' + (u['Device Model']||'—') + '</td>'
+        + '<td style="padding:8px 10px;font-family:Consolas,monospace;color:#888;">' + fmtDate(u['Date Added']) + '</td>'
+        + '</tr>';
+    });
+    html += '</table>';
+  } else {
+    html += '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">No units on this cart.</div>';
+  }
+
+  // Retire button — only enabled when no units
+  html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee;">';
+
+  // Batch Add
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#28a745;text-transform:uppercase;margin-bottom:8px;">Batch Add Units</div>';
+  html += '<div style="display:flex;gap:8px;align-items:flex-end;">';
+  html += '<div style="flex:1;"><label style="font-size:10px;color:#888;">IMEI (15)</label><input type="text" id="batchAddIMEI" placeholder="Scan IMEI..." maxlength="15" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;"></div>';
+  html += '<div style="flex:1;"><label style="font-size:10px;color:#888;">Serial (11)</label><input type="text" id="batchAddSerial" placeholder="Scan Serial..." maxlength="11" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;"></div>';
+  html += '<button onclick="batchAddUnit(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add</button>';
+  html += '</div>';
+  html += '<div id="batchAddFeedback" style="margin-top:6px;font-size:12px;"></div>';
+  html += '</div>';
+
+  // Batch Remove
+  if (units.length > 0) {
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:#dc3545;text-transform:uppercase;margin-bottom:8px;">Remove Unit</div>';
+    html += '<div style="display:flex;gap:8px;align-items:flex-end;">';
+    html += '<div style="flex:1;"><label style="font-size:10px;color:#888;">IMEI or Serial</label><input type="text" id="batchRemoveInput" placeholder="Scan to remove..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;"></div>';
+    html += '<button onclick="batchRemoveUnit(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Remove</button>';
+    html += '</div>';
+    html += '<div id="batchRemoveFeedback" style="margin-top:6px;font-size:12px;"></div>';
+    html += '</div>';
+  }
+
+  // Retire button
+  html += '<div style="text-align:center;padding-top:12px;border-top:1px solid #eee;">';
+  if (units.length === 0) {
+    html += '<button onclick="retireCart(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:10px 24px;background:#dc3545;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Retire Cart</button>';
+  } else {
+    html += '<button disabled style="padding:10px 24px;background:#ccc;color:#888;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:default;">Retire Cart</button>';
+    html += '<div style="font-size:11px;color:#888;margin-top:6px;">Remove all units before retiring this cart.</div>';
+  }
+  html += '</div>';
+
+  document.getElementById('modalBody').innerHTML = html;
   document.getElementById('cartModal').classList.add('show');
+
+  // Set up auto-advance for batch add
+  setTimeout(() => {
+    const addImei = document.getElementById('batchAddIMEI');
+    const addSerial = document.getElementById('batchAddSerial');
+    if (addImei) {
+      addImei.addEventListener('input', function() { if (this.value.length === 15) addSerial.focus(); });
+      addImei.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); addSerial.focus(); } });
+    }
+    if (addSerial) {
+      addSerial.addEventListener('input', function() { if (this.value.length === 11) batchAddUnit(cartId); });
+      addSerial.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); batchAddUnit(cartId); } });
+    }
+    const removeInput = document.getElementById('batchRemoveInput');
+    if (removeInput) {
+      removeInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); batchRemoveUnit(cartId); } });
+    }
+  }, 50);
+}
+
+async function retireCart(cartId) {
+  if (!confirm('Retire cart "' + cartId + '"? This will mark it as inactive.')) return;
+  // Find the row in allCarts
+  const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
+  if (idx < 0) { alert('Cart not found'); return; }
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'retirecart', row: idx });
+    if (json.success) {
+      closeModal();
+      loadData();
+    } else { alert(json.error || 'Failed'); }
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+async function batchAddUnit(cartId) {
+  const imei = document.getElementById('batchAddIMEI').value.trim();
+  const serial = document.getElementById('batchAddSerial').value.trim();
+  const fb = document.getElementById('batchAddFeedback');
+  if (!imei && !serial) { fb.innerHTML = '<span style="color:#dc3545;">Scan IMEI or Serial</span>'; return; }
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'addtocart', cartid: cartId, imei: imei, serial: serial, devicemodel: '' });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Added ' + (imei || serial) + '</span>';
+      document.getElementById('batchAddIMEI').value = '';
+      document.getElementById('batchAddSerial').value = '';
+      document.getElementById('batchAddIMEI').focus();
+      // Refresh data in background
+      const refreshJson = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
+      if (refreshJson.success) { allCartInfo = refreshJson.data || []; buildSummary(); }
+      // Re-render modal
+      showCartDetail(cartId);
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
+}
+
+async function batchRemoveUnit(cartId) {
+  const query = document.getElementById('batchRemoveInput').value.trim();
+  const fb = document.getElementById('batchRemoveFeedback');
+  if (!query) { fb.innerHTML = '<span style="color:#dc3545;">Scan IMEI or Serial to remove</span>'; return; }
+  // Find the unit in allCartInfo
+  const match = allCartInfo.find(item => {
+    if ((item['Date Removed']||'').trim()) return false;
+    if ((item['Cart ID']||'').trim() !== cartId) return false;
+    return (item['IMEI']||'').toLowerCase() === query.toLowerCase() || (item['Serial Number']||'').toLowerCase() === query.toLowerCase();
+  });
+  if (!match) { fb.innerHTML = '<span style="color:#dc3545;">Unit not found on this cart</span>'; return; }
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'removefromcart', row: match._row });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Removed ' + query + '</span>';
+      document.getElementById('batchRemoveInput').value = '';
+      document.getElementById('batchRemoveInput').focus();
+      // Refresh
+      const refreshJson = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
+      if (refreshJson.success) { allCartInfo = refreshJson.data || []; buildSummary(); }
+      showCartDetail(cartId);
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
+}
+
+function openCreateCart() {
+  document.getElementById('newCartId').value = '';
+  document.getElementById('newCartLocation').value = 'Coatesville';
+  document.getElementById('newCartStatus').value = 'Active';
+  document.getElementById('createCartModal').classList.add('show');
+  document.getElementById('newCartId').focus();
+}
+
+function closeCreateCart() { document.getElementById('createCartModal').classList.remove('show'); }
+
+async function submitCreateCart() {
+  const cartId = document.getElementById('newCartId').value.trim();
+  const location = document.getElementById('newCartLocation').value.trim();
+  const status = document.getElementById('newCartStatus').value;
+  if (!cartId) { alert('Cart ID is required'); return; }
+
+  const btn = document.getElementById('createCartBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status });
+    if (json.success) {
+      closeCreateCart();
+      loadData();
+    } else { alert(json.error || 'Failed'); }
+  } catch(err) { alert('Error: ' + err.message); }
+  btn.disabled = false; btn.textContent = 'Create';
 }
 
 function closeModal() { document.getElementById('cartModal').classList.remove('show'); }

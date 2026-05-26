@@ -211,13 +211,13 @@ function doGet(e) {
       return _respond({ success: true, data: rows }, callback);
     }
 
-    // ---- RECEIPT ISSUES ----
+    // ---- Device Issues ----
     if (action === 'readreceiptissues') {
-      var riSheet = ss.getSheetByName('Receipt Issues');
+      var riSheet = ss.getSheetByName('Device Issues');
       if (!riSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = riSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var headers = ['IMEI', 'Serial Number', 'Cart', 'Device Model', 'Reported By', 'Note', 'Timestamp', 'Status', 'Resolution Timestamp'];
+      var headers = ['IMEI', 'Serial Number', 'Cart ID', 'Device Model', 'Reported By', 'Note', 'Timestamp', 'Status', 'Resolution Timestamp'];
       var data = riSheet.getRange(2, 1, lastRow - 1, 9).getValues();
       var rows = data.map(function(row) {
         var obj = {};
@@ -228,9 +228,9 @@ function doGet(e) {
     }
 
     if (action === 'logreceiptissue') {
-      var riSheet = ss.getSheetByName('Receipt Issues');
+      var riSheet = ss.getSheetByName('Device Issues');
       if (!riSheet) {
-        riSheet = ss.insertSheet('Receipt Issues');
+        riSheet = ss.insertSheet('Device Issues');
         riSheet.getRange(1, 1, 1, 9).setValues([['IMEI', 'Serial Number', 'Cart', 'Device Model', 'Reported By', 'Note', 'Timestamp', 'Status', 'Resolution Timestamp']]);
       }
       var imei = (e.parameter.imei || '').toString().trim();
@@ -254,7 +254,7 @@ function doGet(e) {
     }
 
     if (action === 'deletereceiptissue') {
-      var riSheet = ss.getSheetByName('Receipt Issues');
+      var riSheet = ss.getSheetByName('Device Issues');
       if (!riSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
       var row = parseInt(e.parameter.row);
       if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
@@ -264,7 +264,7 @@ function doGet(e) {
     }
 
     if (action === 'resolvereceiptissue') {
-      var riSheet = ss.getSheetByName('Receipt Issues');
+      var riSheet = ss.getSheetByName('Device Issues');
       if (!riSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
       var row = parseInt(e.parameter.row);
       if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
@@ -272,6 +272,100 @@ function doGet(e) {
       riSheet.getRange(sheetRow, 8).setValue('Resolved');
       var now = new Date();
       riSheet.getRange(sheetRow, 9).setValue(Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss'));
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- CART INFORMATION ----
+    if (action === 'readcartinfo') {
+      var ciSheet = ss.getSheetByName('Device Location');
+      if (!ciSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = ciSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = ciSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+      var headers = ['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    if (action === 'readcarts') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = cartsSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = cartsSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      var headers = ['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    if (action === 'retirecart') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      cartsSheet.getRange(sheetRow, 3).setValue('Inactive');
+      var now = new Date();
+      cartsSheet.getRange(sheetRow, 5).setValue(Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss'));
+      return _respond({ success: true }, callback);
+    }
+
+    if (action === 'createcart') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) {
+        cartsSheet = ss.insertSheet('Carts');
+        cartsSheet.getRange(1, 1, 1, 5).setValues([['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed']]);
+      }
+      var cartId = (e.parameter.cartid || '').toString().trim();
+      var location = (e.parameter.location || '').toString().trim();
+      var status = (e.parameter.status || 'Active').toString().trim();
+      if (!cartId) return _respond({ success: false, error: 'Cart ID required' }, callback);
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
+      cartsSheet.appendRow([cartId, location, status, ts, '']);
+      var lastRow = cartsSheet.getLastRow();
+      cartsSheet.getRange(lastRow, 1).setNumberFormat('@');
+      cartsSheet.getRange(lastRow, 1).setValue(cartId);
+      return _respond({ success: true }, callback);
+    }
+
+    if (action === 'addtocart') {
+      var ciSheet = ss.getSheetByName('Device Location');
+      if (!ciSheet) {
+        ciSheet = ss.insertSheet('Device Location');
+        ciSheet.getRange(1, 1, 1, 6).setValues([['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed']]);
+      }
+      var cartId = (e.parameter.cartid || '').toString().trim();
+      var imei = (e.parameter.imei || '').toString().trim();
+      var serial = (e.parameter.serial || '').toString().trim();
+      var deviceModel = (e.parameter.devicemodel || '').toString().trim();
+      if (!cartId || (!imei && !serial)) return _respond({ success: false, error: 'Cart ID and IMEI or Serial required' }, callback);
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
+      ciSheet.appendRow([cartId, imei, serial, deviceModel, ts, '']);
+      // Force Cart ID column to text
+      var lastRow = ciSheet.getLastRow();
+      ciSheet.getRange(lastRow, 1).setNumberFormat('@');
+      ciSheet.getRange(lastRow, 1).setValue(cartId);
+      return _respond({ success: true }, callback);
+    }
+
+    if (action === 'removefromcart') {
+      var ciSheet = ss.getSheetByName('Device Location');
+      if (!ciSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      var now = new Date();
+      ciSheet.getRange(sheetRow, 6).setValue(Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss'));
       return _respond({ success: true }, callback);
     }
 
