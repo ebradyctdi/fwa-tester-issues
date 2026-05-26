@@ -281,8 +281,8 @@ function doGet(e) {
       if (!ciSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = ciSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = ciSheet.getRange(2, 1, lastRow - 1, 6).getValues();
-      var headers = ['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed'];
+      var data = ciSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var headers = ['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -341,7 +341,7 @@ function doGet(e) {
       var ciSheet = ss.getSheetByName('Device Location');
       if (!ciSheet) {
         ciSheet = ss.insertSheet('Device Location');
-        ciSheet.getRange(1, 1, 1, 6).setValues([['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed']]);
+        ciSheet.getRange(1, 1, 1, 7).setValues([['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status']]);
       }
       var cartId = (e.parameter.cartid || '').toString().trim();
       var imei = (e.parameter.imei || '').toString().trim();
@@ -350,7 +350,7 @@ function doGet(e) {
       if (!cartId || (!imei && !serial)) return _respond({ success: false, error: 'Cart ID and IMEI or Serial required' }, callback);
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
-      ciSheet.appendRow([cartId, imei, serial, deviceModel, ts, '']);
+      ciSheet.appendRow([cartId, imei, serial, deviceModel, ts, '', 'On Cart']);
       // Force Cart ID column to text
       var lastRow = ciSheet.getLastRow();
       ciSheet.getRange(lastRow, 1).setNumberFormat('@');
@@ -366,6 +366,7 @@ function doGet(e) {
       var sheetRow = row + 2;
       var now = new Date();
       ciSheet.getRange(sheetRow, 6).setValue(Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss'));
+      ciSheet.getRange(sheetRow, 7).setValue('Removed');
       return _respond({ success: true }, callback);
     }
 

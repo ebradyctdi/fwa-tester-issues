@@ -332,13 +332,14 @@ function showCartDetail(cartId) {
 
   if (units.length) {
     html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    html += '<tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;">IMEI</th><th style="padding:8px 10px;text-align:left;">Serial Number</th><th style="padding:8px 10px;text-align:left;">Device Model</th><th style="padding:8px 10px;text-align:left;">Date Added</th></tr>';
+    html += '<tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;">IMEI</th><th style="padding:8px 10px;text-align:left;">Serial Number</th><th style="padding:8px 10px;text-align:left;">Device Model</th><th style="padding:8px 10px;text-align:left;">Date Added</th><th></th></tr>';
     units.forEach(u => {
       html += '<tr style="border-bottom:1px solid #f0f0f0;">'
         + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-weight:600;">' + (u['IMEI']||'—') + '</td>'
         + '<td style="padding:8px 10px;font-family:Consolas,monospace;">' + (u['Serial Number']||'—') + '</td>'
         + '<td style="padding:8px 10px;">' + (u['Device Model']||'—') + '</td>'
         + '<td style="padding:8px 10px;font-family:Consolas,monospace;color:#888;">' + fmtDate(u['Date Added']) + '</td>'
+        + '<td style="padding:8px 10px;"><button onclick="removeUnitFromCart(\'' + cartId.replace(/'/g,"\\'") + '\',' + u._row + ')" style="padding:3px 8px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Remove</button></td>'
         + '</tr>';
     });
     html += '</table>';
@@ -390,12 +391,12 @@ function showCartDetail(cartId) {
     const addImei = document.getElementById('batchAddIMEI');
     const addSerial = document.getElementById('batchAddSerial');
     if (addImei) {
-      addImei.addEventListener('input', function() { if (this.value.length === 15) addSerial.focus(); });
-      addImei.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); addSerial.focus(); } });
+      addImei.addEventListener('input', function() { if (this.value.length === 15) setTimeout(() => addSerial.focus(), 50); });
+      addImei.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); setTimeout(() => addSerial.focus(), 50); } });
     }
     if (addSerial) {
       addSerial.addEventListener('input', function() { if (this.value.length === 11) batchAddUnit(cartId); });
-      addSerial.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); batchAddUnit(cartId); } });
+      addSerial.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) batchAddUnit(cartId); } });
     }
     const removeInput = document.getElementById('batchRemoveInput');
     if (removeInput) {
@@ -418,18 +419,34 @@ async function retireCart(cartId) {
   } catch(err) { alert('Error: ' + err.message); }
 }
 
+async function removeUnitFromCart(cartId, rowIdx) {
+  if (!confirm('Remove this unit from the cart?')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'removefromcart', row: rowIdx });
+    if (json.success) {
+      const refreshJson = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
+      if (refreshJson.success) { allCartInfo = refreshJson.data || []; buildSummary(); }
+      showCartDetail(cartId);
+      renderCartTable();
+    } else { alert(json.error || 'Failed'); }
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+let _cartAddSubmitting = false;
 async function batchAddUnit(cartId) {
+  if (_cartAddSubmitting) return;
+  _cartAddSubmitting = true;
   const imei = document.getElementById('batchAddIMEI').value.trim();
   const serial = document.getElementById('batchAddSerial').value.trim();
   const fb = document.getElementById('batchAddFeedback');
-  if (!imei && !serial) { fb.innerHTML = '<span style="color:#dc3545;">Scan IMEI or Serial</span>'; return; }
+  if (!imei && !serial) { fb.innerHTML = '<span style="color:#dc3545;">Scan IMEI or Serial</span>'; _cartAddSubmitting = false; return; }
   try {
     const json = await jsonpRequest(scriptUrl, { action: 'addtocart', cartid: cartId, imei: imei, serial: serial, devicemodel: '' });
     if (json.success) {
       fb.innerHTML = '<span style="color:#28a745;">✓ Added ' + (imei || serial) + '</span>';
       document.getElementById('batchAddIMEI').value = '';
       document.getElementById('batchAddSerial').value = '';
-      document.getElementById('batchAddIMEI').focus();
+      setTimeout(() => { document.getElementById('batchAddIMEI').focus(); }, 50);
       // Refresh data in background
       const refreshJson = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
       if (refreshJson.success) { allCartInfo = refreshJson.data || []; buildSummary(); }
@@ -437,6 +454,7 @@ async function batchAddUnit(cartId) {
       showCartDetail(cartId);
     } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
+  _cartAddSubmitting = false;
 }
 
 async function batchRemoveUnit(cartId) {
