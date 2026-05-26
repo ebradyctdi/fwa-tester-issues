@@ -187,25 +187,24 @@ function printLabel() {
   const win = window.open('', '_blank', 'width=600,height=400');
   win.document.write('<!DOCTYPE html><html><head><style>'
     + '* { box-sizing: border-box; margin: 0; padding: 0; }'
-    + 'html, body { width: 6in; height: 4in; margin: 0; padding: 0; overflow: hidden; }'
-    + '@page { size: 6in 4in; margin: 0; }'
-    + '.container { width: 6in; height: 4in; display: flex; align-items: center; justify-content: center; }'
-    + '.label { width: 4in; height: 6in; transform: rotate(90deg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0.3in; font-family: Segoe UI, Arial, sans-serif; }'
-    + '.logo img { width: 240px; display: block; margin: 0 auto; }'
-    + '.fwa { font-size: 60px; font-weight: 900; letter-spacing: 10px; text-align: center; }'
-    + '.cartid-header { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
+    + 'html, body { width: 100%; height: 100%; margin: 0; padding: 0; }'
+    + '@page { size: landscape; margin: 0; }'
+    + '.label { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0.2in; font-family: Segoe UI, Arial, sans-serif; }'
+    + '.logo img { width: 220px; display: block; margin: 0 auto; }'
+    + '.fwa { font-size: 56px; font-weight: 900; letter-spacing: 10px; text-align: center; }'
+    + '.cartid-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
     + '.cartid { font-size: ' + cartIdSize + 'px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
     + '.bc { text-align: center; }'
     + '.bc svg { display: block; margin: 0 auto; }'
     + '.desc { font-size: ' + descSize + 'px; text-align: center; font-weight: 500; }'
-    + '</style></head><body><div class="container"><div class="label">'
+    + '</style></head><body><div class="label">'
     + '<div class="logo"><img src="' + logoUrl + '"></div>'
     + '<div class="fwa">FWA</div>'
     + '<div class="cartid-header">Cart ID</div>'
     + '<div class="cartid">' + cartId + '</div>'
     + '<div class="bc">' + barcodeHtml + '</div>'
     + (desc ? '<div class="desc">' + desc + '</div>' : '')
-    + '</div></div></body></html>');
+    + '</div></body></html>');
   win.document.close();
   setTimeout(() => { win.print(); win.close(); }, 500);
 }
