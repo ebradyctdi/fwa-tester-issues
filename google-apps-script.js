@@ -253,6 +253,16 @@ function doGet(e) {
       return _respond({ success: true }, callback);
     }
 
+    if (action === 'deletereceiptissue') {
+      var riSheet = ss.getSheetByName('Receipt Issues');
+      if (!riSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      riSheet.deleteRow(sheetRow);
+      return _respond({ success: true }, callback);
+    }
+
     if (action === 'resolvereceiptissue') {
       var riSheet = ss.getSheetByName('Receipt Issues');
       if (!riSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
