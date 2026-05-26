@@ -102,11 +102,15 @@
 <nav class="sidebar">
   <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
   <div class="sidebar-nav">
-    <div class="nav-section">Views</div>
+    <div class="nav-section">Tester Health</div>
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">Receipt Issues</div>
+    <a href="receipt-issues.html"><span class="icon">📦</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
     <div class="nav-section">System</div>
     <a href="testers.html" class="active"><span class="icon">🖥️</span> Testers</a>
     <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
@@ -201,7 +205,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allTesters = [], testerTypes = [], editRow = -1, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbx93DDXVinqUavsjI0fMYaOIJ8-pv2U-5dxvZ3lr9FJWtmygSQjCkFtK57vfVmUDFs-SA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzZCpm3ZLz-PlOcM3Hfpdg1xLKDy2xYZpZDEvtUfc9Mf4nYatLlsOmeOCP--PcK0KBz4A/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {

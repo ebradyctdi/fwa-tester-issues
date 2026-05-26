@@ -211,6 +211,60 @@ function doGet(e) {
       return _respond({ success: true, data: rows }, callback);
     }
 
+    // ---- RECEIPT ISSUES ----
+    if (action === 'readreceiptissues') {
+      var riSheet = ss.getSheetByName('Receipt Issues');
+      if (!riSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = riSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var headers = ['IMEI', 'Serial Number', 'Cart', 'Device Model', 'Reported By', 'Note', 'Timestamp', 'Status', 'Resolution Timestamp'];
+      var data = riSheet.getRange(2, 1, lastRow - 1, 9).getValues();
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    if (action === 'logreceiptissue') {
+      var riSheet = ss.getSheetByName('Receipt Issues');
+      if (!riSheet) {
+        riSheet = ss.insertSheet('Receipt Issues');
+        riSheet.getRange(1, 1, 1, 9).setValues([['IMEI', 'Serial Number', 'Cart', 'Device Model', 'Reported By', 'Note', 'Timestamp', 'Status', 'Resolution Timestamp']]);
+      }
+      var imei = (e.parameter.imei || '').toString().trim();
+      var serial = (e.parameter.serial || '').toString().trim();
+      var cart = (e.parameter.cart || '').toString().trim();
+      var deviceModel = (e.parameter.devicemodel || '').toString().trim();
+      var reportedBy = (e.parameter.reportedby || '').toString().trim();
+      var note = (e.parameter.note || '').toString().trim();
+
+      if (!imei && !serial) return _respond({ success: false, error: 'IMEI or Serial required' }, callback);
+
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
+
+      riSheet.appendRow([imei, serial, cart, deviceModel, reportedBy, note, ts, 'Open', '']);
+      // Force Cart column (C) to be plain text so leading zeros are preserved
+      var lastRow = riSheet.getLastRow();
+      riSheet.getRange(lastRow, 3).setNumberFormat('@');
+      riSheet.getRange(lastRow, 3).setValue(cart);
+      return _respond({ success: true }, callback);
+    }
+
+    if (action === 'resolvereceiptissue') {
+      var riSheet = ss.getSheetByName('Receipt Issues');
+      if (!riSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      riSheet.getRange(sheetRow, 8).setValue('Resolved');
+      var now = new Date();
+      riSheet.getRange(sheetRow, 9).setValue(Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss'));
+      return _respond({ success: true }, callback);
+    }
+
     // ---- READ TESTER TYPES ----
     if (action === 'readtestertypes') {
       var typesSheet = ss.getSheetByName('FWA Tester Types');

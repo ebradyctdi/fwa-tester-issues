@@ -87,11 +87,15 @@
 <nav class="sidebar">
   <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
   <div class="sidebar-nav">
-    <div class="nav-section">Views</div>
+    <div class="nav-section">Tester Health</div>
     <a href="index.html" class="active"><span class="icon">🏠</span> Overview</a>
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">Receipt Issues</div>
+    <a href="receipt-issues.html"><span class="icon">📦</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
     <div class="nav-section">System</div>
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
     <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
@@ -144,7 +148,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allTesters = [], allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbx93DDXVinqUavsjI0fMYaOIJ8-pv2U-5dxvZ3lr9FJWtmygSQjCkFtK57vfVmUDFs-SA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzZCpm3ZLz-PlOcM3Hfpdg1xLKDy2xYZpZDEvtUfc9Mf4nYatLlsOmeOCP--PcK0KBz4A/exec'; } catch(e) {}
 
 const typeOrder = ['Functional', 'RF', 'Firmware', 'CIC'];
 const typeColors = { 'Functional': '#0d6efd', 'RF': '#fd7e14', 'Firmware': '#6f42c1', 'CIC': '#17a2b8' };
@@ -246,7 +250,11 @@ function renderRows() {
   container.innerHTML = html;
 }
 
+let selectedDetailTester = null, selectedDetailType = '';
+
 function showDetail(testerID, testerType) {
+  selectedDetailTester = testerID;
+  selectedDetailType = testerType;
   const openIssues = getOpenIssuesForTester(testerID);
   const allTesterIssues = getIssuesForTester(testerID);
   const hasOpen = openIssues.length > 0;
@@ -257,21 +265,38 @@ function showDetail(testerID, testerType) {
 
   let bodyHtml = '';
 
+  // Active issues with resolve buttons
   if (hasOpen) {
     bodyHtml += '<div style="font-size:12px;font-weight:600;color:#dc3545;text-transform:uppercase;margin-bottom:10px;">Active Issues (' + openIssues.length + ')</div>';
-    openIssues.forEach(i => {
+    openIssues.forEach((i, idx) => {
       const sevColors = { 'Critical':'#dc3545', 'Major':'#fd7e14', 'Minor':'#17a2b8' };
+      const rowIdx = allIssues.indexOf(i);
       bodyHtml += '<div class="issue-item open">'
         + '<div class="issue-header"><span class="issue-severity" style="background:' + (sevColors[i['Severity']]||'#888') + ';color:white;">' + (i['Severity']||'—') + '</span><span class="issue-date">' + fmtDate(i['Time of Issue']) + '</span></div>'
         + '<div class="issue-desc">' + (i['Issue Note']||'—').replace(/</g,'&lt;') + '</div>'
         + '<div class="issue-reporter">Reported by: ' + (i['Reported By']||'—') + '</div>'
+        + '<div id="resolveForm_' + rowIdx + '" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f0c0c0;">'
+        + '<input type="text" id="resolveBy_' + rowIdx + '" placeholder="Resolved by..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;">'
+        + '<textarea id="resolveNote_' + rowIdx + '" placeholder="Resolution note..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:50px;margin-bottom:6px;"></textarea>'
+        + '<div style="display:flex;gap:8px;"><button onclick="doResolve(' + rowIdx + ')" style="padding:6px 16px;background:#28a745;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Confirm Resolve</button><button onclick="document.getElementById(\'resolveForm_' + rowIdx + '\').style.display=\'none\'" style="padding:6px 12px;background:#e9ecef;color:#333;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Cancel</button></div>'
+        + '</div>'
+        + '<button onclick="document.getElementById(\'resolveForm_' + rowIdx + '\').style.display=\'block\'" style="margin-top:8px;padding:5px 14px;background:#28a745;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Resolve</button>'
         + '</div>';
     });
   } else {
     bodyHtml += '<div class="no-issues">No active issues</div>';
   }
 
-  // Show recent resolved issues
+  // Log new issue form
+  bodyHtml += '<div style="margin-top:20px;padding-top:16px;border-top:2px solid #1a3a5c;">'
+    + '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Log New Issue</div>'
+    + '<input type="text" id="logReportedBy" placeholder="Reported by..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;">'
+    + '<select id="logSeverity" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;background:white;"><option value="">— Severity —</option><option value="Critical">Critical</option><option value="Major">Major</option><option value="Minor">Minor</option></select>'
+    + '<textarea id="logDescription" placeholder="Describe the issue..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:60px;margin-bottom:6px;"></textarea>'
+    + '<button onclick="doLogIssue()" id="logIssueBtn" style="padding:8px 20px;background:#dc3545;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Report Issue</button>'
+    + '</div>';
+
+  // Recent resolved
   const resolved = allTesterIssues.filter(i => (i['Status']||'').trim() === 'Resolved').sort((a, b) => new Date(b['Time of Resolution']||0) - new Date(a['Time of Resolution']||0)).slice(0, 5);
   if (resolved.length) {
     bodyHtml += '<div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;margin-top:20px;margin-bottom:10px;padding-top:12px;border-top:1px solid #eee;">Recent Resolved (' + resolved.length + ')</div>';
@@ -288,6 +313,67 @@ function showDetail(testerID, testerType) {
 
   document.getElementById('modalBody').innerHTML = bodyHtml;
   document.getElementById('detailModal').classList.add('show');
+}
+
+async function doLogIssue() {
+  const reportedBy = document.getElementById('logReportedBy').value.trim();
+  const severity = document.getElementById('logSeverity').value;
+  const description = document.getElementById('logDescription').value.trim();
+
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!severity) { showToast('Select a severity', 'error'); return; }
+  if (!description) { showToast('Description is required', 'error'); return; }
+
+  const btn = document.getElementById('logIssueBtn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+
+  const now = new Date();
+  const issueStart = (now.getMonth()+1) + '/' + now.getDate() + '/' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logissue',
+      reportedby: reportedBy,
+      testertype: selectedDetailType,
+      testerid: selectedDetailTester,
+      severity: severity,
+      type: '',
+      description: description,
+      issuestart: issueStart
+    });
+    if (json.success) {
+      showToast('Issue logged for ' + selectedDetailTester, 'success');
+      closeModal();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Report Issue';
+}
+
+async function doResolve(rowIdx) {
+  const resolvedBy = document.getElementById('resolveBy_' + rowIdx).value.trim();
+  const resolution = document.getElementById('resolveNote_' + rowIdx).value.trim();
+
+  if (!resolvedBy) { showToast('Resolved By is required', 'error'); return; }
+  if (!resolution) { showToast('Resolution note is required', 'error'); return; }
+
+  const now = new Date();
+  const issueStop = (now.getMonth()+1) + '/' + now.getDate() + '/' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'resolveissue',
+      row: rowIdx,
+      resolvedby: resolvedBy,
+      resolution: resolution,
+      issuestop: issueStop
+    });
+    if (json.success) {
+      showToast('Issue resolved', 'success');
+      closeModal();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
 }
 
 function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
