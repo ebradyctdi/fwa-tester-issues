@@ -77,7 +77,7 @@
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    <div class="nav-section">Receipt Issues</div>
+    <div class="nav-section">Product/Device Issues</div>
     <a href="receipt-issues.html" class="active"><span class="icon">📦</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
@@ -97,8 +97,35 @@
     </div>
   </div>
   <div class="container">
+    <!-- BATCH SCAN MODE -->
+    <div class="card" id="batchCard" style="display:none;border:3px solid #28a745;background:#f0fff0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;color:#28a745;">Batch Scan Mode</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="text-align:center;"><div id="batchCount" style="font-size:36px;font-weight:700;color:#28a745;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">Scanned</div></div>
+          <button onclick="toggleBatchMode()" style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Exit Batch Mode</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-end;">
+        <div style="flex:1;">
+          <label class="form-label">IMEI (15 chars)</label>
+          <input type="text" class="form-input" id="bIMEI" placeholder="Scan IMEI..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="15">
+        </div>
+        <div style="flex:1;">
+          <label class="form-label">Serial Number (11 chars)</label>
+          <input type="text" class="form-input" id="bSerial" placeholder="Scan Serial..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="11">
+        </div>
+      </div>
+      <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
+      <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;">
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. Cart, Model, Reported By, and Note are locked from setup.</div>
+      <div id="batchLog" style="margin-top:14px;"></div>
+      <div id="batchLog" style="margin-top:14px;"></div>
+    </div>
+
     <!-- LOG FORM -->
-    <div class="card">
+    <div class="card" id="normalFormCard">
       <h2>Log Receipt Issue</h2>
       <div style="display:flex;gap:24px;align-items:flex-start;">
         <div style="flex:1;max-width:500px;">
@@ -120,7 +147,11 @@
           <div style="margin-bottom:12px;">
             <label class="form-label">Device Model</label>
             <div style="display:flex;gap:10px;align-items:center;">
-              <input type="text" class="form-input" id="fDeviceModel" placeholder="Device model" style="flex:1;">
+              <select class="form-input" id="fDeviceModel" style="flex:1;">
+                <option value="">— Select —</option>
+                <option value="Titan 3">Titan 3</option>
+                <option value="Titan 4">Titan 4</option>
+              </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="keepDeviceModel"> Keep</label>
             </div>
           </div>
@@ -138,7 +169,10 @@
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="keepNote"> Keep</label>
             </div>
           </div>
-          <button class="submit-btn" id="submitBtn" onclick="submitIssue()">Log Issue</button>
+          <div style="display:flex;gap:10px;">
+            <button class="submit-btn" id="submitBtn" onclick="submitIssue()">Log Issue</button>
+            <button onclick="startBatchMode()" style="padding:12px 32px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;">Start Batch Scan</button>
+          </div>
         </div>
       </div>
     </div>
@@ -250,9 +284,11 @@ async function submitIssue() {
   const note = document.getElementById('fNote').value.trim();
 
   if (!imei) { showToast('IMEI is required', 'error'); return; }
-  if (imei.length !== 11) { showToast('IMEI must be exactly 11 characters', 'error'); return; }
+  if (imei.length !== 15) { showToast('IMEI must be exactly 15 characters', 'error'); return; }
+  if (!imei.startsWith('3')) { showToast('IMEI must start with 3', 'error'); return; }
   if (!serial) { showToast('Serial Number is required', 'error'); return; }
-  if (serial.length !== 15) { showToast('Serial Number must be exactly 15 characters', 'error'); return; }
+  if (serial.length !== 11) { showToast('Serial Number must be exactly 11 characters', 'error'); return; }
+  if (!serial.toUpperCase().startsWith('A')) { showToast('Serial Number must start with A', 'error'); return; }
   if (!cart) { showToast('Cart is required', 'error'); return; }
   if (!deviceModel) { showToast('Device Model is required', 'error'); return; }
   if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
@@ -303,6 +339,173 @@ function showToast(msg, type) {
   t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
   t.style.transform = 'translateX(0)';
   setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+let batchMode = false, batchSessionCount = 0, batchSubmitting = false, batchLog = [];
+
+function playBeep(success) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = success ? 880 : 220;
+    osc.type = success ? 'sine' : 'square';
+    gain.gain.value = 0.5;
+    osc.start();
+    setTimeout(() => { osc.stop(); ctx.close(); }, success ? 200 : 500);
+  } catch(e) {}
+}
+
+function startBatchMode() {
+  const cart = document.getElementById('fCart').value.trim();
+  const model = document.getElementById('fDeviceModel').value;
+  const reporter = document.getElementById('fReportedBy').value.trim();
+  const note = document.getElementById('fNote').value.trim();
+
+  if (!cart) { showToast('Fill in Cart before starting batch mode', 'error'); return; }
+  if (!model) { showToast('Select Device Model before starting batch mode', 'error'); return; }
+  if (!reporter) { showToast('Fill in Reported By before starting batch mode', 'error'); return; }
+  if (!note) { showToast('Fill in Issue Note before starting batch mode', 'error'); return; }
+
+  // Unlock audio context (browsers require user gesture)
+  playBeep(true);
+
+  batchMode = true;
+  batchSessionCount = 0;
+  batchLog = [];
+  renderBatchLog();
+
+  batchMode = true;
+  batchSessionCount = 0;
+  batchLog = [];
+  document.getElementById('batchCard').style.display = 'block';
+  document.getElementById('normalFormCard').style.display = 'none';
+  document.getElementById('batchCount').textContent = '0';
+  document.getElementById('bIMEI').value = '';
+  document.getElementById('bSerial').value = '';
+  document.getElementById('batchSteadyValues').innerHTML = ''
+    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Cart</span><div style="font-size:13px;font-weight:600;font-family:Consolas,monospace;">' + cart + '</div></div>'
+    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Device Model</span><div style="font-size:13px;font-weight:600;">' + model + '</div></div>'
+    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Reported By</span><div style="font-size:13px;font-weight:600;">' + reporter + '</div></div>'
+    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Note</span><div style="font-size:13px;font-weight:600;">' + note + '</div></div>';
+  document.getElementById('bIMEI').focus();
+}
+
+function toggleBatchMode() {
+  batchMode = false;
+  document.getElementById('batchCard').style.display = 'none';
+  document.getElementById('normalFormCard').style.display = 'block';
+}
+
+function showBatchFeedback(msg, type) {
+  const el = document.getElementById('batchFeedback');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#d4edda' : '#f8d7da';
+  el.style.color = type === 'success' ? '#155724' : '#721c24';
+  setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+function renderBatchLog() {
+  const el = document.getElementById('batchLog');
+  if (!batchLog.length) { el.innerHTML = ''; return; }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th></tr></thead><tbody>';
+  batchLog.forEach((entry, i) => {
+    const num = batchSessionCount - i;
+    const time = entry.time.toLocaleTimeString ? entry.time.toLocaleTimeString() : entry.time;
+    html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '"><td style="padding:6px 10px;color:#888;">' + num + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + time + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// Batch IMEI field — auto-advance to Serial after 15 chars or Enter
+document.getElementById('bIMEI').addEventListener('input', function() {
+  if (this.value.length === 15) {
+    setTimeout(() => document.getElementById('bSerial').focus(), 50);
+  }
+});
+document.getElementById('bIMEI').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); setTimeout(() => document.getElementById('bSerial').focus(), 50); }
+});
+
+// Batch Serial field — auto-submit after 11 chars or Enter
+document.getElementById('bSerial').addEventListener('input', function() {
+  if (this.value.length === 11) {
+    submitBatch();
+  }
+});
+document.getElementById('bSerial').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) submitBatch(); }
+});
+
+async function submitBatch() {
+  if (batchSubmitting) return;
+  batchSubmitting = true;
+  const imei = document.getElementById('bIMEI').value.trim();
+  const serial = document.getElementById('bSerial').value.trim();
+  const cart = document.getElementById('fCart').value.trim();
+  const deviceModel = document.getElementById('fDeviceModel').value;
+  const reportedBy = document.getElementById('fReportedBy').value.trim();
+  const note = document.getElementById('fNote').value.trim();
+
+  if (!imei || imei.length !== 15) { showBatchFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('bIMEI').focus(); document.getElementById('bIMEI').select(); batchSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showBatchFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('bIMEI').focus(); document.getElementById('bIMEI').select(); batchSubmitting = false; return; }
+  if (!serial || serial.length !== 11) { showBatchFeedback('Serial must be 11 characters', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
+  if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logreceiptissue',
+      imei: imei,
+      serial: serial,
+      cart: cart,
+      devicemodel: deviceModel,
+      reportedby: reportedBy,
+      note: note
+    });
+    if (json.success) {
+      batchSessionCount++;
+      document.getElementById('batchCount').textContent = batchSessionCount;
+      batchLog.unshift({ imei, serial, time: new Date() });
+      if (batchLog.length > 10) batchLog.pop();
+      renderBatchLog();
+      showBatchFeedback('✓ Logged — ' + imei, 'success');
+      playBeep(true);
+      document.getElementById('bIMEI').value = '';
+      document.getElementById('bSerial').value = '';
+      document.getElementById('bIMEI').focus();
+    } else {
+      showBatchFeedback('Error: ' + (json.error || 'Failed'), 'error');
+      playBeep(false);
+    }
+  } catch(err) {
+    showBatchFeedback('Connection error', 'error');
+    playBeep(false);
+  }
+  batchSubmitting = false;
+}
+
+function renderBatchLog() {
+  const el = document.getElementById('batchLog');
+  if (!batchLog.length) { el.innerHTML = ''; return; }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th></tr>';
+  batchLog.forEach((entry, i) => {
+    const num = batchSessionCount - i;
+    const t = entry.time;
+    const timeStr = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0') + ':' + String(t.getSeconds()).padStart(2,'0');
+    html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '">'
+      + '<td style="padding:6px 10px;color:#888;">' + num + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + timeStr + '</td>'
+      + '</tr>';
+  });
+  html += '</table>';
+  el.innerHTML = html;
 }
 
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }

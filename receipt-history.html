@@ -78,7 +78,7 @@
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    <div class="nav-section">Receipt Issues</div>
+    <div class="nav-section">Product/Device Issues</div>
     <a href="receipt-issues.html"><span class="icon">📦</span> Issue Logger</a>
     <a href="receipt-history.html" class="active"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html"><span class="icon">🛒</span> Issue Carts</a>
@@ -106,6 +106,11 @@
           <option value="Open">Open</option>
           <option value="Resolved">Resolved</option>
         </select>
+        <select class="filter-select" id="filterModel" onchange="renderTable()">
+          <option value="">All Models</option>
+          <option value="Titan 3">Titan 3</option>
+          <option value="Titan 4">Titan 4</option>
+        </select>
         <span style="font-size:11px;color:#888;">From:</span>
         <input type="date" class="date-input" id="dateFrom" onchange="renderTable()">
         <span style="font-size:11px;color:#888;">To:</span>
@@ -122,11 +127,12 @@
           <th>IMEI</th>
           <th>Serial Number</th>
           <th>Cart</th>
+          <th>Device Model</th>
           <th>Reported By</th>
           <th>Note</th>
           <th>Resolution Time</th>
         </tr></thead>
-        <tbody id="tableBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="tableBody"><tr><td colspan="9" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -175,6 +181,7 @@ function statusBadge(s) {
 function clearFilters() {
   document.getElementById('searchBox').value = '';
   document.getElementById('filterStatus').value = '';
+  document.getElementById('filterModel').value = '';
   document.getElementById('dateFrom').value = '';
   document.getElementById('dateTo').value = '';
   renderTable();
@@ -196,6 +203,7 @@ async function loadData() {
 function renderTable() {
   const search = (document.getElementById('searchBox').value || '').toLowerCase();
   const statusFilter = document.getElementById('filterStatus').value;
+  const modelFilter = document.getElementById('filterModel').value;
   const fromVal = document.getElementById('dateFrom').value;
   const toVal = document.getElementById('dateTo').value;
   const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
@@ -203,9 +211,11 @@ function renderTable() {
 
   let filtered = allIssues.filter(i => {
     const status = (i['Status']||'').trim();
+    const model = (i['Device Model']||'').trim();
     if (statusFilter && status !== statusFilter) return false;
+    if (modelFilter && model !== modelFilter) return false;
     if (search) {
-      const haystack = ((i['IMEI']||'') + ' ' + (i['Serial Number']||'') + ' ' + (i['Cart']||'') + ' ' + (i['Reported By']||'') + ' ' + (i['Note']||'')).toLowerCase();
+      const haystack = ((i['IMEI']||'') + ' ' + (i['Serial Number']||'') + ' ' + (i['Cart']||'') + ' ' + (i['Device Model']||'') + ' ' + (i['Reported By']||'') + ' ' + (i['Note']||'')).toLowerCase();
       if (!haystack.includes(search)) return false;
     }
     if (fromDate || toDate) {
@@ -224,7 +234,7 @@ function renderTable() {
   const tbody = document.getElementById('tableBody');
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">' + (allIssues.length ? 'No issues match your filters.' : 'No receipt issues logged yet.') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">' + (allIssues.length ? 'No issues match your filters.' : 'No receipt issues logged yet.') + '</td></tr>';
     return;
   }
 
@@ -237,6 +247,7 @@ function renderTable() {
       + '<td class="meta" style="font-weight:600;">' + (i['IMEI']||'—') + '</td>'
       + '<td class="meta">' + (i['Serial Number']||'—') + '</td>'
       + '<td class="meta">' + (i['Cart']||'—') + '</td>'
+      + '<td class="meta">' + (i['Device Model']||'—') + '</td>'
       + '<td>' + (i['Reported By']||'—') + '</td>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + note.replace(/"/g,'&quot;') + '">' + (shortNote||'—') + '</td>'
       + '<td class="meta">' + fmtDate(i['Resolution Timestamp']) + '</td>'
