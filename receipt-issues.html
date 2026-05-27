@@ -141,6 +141,7 @@
           <div style="margin-bottom:12px;">
             <label class="form-label">Cart</label>
             <div style="display:flex;gap:10px;align-items:center;">
+              <input type="text" id="fCartScan" placeholder="Scan cart label..." style="width:140px;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:13px;font-family:Consolas,monospace;" autocomplete="off">
               <select class="form-input" id="fCart" style="flex:1;">
                 <option value="">— Select Cart —</option>
               </select>
@@ -211,7 +212,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxZsfQSV6t5Fh9Et63p3EpNw28Fs1bNwQNPwnDhFsbl2YlwT_LPur3JrTCSDtICTuFBnQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -342,7 +343,41 @@ async function submitIssue() {
 }
 
 // Enter key advances between fields
-['fIMEI','fSerial','fCart','fDeviceModel','fReportedBy','fNote'].forEach((id, i, arr) => {
+// Cart scan field — auto-select dropdown when scanned
+document.getElementById('fCartScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (!val) return;
+    const sel = document.getElementById('fCart');
+    let matched = false;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === val || sel.options[i].value.toLowerCase() === val.toLowerCase()) {
+        sel.value = sel.options[i].value;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) { showToast('Cart "' + val + '" not found', 'error'); }
+    this.value = '';
+    document.getElementById('fDeviceModel').focus();
+  }
+});
+document.getElementById('fCartScan').addEventListener('input', function() {
+  const val = this.value.trim();
+  if (!val) return;
+  const sel = document.getElementById('fCart');
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === val) {
+      sel.value = sel.options[i].value;
+      this.value = '';
+      document.getElementById('fDeviceModel').focus();
+      break;
+    }
+  }
+});
+
+['fIMEI','fSerial','fCartScan','fDeviceModel','fReportedBy','fNote'].forEach((id, i, arr) => {
   document.getElementById(id).addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();

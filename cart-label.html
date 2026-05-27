@@ -21,6 +21,12 @@
   .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
   .header h1 { font-size: 22px; font-weight: 600; }
   .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
   .container { max-width: 700px; margin: 0 auto; padding: 24px; width: 100%; }
 
   .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
@@ -102,6 +108,10 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
     <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Cart Label Maker</h1><div class="header-sub">Print 4x6 labels for Zebra ZD421</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
   </div>
   <div class="container">
     <div class="card">
@@ -129,10 +139,13 @@
       <div class="label-preview-wrap">
         <div class="label-preview" id="labelPreview">
           <div class="lbl-logo"><img src="https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp"></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
           <div class="lbl-fwa">FWA</div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
           <div class="lbl-cartid-header">Cart ID</div>
           <div class="lbl-cartid" id="lblCartID">___</div>
           <div class="lbl-barcode"><svg id="lblBarcode"></svg></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
           <div class="lbl-desc" id="lblDesc"></div>
         </div>
       </div>
@@ -197,12 +210,16 @@ function printLabel() {
     + '.bc { text-align: center; }'
     + '.bc svg { display: block; margin: 0 auto; max-width: 3.5in; }'
     + '.desc { font-size: ' + Math.min(descSize, 20) + 'px; text-align: center; font-weight: 500; }'
+    + '.divider { width: 100%; border-top: 2px solid #000; }'
     + '</style></head><body><div class="label">'
     + '<div class="logo"><img src="' + logoUrl + '"></div>'
+    + '<div class="divider"></div>'
     + '<div class="fwa">FWA</div>'
+    + '<div class="divider"></div>'
     + '<div class="cartid-header">Cart ID</div>'
     + '<div class="cartid">' + cartId + '</div>'
     + '<div class="bc">' + barcodeHtml + '</div>'
+    + '<div class="divider"></div>'
     + (desc ? '<div class="desc">' + desc + '</div>' : '')
     + '</div></body></html>');
   win.document.close();
@@ -214,7 +231,7 @@ function closeSidebar() { document.querySelector('.sidebar').classList.remove('o
 
 const URL_KEY = 'fwa_script_url';
 let _jsonpCounter = 0;
-const scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxZsfQSV6t5Fh9Et63p3EpNw28Fs1bNwQNPwnDhFsbl2YlwT_LPur3JrTCSDtICTuFBnQ/exec';
+const scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec';
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -236,6 +253,8 @@ async function loadCarts() {
   try {
     const json = await jsonpRequest(scriptUrl, { action: 'readcarts' });
     if (json.success && json.data) {
+      document.getElementById('statusDot').className = 'status-dot connected';
+      document.getElementById('statusLabel').textContent = 'Connected';
       const activeCarts = json.data.filter(c => !(c['Date Removed']||'').trim());
       window._cartData = activeCarts;
       const sel = document.getElementById('cartInput');

@@ -194,7 +194,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allCartInfo = [], allCarts = [], cartSummary = {}, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxZsfQSV6t5Fh9Et63p3EpNw28Fs1bNwQNPwnDhFsbl2YlwT_LPur3JrTCSDtICTuFBnQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -356,6 +356,16 @@ function showCartDetail(cartId) {
 
   // Edit Note
   const currentNote = cartInfo ? (cartInfo['Note']||'') : '';
+  const currentLocation = cartInfo ? (cartInfo['Location']||'') : '';
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Cart Location</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<input type="text" id="editCartLocation" value="' + currentLocation.replace(/"/g,'&quot;') + '" placeholder="Location..." style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">';
+  html += '<button onclick="saveCartLocation(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
+  html += '</div>';
+  html += '<div id="locationUpdateFeedback" style="margin-top:4px;font-size:11px;"></div>';
+  html += '</div>';
+
   html += '<div style="margin-bottom:16px;">';
   html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Cart Note</div>';
   html += '<div style="display:flex;gap:8px;">';
@@ -368,6 +378,7 @@ function showCartDetail(cartId) {
   // Batch Add
   html += '<div style="margin-bottom:16px;">';
   html += '<div style="font-size:12px;font-weight:600;color:#28a745;text-transform:uppercase;margin-bottom:8px;">Batch Add Units</div>';
+  html += '<div style="margin-bottom:8px;"><label style="font-size:10px;color:#888;">Device Model</label><select id="batchAddModel" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;background:white;"><option value="">— Select —</option><option value="Titan 3">Titan 3</option><option value="Titan 4">Titan 4</option></select></div>';
   html += '<div style="display:flex;gap:8px;align-items:flex-end;">';
   html += '<div style="flex:1;"><label style="font-size:10px;color:#888;">IMEI (15)</label><input type="text" id="batchAddIMEI" placeholder="Scan IMEI..." maxlength="15" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;"></div>';
   html += '<div style="flex:1;"><label style="font-size:10px;color:#888;">Serial (11)</label><input type="text" id="batchAddSerial" placeholder="Scan Serial..." maxlength="11" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;"></div>';
@@ -453,10 +464,11 @@ async function batchAddUnit(cartId) {
   _cartAddSubmitting = true;
   const imei = document.getElementById('batchAddIMEI').value.trim();
   const serial = document.getElementById('batchAddSerial').value.trim();
+  const deviceModel = document.getElementById('batchAddModel').value;
   const fb = document.getElementById('batchAddFeedback');
   if (!imei && !serial) { fb.innerHTML = '<span style="color:#dc3545;">Scan IMEI or Serial</span>'; _cartAddSubmitting = false; return; }
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'addtocart', cartid: cartId, imei: imei, serial: serial, devicemodel: '' });
+    const json = await jsonpRequest(scriptUrl, { action: 'addtocart', cartid: cartId, imei: imei, serial: serial, devicemodel: deviceModel });
     if (json.success) {
       fb.innerHTML = '<span style="color:#28a745;">✓ Added ' + (imei || serial) + '</span>';
       document.getElementById('batchAddIMEI').value = '';
@@ -495,6 +507,21 @@ async function batchRemoveUnit(cartId) {
       showCartDetail(cartId);
     } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
+}
+
+async function saveCartLocation(cartId) {
+  const location = document.getElementById('editCartLocation').value.trim();
+  const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
+  if (idx < 0) return;
+  const fb = document.getElementById('locationUpdateFeedback');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecartlocation', row: idx, location: location });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Location saved</span>';
+      allCarts[idx]['Location'] = location;
+      renderCartTable();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
 }
 
 async function saveCartNote(cartId) {

@@ -318,6 +318,17 @@ function doGet(e) {
       return _respond({ success: true, data: rows }, callback);
     }
 
+    if (action === 'updatecartlocation') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var location = (e.parameter.location || '').toString().trim();
+      var sheetRow = row + 2;
+      cartsSheet.getRange(sheetRow, 2).setValue(location);
+      return _respond({ success: true }, callback);
+    }
+
     if (action === 'updatecartnote') {
       var cartsSheet = ss.getSheetByName('Carts');
       if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
