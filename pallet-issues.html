@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Open Pallet Issues</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+</style>
+<style>
+  .table-section { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .table-header h2 { font-size: 16px; color: #1a3a5c; }
+  .pallet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pallet-table th { background: #1a3a5c; color: white; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pallet-table td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .pallet-table tr:hover { background: #f8f9fa; cursor: pointer; }
+  .pallet-table tr.clickable:hover { background: #fff3f3; }
+  .mono { font-family: Consolas, monospace; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-open { background: #f8d7da; color: #721c24; }
+  .badge-resolved { background: #d4edda; color: #155724; }
+  .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: #1a3a5c; color: white; }
+  .btn-primary:hover { background: #2c5f8a; }
+  .btn-success { background: #28a745; color: white; }
+  .btn-success:hover { background: #218838; }
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 650px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; background: #dc3545; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; }
+  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .issue-card { padding: 12px 14px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid; }
+  .issue-card.open { background: #fff5f5; border-color: #dc3545; }
+  .issue-card.resolved { background: #f0fff0; border-color: #28a745; }
+  .issue-card .issue-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .issue-card .issue-imei { font-family: Consolas, monospace; font-size: 13px; font-weight: 600; }
+  .issue-card .issue-time { font-size: 10px; color: #888; }
+  .issue-card .issue-desc { font-size: 13px; margin-top: 4px; }
+  .issue-card .issue-reporter { font-size: 11px; color: #888; margin-top: 4px; }
+  .issue-card .resolve-btn { margin-top: 8px; padding: 5px 14px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .issue-card .resolve-btn:hover { background: #218838; }
+</style>
+<style>
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Tester Health</div>
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    <div class="nav-section">Product/Device Issues</div>
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <div class="nav-section">Audit Tools</div>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html" class="active"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    <div class="nav-section">System</div>
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Open Pallet Issues</h1><div class="header-sub">CTDI — FWA Audit Tools</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="table-section">
+      <div class="table-header">
+        <h2>Pallets with Open Issues</h2>
+        <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+      </div>
+      <table class="pallet-table">
+        <thead>
+          <tr>
+            <th>Pallet ID</th>
+            <th>Audit Date</th>
+            <th>Audit Result</th>
+            <th>Open Issues</th>
+            <th>Total Issues</th>
+            <th>Auditor</th>
+          </tr>
+        </thead>
+        <tbody id="palletTableBody">
+          <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Issues Detail Modal -->
+<div class="modal-overlay" id="issuesModal" onclick="if(event.target===this)closeIssuesModal()">
+  <div class="modal">
+    <div class="modal-header"><h3 id="issuesModalTitle">Pallet Issues</h3></div>
+    <div class="modal-body" id="issuesModalBody"></div>
+    <div class="modal-footer"><button onclick="closeIssuesModal()">Close</button></div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '';
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwjP0zQgtacvyX7VmELkAed9nq5dH_vnymV8vNoK18WrXxGmxQ11kdWEHP68LuTkVHaRg/exec'; } catch(e) {}
+
+let allAudits = [];
+let allIssues = [];
+let _jsonpCounter = 0;
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [auditsJson, issuesJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readpalletaudits' }),
+      jsonpRequest(scriptUrl, { action: 'readpalletauditissues' })
+    ]);
+    if (auditsJson.success) {
+      setStatus('connected', 'Connected');
+      allAudits = auditsJson.data || [];
+    } else { throw new Error(auditsJson.error); }
+    if (issuesJson.success) {
+      allIssues = issuesJson.data || [];
+    }
+    renderTable();
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    document.getElementById('palletTableBody').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load data</td></tr>';
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById('palletTableBody');
+
+  // Find pallets with open issues
+  const palletsWithOpenIssues = {};
+  allIssues.forEach((issue, idx) => {
+    const pid = (issue['Pallet ID'] || '').trim();
+    if (!pid) return;
+    if (!palletsWithOpenIssues[pid]) palletsWithOpenIssues[pid] = { open: 0, total: 0 };
+    palletsWithOpenIssues[pid].total++;
+    if ((issue['Status'] || '').trim().toUpperCase() !== 'RESOLVED') {
+      palletsWithOpenIssues[pid].open++;
+    }
+  });
+
+  // Filter to only pallets with at least one open issue
+  const openPallets = Object.keys(palletsWithOpenIssues).filter(pid => palletsWithOpenIssues[pid].open > 0);
+
+  if (openPallets.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No pallets with open issues</td></tr>';
+    return;
+  }
+
+  let html = '';
+  openPallets.forEach(pid => {
+    const audit = [...allAudits].reverse().find(a => (a['Pallet ID'] || '').trim() === pid);
+    const auditDate = audit ? fmtDate(audit['Audit Start Timestamp']) : '—';
+    const auditResult = audit ? (audit['Audit Result'] || '—') : '—';
+    const auditor = audit ? (audit['Audit Performed By'] || '—') : '—';
+    const info = palletsWithOpenIssues[pid];
+
+    html += '<tr class="clickable" onclick="showPalletIssues(\'' + pid.replace(/'/g, "\\'") + '\')">'
+      + '<td class="mono" style="font-weight:600;">' + pid + '</td>'
+      + '<td>' + auditDate + '</td>'
+      + '<td><span class="badge badge-open">' + auditResult + '</span></td>'
+      + '<td style="text-align:center;color:#dc3545;font-weight:700;">' + info.open + '</td>'
+      + '<td style="text-align:center;">' + info.total + '</td>'
+      + '<td>' + auditor + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+function showPalletIssues(palletId) {
+  document.getElementById('issuesModalTitle').textContent = 'Issues — ' + palletId;
+  const issues = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId);
+
+  let html = '';
+  issues.forEach((issue, idx) => {
+    const globalIdx = allIssues.indexOf(issue);
+    const status = (issue['Status'] || '').trim().toUpperCase();
+    const isOpen = status !== 'RESOLVED';
+    const cardClass = isOpen ? 'open' : 'resolved';
+
+    html += '<div class="issue-card ' + cardClass + '">'
+      + '<div class="issue-top">'
+      + '<span class="issue-imei">' + (issue['IMEI'] || '—') + '</span>'
+      + '<span class="badge ' + (isOpen ? 'badge-open' : 'badge-resolved') + '">' + (isOpen ? 'OPEN' : 'RESOLVED') + '</span>'
+      + '</div>'
+      + '<div class="issue-desc">' + (issue['Issue'] || '—') + '</div>'
+      + '<div class="issue-reporter">Reported by: ' + (issue['Reported By'] || '—') + ' | ' + fmtDate(issue['Timestamp']) + '</div>';
+
+    if (isOpen) {
+      html += '<div id="resolveForm_' + globalIdx + '" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #f0c0c0;">'
+        + '<textarea id="resolveNote_' + globalIdx + '" placeholder="Resolution note..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:40px;margin-bottom:6px;"></textarea>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button style="padding:5px 14px;background:#28a745;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;" onclick="resolveIssue(' + globalIdx + ', \'' + palletId.replace(/'/g, "\\'") + '\')">Confirm</button>'
+        + '<button style="padding:5px 12px;background:#e9ecef;color:#333;border:none;border-radius:4px;font-size:11px;cursor:pointer;" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'none\'">Cancel</button>'
+        + '</div></div>';
+      html += '<button class="resolve-btn" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'block\'">✓ Mark as Resolved</button>';
+    } else {
+      if (issue['Resolution Note']) {
+        html += '<div style="font-size:11px;color:#28a745;margin-top:4px;font-style:italic;">Resolution: ' + issue['Resolution Note'] + '</div>';
+      }
+    }
+
+    html += '</div>';
+  });
+
+  if (issues.length === 0) {
+    html = '<div class="empty-state">No issues found for this pallet</div>';
+  }
+
+  document.getElementById('issuesModalBody').innerHTML = html;
+  document.getElementById('issuesModal').classList.add('show');
+}
+
+function closeIssuesModal() {
+  document.getElementById('issuesModal').classList.remove('show');
+}
+
+async function resolveIssue(rowIdx, palletId) {
+  const noteEl = document.getElementById('resolveNote_' + rowIdx);
+  const resolutionNote = noteEl ? noteEl.value.trim() : '';
+  if (!resolutionNote) { showToast('Resolution note is required', 'error'); return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'resolvepalletauditissue',
+      row: rowIdx.toString(),
+      resolutionnote: resolutionNote
+    });
+    if (json.success) {
+      allIssues[rowIdx]['Status'] = 'RESOLVED';
+      allIssues[rowIdx]['Resolution Note'] = resolutionNote;
+      showPalletIssues(palletId);
+      renderTable();
+      showToast('Issue resolved', 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+loadData();
+</script>
+</body>
+</html>

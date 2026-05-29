@@ -461,12 +461,41 @@ function doGet(e) {
       return _respond({ success: true }, callback);
     }
 
+    // ---- RESOLVE PALLET AUDIT ISSUE ----
+    if (action === 'resolvepalletauditissue') {
+      var paiSheet = ss.getSheetByName('Pallet Audit Issues');
+      if (!paiSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var resolutionNote = (e.parameter.resolutionnote || '').toString().trim();
+      var sheetRow = row + 2;
+      paiSheet.getRange(sheetRow, 6).setValue('RESOLVED');
+      paiSheet.getRange(sheetRow, 7).setValue(resolutionNote);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- READ PALLET AUDIT ISSUES ----
+    if (action === 'readpalletauditissues') {
+      var paiSheet = ss.getSheetByName('Pallet Audit Issues');
+      if (!paiSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = paiSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = paiSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var headers = ['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue', 'Status', 'Resolution Note'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
     // ---- LOG PALLET AUDIT ISSUE ----
     if (action === 'logpalletauditissue') {
       var paiSheet = ss.getSheetByName('Pallet Audit Issues');
       if (!paiSheet) {
         paiSheet = ss.insertSheet('Pallet Audit Issues');
-        paiSheet.getRange(1, 1, 1, 5).setValues([['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue']]);
+        paiSheet.getRange(1, 1, 1, 6).setValues([['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue', 'Status']]);
       }
       var palletId = (e.parameter.palletid || '').toString().trim();
       var imei = (e.parameter.imei || '').toString().trim();
@@ -477,9 +506,9 @@ function doGet(e) {
       if (!issue) return _respond({ success: false, error: 'Issue description required' }, callback);
 
       var now = new Date();
-      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss') + ' EST';
 
-      paiSheet.appendRow([palletId, imei, ts, reportedBy, issue]);
+      paiSheet.appendRow([palletId, imei, ts, reportedBy, issue, 'OPEN']);
       return _respond({ success: true, message: 'Issue logged' }, callback);
     }
 
