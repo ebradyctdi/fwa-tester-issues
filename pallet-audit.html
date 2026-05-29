@@ -193,15 +193,15 @@
           <div style="width:100%;border-top:2px solid #000;"></div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;text-align:center;">Pallet Audit</div>
           <div id="prevPalletID" style="font-size:36px;font-weight:900;font-family:'Arial Black',Consolas,monospace;text-align:center;"></div>
-          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#333;font-weight:600;"></div>
+          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#000;font-weight:600;"></div>
           <div style="text-align:center;"><svg id="prevBarcode"></svg></div>
           <div style="width:100%;border-top:2px solid #000;"></div>
-          <div id="prevResult" style="font-size:32px;font-weight:900;text-align:center;letter-spacing:2px;"></div>
-          <div id="prevMetrics" style="font-size:13px;text-align:center;color:#333;line-height:1.6;"></div>
-          <div id="prevIssues" style="font-size:13px;text-align:center;color:#fd7e14;font-weight:600;"></div>
-          <div id="prevAuditor" style="font-size:12px;text-align:center;color:#555;"></div>
+          <div id="prevResult" style="font-size:32px;font-weight:900;text-align:center;letter-spacing:2px;color:#000;"></div>
+          <div id="prevMetrics" style="font-size:13px;text-align:center;color:#000;line-height:1.6;"></div>
+          <div id="prevIssues" style="font-size:13px;text-align:center;color:#000;font-weight:700;"></div>
+          <div id="prevAuditor" style="font-size:12px;text-align:center;color:#000;"></div>
           <div id="prevTimestamp" style="font-size:16px;text-align:center;color:#000;font-weight:700;"></div>
-          <div id="prevNotes" style="font-size:11px;text-align:center;color:#333;font-style:italic;margin-top:4px;"></div>
+          <div id="prevNotes" style="font-size:11px;text-align:center;color:#000;font-style:italic;margin-top:4px;"></div>
         </div>
       </div>
       <div style="text-align:center;">
@@ -234,7 +234,7 @@
     <div class="modal-footer">
       <button class="btn btn-reset" onclick="closeCompleteModal()">Cancel</button>
       <button class="btn btn-success" id="passBtn" onclick="submitAudit('PASS')">✓ OK To Ship</button>
-      <button class="btn btn-danger" onclick="submitAudit('FAIL')">✗ Hold for Action</button>
+      <button class="btn btn-danger" id="failBtn" onclick="submitAudit('FAIL')">✗ Hold for Action</button>
     </div>
   </div>
 </div>
@@ -478,6 +478,7 @@ function completeAudit() {
 
   // Disable "OK To Ship" if there are open issues
   const passBtn = document.getElementById('passBtn');
+  const failBtn = document.getElementById('failBtn');
   if (issueCount > 0) {
     passBtn.disabled = true;
     passBtn.title = 'Cannot ship — there are open issues on this pallet';
@@ -485,6 +486,7 @@ function completeAudit() {
     passBtn.disabled = false;
     passBtn.title = '';
   }
+  failBtn.disabled = false;
 
   document.getElementById('completeModal').classList.add('show');
 }
@@ -507,7 +509,7 @@ async function submitAudit(result) {
 
   _submitting = true;
   document.getElementById('passBtn').disabled = true;
-  document.querySelectorAll('#completeModal .modal-footer .btn-danger')[0].disabled = true;
+  document.getElementById('failBtn').disabled = true;
 
   if (!scriptUrl) {
     showToast('No Apps Script URL configured — go to Settings', 'error');
@@ -776,14 +778,20 @@ function showToast(msg, type) {
 }
 
 function updateLabelPreview() {
-  const resultColor = lastAuditResult === 'PASS' ? '#28a745' : '#dc3545';
   const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
   const ts = formatTimestamp(auditStartTime);
 
   document.getElementById('prevPalletID').textContent = palletID;
   document.getElementById('prevPartNumber').textContent = partNumber ? 'P/N: ' + partNumber : '';
   document.getElementById('prevResult').textContent = resultText;
-  document.getElementById('prevResult').style.color = resultColor;
+  document.getElementById('prevResult').style.color = '#000';
+  if (lastAuditResult !== 'PASS') {
+    document.getElementById('prevResult').style.border = '3px solid #000';
+    document.getElementById('prevResult').style.padding = '4px 12px';
+  } else {
+    document.getElementById('prevResult').style.border = 'none';
+    document.getElementById('prevResult').style.padding = '0';
+  }
   document.getElementById('prevMetrics').textContent = matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs verified';
   document.getElementById('prevIssues').textContent = issueCount > 0 ? 'Issues Recorded: ' + issueCount : '';
   document.getElementById('prevAuditor').textContent = 'Auditor: ' + lastAuditor;
@@ -797,7 +805,6 @@ function updateLabelPreview() {
 
 function printAuditLabel() {
   const ts = formatTimestamp(auditStartTime);
-  const resultColor = lastAuditResult === 'PASS' ? '#28a745' : '#dc3545';
   const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
   const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
 
@@ -821,15 +828,15 @@ function printAuditLabel() {
     + '.divider { width: 100%; border-top: 2px solid #000; }'
     + '.pallet-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
     + '.pallet-id { font-size: 36px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
-    + '.part-number { font-size: 14px; text-align: center; color: #333; font-weight: 600; }'
+    + '.part-number { font-size: 14px; text-align: center; color: #000; font-weight: 600; }'
     + '.bc { text-align: center; }'
     + '.bc svg { display: block; margin: 0 auto; max-width: 3.5in; }'
-    + '.result { font-size: 32px; font-weight: 900; text-align: center; color: ' + resultColor + '; letter-spacing: 2px; }'
-    + '.metrics { font-size: 13px; text-align: center; color: #333; line-height: 1.6; }'
-    + '.issues-recorded { font-size: 13px; text-align: center; color: #fd7e14; font-weight: 600; }'
-    + '.auditor { font-size: 12px; text-align: center; color: #555; margin-top: 4px; }'
+    + '.result { font-size: 32px; font-weight: 900; text-align: center; color: #000; letter-spacing: 2px;' + (lastAuditResult !== 'PASS' ? ' border: 3px solid #000; padding: 4px 12px;' : '') + ' }'
+    + '.metrics { font-size: 13px; text-align: center; color: #000; line-height: 1.6; }'
+    + '.issues-recorded { font-size: 13px; text-align: center; color: #000; font-weight: 700; }'
+    + '.auditor { font-size: 12px; text-align: center; color: #000; margin-top: 4px; }'
     + '.timestamp { font-size: 16px; text-align: center; color: #000; font-weight: 700; }'
-    + '.notes { font-size: 11px; text-align: center; color: #333; font-style: italic; margin-top: 4px; }'
+    + '.notes { font-size: 11px; text-align: center; color: #000; font-style: italic; margin-top: 4px; }'
     + '</style></head><body><div class="label">'
     + '<div class="logo"><img src="' + logoUrl + '"></div>'
     + '<div class="divider"></div>'
