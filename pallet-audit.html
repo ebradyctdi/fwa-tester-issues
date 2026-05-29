@@ -11,7 +11,11 @@
   .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
   .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
   .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
-  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
   .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
   .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
@@ -29,7 +33,7 @@
   .scan-input { width: 100%; padding: 12px 16px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-family: Consolas, monospace; transition: border-color 0.2s; }
   .scan-input:focus { outline: none; border-color: #1a3a5c; }
   .scan-input:disabled { background: #f5f5f5; color: #999; }
-  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
   .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   .kpi-val { font-size: 32px; font-weight: 700; }
   .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
@@ -51,6 +55,10 @@
   .imei-chip { padding: 6px 10px; border-radius: 6px; font-family: Consolas, monospace; font-size: 12px; text-align: center; background: #f0f2f5; border: 1px solid #dee2e6; transition: all 0.15s; }
   .imei-chip.matched { background: #d4edda; border-color: #28a745; color: #155724; }
   .imei-chip.matched::before { content: '✅ '; }
+  .imei-chip .issue-btn { display: none; margin-left: 6px; background: #fd7e14; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 2px 6px; cursor: pointer; font-weight: 600; }
+  .imei-chip.audit-mode .issue-btn { display: inline-block; }
+  .imei-chip.has-issue { border-color: #fd7e14; }
+  .imei-chip.has-issue::after { content: ' ⚠️'; }
   .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
   .status-indicator.pending { background: #dee2e6; }
   .status-indicator.matched { background: #28a745; }
@@ -91,7 +99,7 @@
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
   <div class="sidebar-nav">
     <div class="nav-section">Tester Health</div>
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
@@ -127,6 +135,7 @@
       <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiMatched">0</div><div class="kpi-label">Matched During Audit</div></div>
       <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiRemaining">0</div><div class="kpi-label">Remaining</div></div>
       <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiUnmatched">0</div><div class="kpi-label">Not on Pallet</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiIssues">0</div><div class="kpi-label">Issues Logged</div></div>
     </div>
 
     <!-- PHASE 1: Load Pallet -->
@@ -138,7 +147,14 @@
       </div>
 
       <div class="scan-section" id="imeiScanSection" style="display:none;">
-        <h2>Step 2: Scan IMEI Barcodes</h2>
+        <h2>Step 2: Scan Part Number</h2>
+        <input type="text" class="scan-input" id="partNumberInput" placeholder="Scan part number barcode...">
+        <div style="margin-top:8px;font-size:12px;color:#888;">Valid: WNC-CR200A or ASK-NCM1100</div>
+        <div style="margin-top:4px;font-size:13px;" id="partNumberStatus"></div>
+      </div>
+
+      <div class="scan-section" id="imeiBarcodeSection" style="display:none;">
+        <h2>Step 3: Scan IMEI Barcodes</h2>
         <input type="text" class="scan-input" id="imeiBarcodInput" placeholder="Scan IMEI barcode label...">
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
           <span id="scanCount" style="font-size:13px;color:#888;">Barcode scans: 0</span>
@@ -153,15 +169,12 @@
         <input type="text" class="scan-input" id="auditScanInput" placeholder="Scan unit IMEI...">
         <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
           <span id="auditPalletLabel" style="font-size:13px;font-weight:600;color:#1a3a5c;"></span>
-          <button class="btn btn-success" onclick="completeAudit()">Complete Audit</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-danger" onclick="openReportIssueModal()">Report Issue</button>
+            <button class="btn btn-success" onclick="completeAudit()">Complete Audit</button>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- IMEI Table -->
-    <div class="scan-section" id="imeiTableSection" style="display:none;">
-      <h2>Pallet IMEIs <span id="tableCountLabel" style="font-size:12px;color:#888;font-weight:normal;"></span></h2>
-      <div id="imeiGridContainer" class="imei-grid"></div>
     </div>
 
     <!-- Print Label Section -->
@@ -175,10 +188,12 @@
           <div style="width:100%;border-top:2px solid #000;"></div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;text-align:center;">Pallet Audit</div>
           <div id="prevPalletID" style="font-size:36px;font-weight:900;font-family:'Arial Black',Consolas,monospace;text-align:center;"></div>
+          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#333;font-weight:600;"></div>
           <div style="text-align:center;"><svg id="prevBarcode"></svg></div>
           <div style="width:100%;border-top:2px solid #000;"></div>
-          <div id="prevResult" style="font-size:42px;font-weight:900;text-align:center;letter-spacing:4px;"></div>
+          <div id="prevResult" style="font-size:32px;font-weight:900;text-align:center;letter-spacing:2px;"></div>
           <div id="prevMetrics" style="font-size:13px;text-align:center;color:#333;line-height:1.6;"></div>
+          <div id="prevIssues" style="font-size:13px;text-align:center;color:#fd7e14;font-weight:600;"></div>
           <div id="prevAuditor" style="font-size:12px;text-align:center;color:#555;"></div>
           <div id="prevTimestamp" style="font-size:16px;text-align:center;color:#000;font-weight:700;"></div>
           <div id="prevNotes" style="font-size:11px;text-align:center;color:#333;font-style:italic;margin-top:4px;"></div>
@@ -187,6 +202,12 @@
       <div style="text-align:center;">
         <button class="btn btn-primary" onclick="printAuditLabel()" style="padding:14px 40px;font-size:16px;">🖨️ Print Audit Label</button>
       </div>
+    </div>
+
+    <!-- IMEI Table -->
+    <div class="scan-section" id="imeiTableSection" style="display:none;">
+      <h2>Pallet IMEIs <span id="tableCountLabel" style="font-size:12px;color:#888;font-weight:normal;"></span></h2>
+      <div id="imeiGridContainer" class="imei-grid"></div>
     </div>
 
     <!-- Reset -->
@@ -212,8 +233,8 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-reset" onclick="closeCompleteModal()">Cancel</button>
-      <button class="btn btn-success" onclick="submitAudit('PASS')">✓ PASS</button>
-      <button class="btn btn-danger" onclick="submitAudit('FAIL')">✗ FAIL</button>
+      <button class="btn btn-success" onclick="submitAudit('PASS')">✓ OK To Ship</button>
+      <button class="btn btn-danger" onclick="submitAudit('FAIL')">✗ Hold for Action</button>
     </div>
   </div>
 </div>
@@ -227,18 +248,72 @@
   </div>
 </div>
 
+<!-- Report Unit Issue Modal (from chip) -->
+<div class="modal-overlay" id="issueModal" onclick="if(event.target===this)closeIssueModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#fd7e14;"><h3>Report Unit Issue</h3></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>IMEI</label>
+        <input type="text" id="issueImei" readonly style="background:#f5f5f5;">
+      </div>
+      <div class="form-group">
+        <label>Reported By</label>
+        <input type="text" id="issueReportedBy" placeholder="Your name...">
+      </div>
+      <div class="form-group">
+        <label>Issue Description</label>
+        <textarea id="issueDescription" placeholder="Describe the issue..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeIssueModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitUnitIssue()">Report Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Issue Modal (from button) -->
+<div class="modal-overlay" id="reportIssueModal" onclick="if(event.target===this)closeReportIssueModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#dc3545;"><h3>Report Unit Issue</h3></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>IMEI</label>
+        <input type="text" id="reportIssueImei" placeholder="Scan or enter IMEI..." style="font-family:Consolas,monospace;">
+      </div>
+      <div class="form-group">
+        <label>Reported By</label>
+        <input type="text" id="reportIssueReportedBy" placeholder="Your name...">
+      </div>
+      <div class="form-group">
+        <label>Issue Description</label>
+        <textarea id="reportIssueDescription" placeholder="Describe the issue..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeReportIssueModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitReportIssue()">Report Issue</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzDkXOi2_M3Q8H1ph1Ujhine-O1_7rAqE9BWLTJKlTdfKzX2GlEg0Hk6ONE8MzkrEaizw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxTJNZvXGuDBsaG9S2t4dPIS9ZYQOlFdLfjJn0DflNjPfS76l8RCQ7GaicHCJOJd9puBQ/exec'; } catch(e) {}
 
 let palletID = '';
+let partNumber = '';
 let palletIMEIs = []; // all IMEIs loaded from barcode scans
 let matchedIMEIs = new Set(); // IMEIs matched during audit
 let unmatchedIMEIs = []; // IMEIs scanned that were NOT on the pallet
+let issuedIMEIs = new Set(); // IMEIs that have reported issues
+let issueCount = 0; // total issues logged during audit
 let barcodeScanCount = 0;
 let auditStartTime = null;
+let auditMode = false;
 let lastAuditResult = '';
 let lastAuditor = '';
 let lastAuditNotes = '';
@@ -271,6 +346,26 @@ document.getElementById('palletInput').addEventListener('keydown', function(e) {
     this.disabled = true;
     document.getElementById('palletStatus').innerHTML = '<span style="color:#28a745;font-weight:600;">✓ Pallet: ' + palletID + '</span>';
     document.getElementById('imeiScanSection').style.display = 'block';
+    document.getElementById('partNumberInput').focus();
+  }
+});
+
+// --- Part Number Scan ---
+const VALID_PART_NUMBERS = ['WNC-CR200A', 'ASK-NCM1100'];
+const PART_NUMBER_NAMES = { 'WNC-CR200A': 'Titan 3', 'ASK-NCM1100': 'Titan 4' };
+document.getElementById('partNumberInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = this.value.trim().toUpperCase();
+    if (!val) return;
+    if (!VALID_PART_NUMBERS.includes(val)) {
+      showAlert('Invalid Part Number', 'Part number "' + val + '" is not recognized. Valid options: WNC-CR200A or ASK-NCM1100');
+      this.value = '';
+      return;
+    }
+    partNumber = val;
+    this.disabled = true;
+    document.getElementById('partNumberStatus').innerHTML = '<span style="color:#28a745;font-weight:600;">✓ Part Number: ' + partNumber + ' — ' + PART_NUMBER_NAMES[partNumber] + '</span>';
+    document.getElementById('imeiBarcodeSection').style.display = 'block';
     document.getElementById('imeiBarcodInput').focus();
   }
 });
@@ -318,6 +413,7 @@ document.getElementById('imeiBarcodInput').addEventListener('keydown', function(
 function beginAudit() {
   if (palletIMEIs.length === 0) return;
   auditStartTime = new Date();
+  auditMode = true;
   document.getElementById('loadSection').style.display = 'none';
   document.getElementById('auditSection').style.display = 'block';
   document.getElementById('auditPalletLabel').textContent = 'Pallet: ' + palletID;
@@ -372,6 +468,7 @@ function completeAudit() {
     + '<div class="metric-row"><span class="metric-label">IMEIs Scanned During Audit</span><span class="metric-value">' + matchedIMEIs.size + '</span></div>'
     + '<div class="metric-row"><span class="metric-label">Remaining Unscanned</span><span class="metric-value">' + (palletIMEIs.length - matchedIMEIs.size) + '</span></div>'
     + '<div class="metric-row"><span class="metric-label">Not on Pallet (Errors)</span><span class="metric-value" style="color:#dc3545;">' + unmatchedIMEIs.length + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">Issues Recorded</span><span class="metric-value" style="color:#fd7e14;">' + issueCount + '</span></div>'
     + '<div class="metric-row"><span class="metric-label">Match Rate</span><span class="metric-value">' + (palletIMEIs.length > 0 ? Math.round((matchedIMEIs.size / palletIMEIs.length) * 100) : 0) + '%</span></div>';
   document.getElementById('completeModal').classList.add('show');
 }
@@ -400,6 +497,7 @@ async function submitAudit(result) {
     const params = {
       action: 'logpalletaudit',
       palletid: palletID,
+      partnumber: partNumber,
       timestamp: ts,
       totalimeis: palletIMEIs.length.toString(),
       scannedimeis: matchedIMEIs.size.toString(),
@@ -440,6 +538,7 @@ function updateKPIs() {
   document.getElementById('kpiMatched').textContent = matchedIMEIs.size;
   document.getElementById('kpiRemaining').textContent = palletIMEIs.length - matchedIMEIs.size;
   document.getElementById('kpiUnmatched').textContent = unmatchedIMEIs.length;
+  document.getElementById('kpiIssues').textContent = issueCount;
 }
 
 function renderTable() {
@@ -452,22 +551,37 @@ function renderTable() {
   let html = '';
   palletIMEIs.forEach((imei) => {
     const isMatched = matchedIMEIs.has(imei);
-    html += '<div class="imei-chip ' + (isMatched ? 'matched' : '') + '">' + imei + '</div>';
+    const hasIssue = issuedIMEIs.has(imei);
+    let cls = '';
+    if (isMatched) cls += ' matched';
+    if (auditMode) cls += ' audit-mode';
+    if (hasIssue) cls += ' has-issue';
+    html += '<div class="imei-chip' + cls + '">' + imei
+      + '<button class="issue-btn" onclick="openIssueModal(\'' + imei + '\')">⚠️</button>'
+      + '</div>';
   });
   document.getElementById('imeiGridContainer').innerHTML = html;
 }
 
 function resetAll() {
   palletID = '';
+  partNumber = '';
   palletIMEIs = [];
   matchedIMEIs = new Set();
   unmatchedIMEIs = [];
+  issuedIMEIs = new Set();
+  issueCount = 0;
   barcodeScanCount = 0;
   auditStartTime = null;
+  auditMode = false;
   document.getElementById('palletInput').value = '';
   document.getElementById('palletInput').disabled = false;
   document.getElementById('palletStatus').innerHTML = '';
   document.getElementById('imeiScanSection').style.display = 'none';
+  document.getElementById('partNumberInput').value = '';
+  document.getElementById('partNumberInput').disabled = false;
+  document.getElementById('partNumberStatus').innerHTML = '';
+  document.getElementById('imeiBarcodeSection').style.display = 'none';
   document.getElementById('imeiBarcodInput').value = '';
   document.getElementById('imeiBarcodInput').disabled = false;
   document.getElementById('scanCount').textContent = 'Barcode scans: 0';
@@ -493,6 +607,92 @@ function formatTimestamp(d) {
   if (!d) d = new Date();
   return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
 }
+function openReportIssueModal() {
+  document.getElementById('reportIssueImei').value = '';
+  document.getElementById('reportIssueReportedBy').value = '';
+  document.getElementById('reportIssueDescription').value = '';
+  document.getElementById('reportIssueModal').classList.add('show');
+  document.getElementById('reportIssueImei').focus();
+}
+
+function closeReportIssueModal() {
+  document.getElementById('reportIssueModal').classList.remove('show');
+}
+
+async function submitReportIssue() {
+  const imei = document.getElementById('reportIssueImei').value.trim();
+  const reportedBy = document.getElementById('reportIssueReportedBy').value.trim();
+  const issue = document.getElementById('reportIssueDescription').value.trim();
+
+  if (!imei) { showToast('IMEI is required', 'error'); return; }
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!issue) { showToast('Issue description is required', 'error'); return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logpalletauditissue',
+      palletid: palletID,
+      imei: imei,
+      reportedby: reportedBy,
+      issue: issue
+    });
+    if (json.success) {
+      issuedIMEIs.add(imei);
+      issueCount++;
+      closeReportIssueModal();
+      renderTable();
+      updateKPIs();
+      showToast('Issue reported for ' + imei, 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function openIssueModal(imei) {
+  document.getElementById('issueImei').value = imei;
+  document.getElementById('issueReportedBy').value = '';
+  document.getElementById('issueDescription').value = '';
+  document.getElementById('issueModal').classList.add('show');
+}
+
+function closeIssueModal() {
+  document.getElementById('issueModal').classList.remove('show');
+}
+
+async function submitUnitIssue() {
+  const imei = document.getElementById('issueImei').value.trim();
+  const reportedBy = document.getElementById('issueReportedBy').value.trim();
+  const issue = document.getElementById('issueDescription').value.trim();
+
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!issue) { showToast('Issue description is required', 'error'); return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logpalletauditissue',
+      palletid: palletID,
+      imei: imei,
+      reportedby: reportedBy,
+      issue: issue
+    });
+    if (json.success) {
+      issuedIMEIs.add(imei);
+      issueCount++;
+      closeIssueModal();
+      renderTable();
+      updateKPIs();
+      showToast('Issue reported for ' + imei, 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
 function showAlert(title, message) {
   document.getElementById('alertTitle').textContent = title;
   document.getElementById('alertMessage').textContent = message;
@@ -509,13 +709,15 @@ function showToast(msg, type) {
 
 function updateLabelPreview() {
   const resultColor = lastAuditResult === 'PASS' ? '#28a745' : '#dc3545';
-  const resultText = lastAuditResult === 'PASS' ? '✓ PASS' : '✗ FAIL';
+  const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
   const ts = formatTimestamp(auditStartTime);
 
   document.getElementById('prevPalletID').textContent = palletID;
+  document.getElementById('prevPartNumber').textContent = partNumber ? 'P/N: ' + partNumber : '';
   document.getElementById('prevResult').textContent = resultText;
   document.getElementById('prevResult').style.color = resultColor;
   document.getElementById('prevMetrics').textContent = matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs verified';
+  document.getElementById('prevIssues').textContent = issueCount > 0 ? 'Issues Recorded: ' + issueCount : '';
   document.getElementById('prevAuditor').textContent = 'Auditor: ' + lastAuditor;
   document.getElementById('prevTimestamp').textContent = ts;
   document.getElementById('prevNotes').textContent = lastAuditNotes ? 'Note: ' + lastAuditNotes : '';
@@ -528,7 +730,7 @@ function updateLabelPreview() {
 function printAuditLabel() {
   const ts = formatTimestamp(auditStartTime);
   const resultColor = lastAuditResult === 'PASS' ? '#28a745' : '#dc3545';
-  const resultText = lastAuditResult === 'PASS' ? '✓ PASS' : '✗ FAIL';
+  const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
   const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
 
   // Generate barcode SVG
@@ -551,10 +753,12 @@ function printAuditLabel() {
     + '.divider { width: 100%; border-top: 2px solid #000; }'
     + '.pallet-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
     + '.pallet-id { font-size: 36px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
+    + '.part-number { font-size: 14px; text-align: center; color: #333; font-weight: 600; }'
     + '.bc { text-align: center; }'
     + '.bc svg { display: block; margin: 0 auto; max-width: 3.5in; }'
-    + '.result { font-size: 42px; font-weight: 900; text-align: center; color: ' + resultColor + '; letter-spacing: 4px; }'
+    + '.result { font-size: 32px; font-weight: 900; text-align: center; color: ' + resultColor + '; letter-spacing: 2px; }'
     + '.metrics { font-size: 13px; text-align: center; color: #333; line-height: 1.6; }'
+    + '.issues-recorded { font-size: 13px; text-align: center; color: #fd7e14; font-weight: 600; }'
     + '.auditor { font-size: 12px; text-align: center; color: #555; margin-top: 4px; }'
     + '.timestamp { font-size: 16px; text-align: center; color: #000; font-weight: 700; }'
     + '.notes { font-size: 11px; text-align: center; color: #333; font-style: italic; margin-top: 4px; }'
@@ -565,10 +769,12 @@ function printAuditLabel() {
     + '<div class="divider"></div>'
     + '<div class="pallet-header">Pallet Audit</div>'
     + '<div class="pallet-id">' + palletID + '</div>'
+    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
     + '<div class="bc">' + barcodeHtml + '</div>'
     + '<div class="divider"></div>'
     + '<div class="result">' + resultText + '</div>'
     + '<div class="metrics">' + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs verified</div>'
+    + (issueCount > 0 ? '<div class="issues-recorded">Issues Recorded: ' + issueCount + '</div>' : '')
     + '<div class="auditor">Auditor: ' + lastAuditor + '</div>'
     + '<div class="timestamp">' + ts + '</div>'
     + (lastAuditNotes ? '<div class="notes">Note: ' + lastAuditNotes + '</div>' : '')

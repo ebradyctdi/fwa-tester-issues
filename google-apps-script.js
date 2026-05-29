@@ -461,14 +461,36 @@ function doGet(e) {
       return _respond({ success: true }, callback);
     }
 
+    // ---- LOG PALLET AUDIT ISSUE ----
+    if (action === 'logpalletauditissue') {
+      var paiSheet = ss.getSheetByName('Pallet Audit Issues');
+      if (!paiSheet) {
+        paiSheet = ss.insertSheet('Pallet Audit Issues');
+        paiSheet.getRange(1, 1, 1, 5).setValues([['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue']]);
+      }
+      var palletId = (e.parameter.palletid || '').toString().trim();
+      var imei = (e.parameter.imei || '').toString().trim();
+      var reportedBy = (e.parameter.reportedby || '').toString().trim();
+      var issue = (e.parameter.issue || '').toString().trim();
+
+      if (!palletId || !imei) return _respond({ success: false, error: 'Pallet ID and IMEI required' }, callback);
+      if (!issue) return _respond({ success: false, error: 'Issue description required' }, callback);
+
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
+
+      paiSheet.appendRow([palletId, imei, ts, reportedBy, issue]);
+      return _respond({ success: true, message: 'Issue logged' }, callback);
+    }
+
     // ---- READ PALLET AUDITS ----
     if (action === 'readpalletaudits') {
       var paSheet = ss.getSheetByName('Pallet Audits');
       if (!paSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paSheet.getRange(2, 1, lastRow - 1, 22).getValues();
-      var headers = ['Pallet ID', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'IMEI Scan #1', 'IMEI Scan #2', 'IMEI Scan #3', 'IMEI Scan #4', 'IMEI Scan #5', 'IMEI Scan #6', 'IMEI Scan #7', 'IMEI Scan #8', 'IMEI Scan #9', 'IMEI Scan #10', 'IMEI Scan #11', 'IMEI Scan #12', 'IMEI Scan #13', 'IMEI Scan #14', 'IMEI Scan #15'];
+      var data = paSheet.getRange(2, 1, lastRow - 1, 23).getValues();
+      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'IMEI Scan #1', 'IMEI Scan #2', 'IMEI Scan #3', 'IMEI Scan #4', 'IMEI Scan #5', 'IMEI Scan #6', 'IMEI Scan #7', 'IMEI Scan #8', 'IMEI Scan #9', 'IMEI Scan #10', 'IMEI Scan #11', 'IMEI Scan #12', 'IMEI Scan #13', 'IMEI Scan #14', 'IMEI Scan #15'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -482,9 +504,10 @@ function doGet(e) {
       var paSheet = ss.getSheetByName('Pallet Audits');
       if (!paSheet) {
         paSheet = ss.insertSheet('Pallet Audits');
-        paSheet.getRange(1, 1, 1, 22).setValues([['Pallet ID', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'IMEI Scan #1', 'IMEI Scan #2', 'IMEI Scan #3', 'IMEI Scan #4', 'IMEI Scan #5', 'IMEI Scan #6', 'IMEI Scan #7', 'IMEI Scan #8', 'IMEI Scan #9', 'IMEI Scan #10', 'IMEI Scan #11', 'IMEI Scan #12', 'IMEI Scan #13', 'IMEI Scan #14', 'IMEI Scan #15']]);
+        paSheet.getRange(1, 1, 1, 23).setValues([['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'IMEI Scan #1', 'IMEI Scan #2', 'IMEI Scan #3', 'IMEI Scan #4', 'IMEI Scan #5', 'IMEI Scan #6', 'IMEI Scan #7', 'IMEI Scan #8', 'IMEI Scan #9', 'IMEI Scan #10', 'IMEI Scan #11', 'IMEI Scan #12', 'IMEI Scan #13', 'IMEI Scan #14', 'IMEI Scan #15']]);
       }
       var palletId = (e.parameter.palletid || '').toString().trim();
+      var partNumber = (e.parameter.partnumber || '').toString().trim();
       var timestamp = (e.parameter.timestamp || '').toString().trim();
       var totalImeis = (e.parameter.totalimeis || '0').toString().trim();
       var scannedImeis = (e.parameter.scannedimeis || '0').toString().trim();
@@ -495,9 +518,9 @@ function doGet(e) {
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!auditor) return _respond({ success: false, error: 'Auditor name required' }, callback);
 
-      var row = [palletId, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes];
+      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes];
 
-      // Add up to 15 IMEI scans (columns H-V)
+      // Add up to 15 IMEI scans (columns I-W)
       for (var i = 1; i <= 15; i++) {
         var imeiVal = (e.parameter['imei' + i] || '').toString().trim();
         row.push(imeiVal);

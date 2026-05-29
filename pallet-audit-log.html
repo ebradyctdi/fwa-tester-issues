@@ -10,7 +10,11 @@
   .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
   .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
   .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
-  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
   .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
   .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
@@ -79,7 +83,7 @@
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA - Tester Issues</div></div>
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
   <div class="sidebar-nav">
     <div class="nav-section">Tester Health</div>
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
@@ -120,6 +124,7 @@
           <thead>
             <tr>
               <th>Pallet ID</th>
+              <th>Part Number</th>
               <th>Timestamp</th>
               <th>IMEIs on Pallet</th>
               <th>IMEIs Scanned</th>
@@ -130,7 +135,7 @@
             </tr>
           </thead>
           <tbody id="auditTableBody">
-            <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+            <tr><td colspan="9" class="empty-state">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -151,7 +156,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzDkXOi2_M3Q8H1ph1Ujhine-O1_7rAqE9BWLTJKlTdfKzX2GlEg0Hk6ONE8MzkrEaizw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxTJNZvXGuDBsaG9S2t4dPIS9ZYQOlFdLfjJn0DflNjPfS76l8RCQ7GaicHCJOJd9puBQ/exec'; } catch(e) {}
 
 let allAudits = [];
 let _jsonpCounter = 0;
@@ -189,14 +194,14 @@ async function loadData() {
     }
   } catch(err) {
     setStatus('disconnected', 'Connection failed');
-    document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="8" class="empty-state">Failed to load data</td></tr>';
+    document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="9" class="empty-state">Failed to load data</td></tr>';
   }
 }
 
 function renderTable() {
   const tbody = document.getElementById('auditTableBody');
   if (allAudits.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No audit records found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No audit records found</td></tr>';
     return;
   }
 
@@ -208,6 +213,7 @@ function renderTable() {
     const resultClass = (audit['Audit Result'] || '').toUpperCase() === 'PASS' ? 'result-pass' : 'result-fail';
     html += '<tr>'
       + '<td class="mono" style="font-weight:600;">' + (audit['Pallet ID'] || '—') + '</td>'
+      + '<td>' + (audit['Part Number'] || '—') + '</td>'
       + '<td>' + (audit['Audit Start Timestamp'] || '—') + '</td>'
       + '<td style="text-align:center;">' + (audit['# of IMEIs on Pallet'] || '—') + '</td>'
       + '<td style="text-align:center;">' + (audit['# of IMEIs Scanned During Audit'] || '—') + '</td>'
@@ -227,6 +233,7 @@ function showDetail(idx) {
 
   let html = '';
   html += '<div class="detail-row"><span class="detail-label">Pallet ID</span><span class="detail-value">' + (audit['Pallet ID'] || '—') + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">Part Number</span><span class="detail-value">' + (audit['Part Number'] || '—') + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value">' + (audit['Audit Start Timestamp'] || '—') + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">IMEIs on Pallet</span><span class="detail-value">' + (audit['# of IMEIs on Pallet'] || '—') + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">IMEIs Scanned</span><span class="detail-value">' + (audit['# of IMEIs Scanned During Audit'] || '—') + '</span></div>';
