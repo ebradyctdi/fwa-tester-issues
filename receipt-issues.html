@@ -403,6 +403,8 @@ function showToast(msg, type) {
 }
 
 let batchMode = false, batchSessionCount = 0, batchSubmitting = false, batchLog = [];
+let batchQueue = [];
+let batchQueueProcessing = false;
 
 function playBeep(success) {
   try {
@@ -517,54 +519,79 @@ async function submitBatch() {
   if (!serial || serial.length !== 11) { showBatchFeedback('Serial must be 11 characters', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
   if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
 
-  try {
-    const json = await jsonpRequest(scriptUrl, {
-      action: 'logreceiptissue',
-      imei: imei,
-      serial: serial,
-      cart: cart,
-      devicemodel: deviceModel,
-      reportedby: reportedBy,
-      note: note
-    });
-    if (json.success) {
-      batchSessionCount++;
-      document.getElementById('batchCount').textContent = batchSessionCount;
-      batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length });
-      if (batchLog.length > 10) batchLog.pop();
-      renderBatchLog();
-      showBatchFeedback('✓ Logged — ' + imei, 'success');
-      playBeep(true);
-      document.getElementById('bIMEI').value = '';
-      document.getElementById('bSerial').value = '';
-      document.getElementById('bIMEI').focus();
-    } else {
-      showBatchFeedback('Error: ' + (json.error || 'Failed'), 'error');
-      playBeep(false);
-    }
-  } catch(err) {
-    showBatchFeedback('Connection error', 'error');
-    playBeep(false);
-  }
+  // Immediately update UI and clear fields for next scan
+  batchSessionCount++;
+  document.getElementById('batchCount').textContent = batchSessionCount;
+  batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
+  if (batchLog.length > 10) batchLog.pop();
+  renderBatchLog();
+  showBatchFeedback('✓ Queued — ' + imei, 'success');
+  playBeep(true);
+  document.getElementById('bIMEI').value = '';
+  document.getElementById('bSerial').value = '';
+  setTimeout(() => document.getElementById('bIMEI').focus(), 50);
   batchSubmitting = false;
+
+  // Add to background queue
+  batchQueue.push({ imei, serial, cart, deviceModel, reportedBy, note });
+  processBatchQueue();
+}
+
+async function processBatchQueue() {
+  if (batchQueueProcessing) return;
+  batchQueueProcessing = true;
+
+  while (batchQueue.length > 0) {
+    const item = batchQueue.shift();
+    try {
+      const json = await jsonpRequest(scriptUrl, {
+        action: 'logreceiptissue',
+        imei: item.imei,
+        serial: item.serial,
+        cart: item.cart,
+        devicemodel: item.deviceModel,
+        reportedby: item.reportedBy,
+        note: item.note
+      });
+      if (json.success) {
+        // Mark as saved in log
+        const logEntry = batchLog.find(e => e.imei === item.imei && e.serial === item.serial && e.status === 'pending');
+        if (logEntry) logEntry.status = 'saved';
+        renderBatchLog();
+      } else {
+        showBatchFeedback('Failed to save: ' + item.imei + ' — ' + (json.error || 'Unknown error'), 'error');
+        playBeep(false);
+      }
+    } catch(err) {
+      showBatchFeedback('Connection error for: ' + item.imei, 'error');
+      playBeep(false);
+      // Re-queue on network error
+      batchQueue.unshift(item);
+      await new Promise(r => setTimeout(r, 2000)); // wait before retry
+    }
+  }
+
+  batchQueueProcessing = false;
 }
 
 function renderBatchLog() {
   const el = document.getElementById('batchLog');
   if (!batchLog.length) { el.innerHTML = ''; return; }
   let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th></th></tr>';
+  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Status</th><th></th></tr>';
   batchLog.forEach((entry, i) => {
     const num = batchSessionCount - i;
     const t = entry.time;
     const timeStr = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0') + ':' + String(t.getSeconds()).padStart(2,'0');
     const rowIdx = entry.rowIdx !== undefined ? entry.rowIdx : -1;
-    const delBtn = rowIdx >= 0 ? '<button onclick="deleteBatchRecord(' + rowIdx + ',' + i + ')" style="padding:3px 8px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Delete</button>' : '';
+    const delBtn = (entry.status === 'saved' && rowIdx >= 0) ? '<button onclick="deleteBatchRecord(' + rowIdx + ',' + i + ')" style="padding:3px 8px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Delete</button>' : '';
+    const statusIcon = entry.status === 'saved' ? '<span style="color:#28a745;font-weight:600;">✓ Saved</span>' : '<span style="color:#fd7e14;font-weight:600;">⏳ Saving...</span>';
     html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '">'
       + '<td style="padding:6px 10px;color:#888;">' + num + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + timeStr + '</td>'
+      + '<td style="padding:6px 10px;">' + statusIcon + '</td>'
       + '<td style="padding:6px 10px;">' + delBtn + '</td>'
       + '</tr>';
   });
