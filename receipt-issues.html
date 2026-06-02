@@ -111,7 +111,8 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin:0;border:none;padding:0;color:#28a745;">Batch Scan Mode</h2>
         <div style="display:flex;align-items:center;gap:12px;">
-          <div style="text-align:center;"><div id="batchCount" style="font-size:36px;font-weight:700;color:#28a745;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">Scanned</div></div>
+          <div style="text-align:center;"><div id="batchCount" style="font-size:36px;font-weight:700;color:#28a745;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">This Batch</div></div>
+          <div style="text-align:center;"><div id="cartTotal" style="font-size:36px;font-weight:700;color:#1a3a5c;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">Cart Total</div></div>
           <button onclick="toggleBatchMode()" style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Exit Batch Mode</button>
         </div>
       </div>
@@ -421,6 +422,18 @@ function playBeep(success) {
   } catch(e) {}
 }
 
+let cartTotalCount = 0;
+
+async function updateCartTotal(cartId) {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
+    if (json.success && json.data) {
+      cartTotalCount = json.data.filter(d => (d['Cart ID'] || '').trim() === cartId && (d['Status'] || '').trim() === 'On Cart').length;
+      document.getElementById('cartTotal').textContent = cartTotalCount;
+    }
+  } catch(e) {}
+}
+
 function startBatchMode() {
   const cart = document.getElementById('fCart').value.trim();
   const model = document.getElementById('fDeviceModel').value;
@@ -454,6 +467,8 @@ function startBatchMode() {
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Reported By</span><div style="font-size:13px;font-weight:600;">' + reporter + '</div></div>'
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Note</span><div style="font-size:13px;font-weight:600;">' + note + '</div></div>';
   document.getElementById('bIMEI').focus();
+  // Load cart total
+  updateCartTotal(cart);
 }
 
 function toggleBatchMode() {
@@ -557,6 +572,8 @@ async function processBatchQueue() {
         // Mark as saved in log
         const logEntry = batchLog.find(e => e.imei === item.imei && e.serial === item.serial && e.status === 'pending');
         if (logEntry) logEntry.status = 'saved';
+        cartTotalCount++;
+        document.getElementById('cartTotal').textContent = cartTotalCount;
         renderBatchLog();
       } else {
         showBatchFeedback('Failed to save: ' + item.imei + ' — ' + (json.error || 'Unknown error'), 'error');
