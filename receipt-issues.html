@@ -19,7 +19,10 @@
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
   .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
-  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
   .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
   .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
   .header h1 { font-size: 22px; font-weight: 600; }
@@ -76,24 +79,32 @@
 <nav class="sidebar">
   <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
   <div class="sidebar-nav">
-    <div class="nav-section">Tester Health</div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    <div class="nav-section">Product/Device Issues</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
     <a href="receipt-issues.html" class="active"><span class="icon">🔍</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
-    <div class="nav-section">Audit Tools</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
     <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
-    <div class="nav-section">System</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
     <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
   </div>
 </nav>
 <div class="main-wrap">
@@ -178,7 +189,10 @@
           <div style="margin-bottom:16px;">
             <label class="form-label">Issue Note</label>
             <div style="display:flex;gap:10px;align-items:center;">
-              <input type="text" class="form-input" id="fNote" placeholder="Describe the issue..." style="flex:1;font-family:'Segoe UI',Arial,sans-serif;">
+              <select id="fNoteSelect" onchange="if(this.value){document.getElementById('fNote').value=this.value;}" style="padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:13px;flex:1;">
+                <option value="">— Standard Note —</option>
+              </select>
+              <input type="text" class="form-input" id="fNote" placeholder="Or type custom note..." style="flex:2;font-family:'Segoe UI',Arial,sans-serif;">
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="keepNote"> Keep</label>
             </div>
           </div>
@@ -220,8 +234,8 @@
 
 <script>
 const URL_KEY = 'fwa_script_url';
-let scriptUrl = '', allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec'; } catch(e) {}
+let scriptUrl = '', allIssues = [], _jsonpCounter = 0, cartData = [];
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzJ-PEyynaW80eJVyCzwo7nSKKR4a4t4KBe5VwWy0esuw-DqieAepfFuGHSG_m3tTdkcw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -261,7 +275,13 @@ async function loadData() {
   try {
     const [issuesJson, cartsJson] = await Promise.all([
       jsonpRequest(scriptUrl, { action: 'readreceiptissues' }),
-      jsonpRequest(scriptUrl, { action: 'readcarts' }).catch(() => ({ success: false }))
+      jsonpRequest(scriptUrl, { action: 'readcarts' }).catch(() => ({ success: false })),
+      jsonpRequest(scriptUrl, { action: 'readstandardnotes' }).then(json => {
+        if (json.success && json.data) {
+          const sel = document.getElementById('fNoteSelect');
+          sel.innerHTML = '<option value="">— Standard Note —</option>' + json.data.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('');
+        }
+      }).catch(() => {})
     ]);
     if (issuesJson.success) {
       setStatus('connected', 'Connected');
@@ -270,6 +290,7 @@ async function loadData() {
     } else { throw new Error(issuesJson.error); }
     if (cartsJson.success && cartsJson.data) {
       const activeCarts = cartsJson.data.filter(c => !(c['Date Removed']||'').trim());
+      cartData = activeCarts;
       const sel = document.getElementById('fCart');
       const current = sel.value;
       sel.innerHTML = '<option value="">— Select Cart —</option>' + activeCarts.map(c => '<option value="' + (c['Cart ID']||'') + '">' + (c['Cart ID']||'') + (c['Location'] ? ' — ' + c['Location'] : '') + '</option>').join('');
@@ -343,7 +364,7 @@ async function submitIssue() {
       if (!document.getElementById('keepCart').checked) document.getElementById('fCart').value = '';
       if (!document.getElementById('keepDeviceModel').checked) document.getElementById('fDeviceModel').value = '';
       if (!document.getElementById('keepReportedBy').checked) document.getElementById('fReportedBy').value = '';
-      if (!document.getElementById('keepNote').checked) document.getElementById('fNote').value = '';
+      if (!document.getElementById('keepNote').checked) { document.getElementById('fNote').value = ''; document.getElementById('fNoteSelect').value = ''; }
       document.getElementById('fIMEI').focus();
       loadData();
     } else { showToast(json.error || 'Failed', 'error'); }
@@ -369,6 +390,11 @@ document.getElementById('fCartScan').addEventListener('keydown', function(e) {
     }
     if (!matched) { showToast('Cart "' + val + '" not found', 'error'); }
     this.value = '';
+    // Auto-fill note from cart
+    const selectedCart = cartData.find(c => (c['Cart ID'] || '') === document.getElementById('fCart').value);
+    if (selectedCart && selectedCart['Note']) {
+      document.getElementById('fNote').value = selectedCart['Note'];
+    }
     document.getElementById('fDeviceModel').focus();
   }
 });
@@ -382,6 +408,17 @@ document.getElementById('fCartScan').addEventListener('input', function() {
       this.value = '';
       document.getElementById('fDeviceModel').focus();
       break;
+    }
+  }
+});
+
+// Auto-fill note from cart note when cart is selected
+document.getElementById('fCart').addEventListener('change', function() {
+  const cartId = this.value;
+  if (cartId && cartData.length) {
+    const cart = cartData.find(c => (c['Cart ID'] || '') === cartId);
+    if (cart && cart['Note']) {
+      document.getElementById('fNote').value = cart['Note'];
     }
   }
 });
@@ -643,6 +680,21 @@ async function deleteRecord(rowIdx) {
 
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
 
 loadData();
 </script>

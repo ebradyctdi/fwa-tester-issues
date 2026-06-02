@@ -20,7 +20,10 @@
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
   .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
-  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
   .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
   .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
   .header h1 { font-size: 22px; font-weight: 600; }
@@ -43,8 +46,9 @@
   .label-preview-wrap { display: flex; justify-content: center; margin: 20px 0; }
   .label-preview {
     width: 4in; height: 6in; background: white; border: 2px solid #ddd;
-    padding: 0.4in 0.3in; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 16px;
+    padding: 0.3in 0.25in; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; transition: all 0.3s;
+    transform: scale(0.75); transform-origin: top center;
   }
   .label-preview .lbl-logo img { width: 280px; display: block; margin: 0 auto; }
   .label-preview .lbl-fwa { font-size: 72px; font-weight: 900; letter-spacing: 12px; color: #000; text-align: center; }
@@ -92,24 +96,32 @@
 <nav class="sidebar">
   <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
   <div class="sidebar-nav">
-    <div class="nav-section">Tester Health</div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    <div class="nav-section">Product/Device Issues</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
     <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html" class="active"><span class="icon">🏷️</span> Cart Label Maker</a>
-    <div class="nav-section">Audit Tools</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
     <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
-    <div class="nav-section">System</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
     <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
   </div>
 </nav>
 <div class="main-wrap">
@@ -123,7 +135,12 @@
   </div>
   <div class="container">
     <div class="card">
-      <h2>Enter Cart ID</h2>
+      <h2>Label Settings</h2>
+      <label class="form-label">Label Type</label>
+      <select class="form-input" id="labelType" onchange="updatePreview()" style="font-size:14px;padding:10px 14px;margin-bottom:12px;">
+        <option value="4x6">6" × 4" Label</option>
+        <option value="letter">8.5" × 11" Sheet (Landscape)</option>
+      </select>
       <label class="form-label">Cart ID</label>
       <select class="form-input" id="cartInput" onchange="updatePreview()" style="font-size:18px;padding:12px 14px;">
         <option value="">— Select Cart —</option>
@@ -144,6 +161,9 @@
 
     <div class="card">
       <h2>Label Preview</h2>
+      <div style="text-align:center;margin-bottom:16px;">
+        <button class="print-btn" onclick="printLabel()">🖨️ Print Label</button>
+      </div>
       <div class="label-preview-wrap">
         <div class="label-preview" id="labelPreview">
           <div class="lbl-logo"><img src="https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp"></div>
@@ -154,11 +174,10 @@
           <div class="lbl-cartid" id="lblCartID">___</div>
           <div class="lbl-barcode"><svg id="lblBarcode"></svg></div>
           <div style="width:100%;border-top:2px solid #000;"></div>
+          <div id="lblModelType" style="font-size:28px;font-weight:900;text-align:center;text-transform:uppercase;letter-spacing:2px;"></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
           <div class="lbl-desc" id="lblDesc"></div>
         </div>
-      </div>
-      <div style="text-align:center;">
-        <button class="print-btn" onclick="printLabel()">🖨️ Print Label</button>
       </div>
     </div>
   </div>
@@ -172,20 +191,43 @@ function updatePreview() {
   const desc = document.getElementById('cartDesc').value.trim();
   const cartIdSize = document.getElementById('cartIdSize').value;
   const descSize = document.getElementById('descSize').value;
+  const labelType = document.getElementById('labelType').value;
   document.getElementById('cartIdSizeVal').textContent = cartIdSize + 'px';
   document.getElementById('descSizeVal').textContent = descSize + 'px';
   document.getElementById('lblCartID').textContent = cartId || '___';
   document.getElementById('lblCartID').style.fontSize = cartIdSize + 'px';
   document.getElementById('lblDesc').textContent = desc;
   document.getElementById('lblDesc').style.fontSize = descSize + 'px';
+
+  // Update model type from cart data
+  let modelType = '';
+  if (cartId && window._cartData) {
+    const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
+    if (cart && cart['Model Type']) modelType = cart['Model Type'];
+  }
+  document.getElementById('lblModelType').textContent = modelType;
+  document.getElementById('lblModelType').style.fontSize = (labelType === 'letter' ? '40px' : '28px');
+
+  // Update preview size based on label type
+  const preview = document.getElementById('labelPreview');
+  if (labelType === 'letter') {
+    preview.style.width = '11in';
+    preview.style.height = '8.5in';
+    preview.style.transform = 'scale(0.55)';
+  } else {
+    preview.style.width = '4in';
+    preview.style.height = '6in';
+    preview.style.transform = 'scale(0.75)';
+  }
+
   if (cartId) {
     try {
       JsBarcode('#lblBarcode', cartId, {
         format: 'CODE128',
-        width: 3,
-        height: 90,
+        width: labelType === 'letter' ? 4 : 3,
+        height: labelType === 'letter' ? 120 : 90,
         displayValue: true,
-        fontSize: 18,
+        fontSize: labelType === 'letter' ? 24 : 18,
         font: 'Consolas',
         margin: 4
       });
@@ -200,24 +242,42 @@ function printLabel() {
   const desc = document.getElementById('cartDesc').value.trim();
   const cartIdSize = document.getElementById('cartIdSize').value;
   const descSize = document.getElementById('descSize').value;
+  const labelType = document.getElementById('labelType').value;
   if (!cartId) { alert('Enter a Cart ID first'); return; }
+
+  let modelType = '';
+  if (window._cartData) {
+    const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
+    if (cart && cart['Model Type']) modelType = cart['Model Type'];
+  }
 
   const barcodeHtml = document.getElementById('lblBarcode').outerHTML;
   const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
 
-  const win = window.open('', '_blank', 'width=400,height=600');
+  const isLetter = labelType === 'letter';
+  const pageW = isLetter ? '11in' : '4in';
+  const pageH = isLetter ? '8.5in' : '6in';
+  const logoW = isLetter ? '300px' : '200px';
+  const fwaSize = isLetter ? '72px' : '48px';
+  const fwaSpacing = isLetter ? '12px' : '8px';
+  const cartIdPrintSize = isLetter ? Math.min(parseInt(cartIdSize) + 20, 72) : Math.min(parseInt(cartIdSize), 42);
+  const descPrintSize = isLetter ? Math.min(parseInt(descSize) + 8, 36) : Math.min(parseInt(descSize), 20);
+  const gap = isLetter ? '16px' : '10px';
+
+  const win = window.open('', '_blank', 'width=' + (isLetter ? '800' : '400') + ',height=600');
   win.document.write('<!DOCTYPE html><html><head><style>'
     + '* { box-sizing: border-box; margin: 0; padding: 0; }'
-    + 'html, body { width: 4in; height: 6in; margin: 0; padding: 0; overflow: hidden; }'
-    + '@page { size: 4in 6in; margin: 0; }'
-    + '.label { width: 4in; height: 6in; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0.2in; font-family: Segoe UI, Arial, sans-serif; overflow: hidden; }'
-    + '.logo img { width: 200px; display: block; margin: 0 auto; }'
-    + '.fwa { font-size: 48px; font-weight: 900; letter-spacing: 8px; text-align: center; }'
-    + '.cartid-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
-    + '.cartid { font-size: ' + Math.min(cartIdSize, 42) + 'px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
+    + 'html, body { width: ' + pageW + '; height: ' + pageH + '; margin: 0; padding: 0; overflow: hidden; }'
+    + '@page { size: ' + pageW + ' ' + pageH + '; margin: 0; }'
+    + '.label { width: ' + pageW + '; height: ' + pageH + '; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: ' + gap + '; padding: 0.3in; font-family: Segoe UI, Arial, sans-serif; overflow: hidden; }'
+    + '.logo img { width: ' + logoW + '; display: block; margin: 0 auto; }'
+    + '.fwa { font-size: ' + fwaSize + '; font-weight: 900; letter-spacing: ' + fwaSpacing + '; text-align: center; }'
+    + '.cartid-header { font-size: ' + (isLetter ? '14px' : '11px') + '; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
+    + '.cartid { font-size: ' + cartIdPrintSize + 'px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
     + '.bc { text-align: center; }'
-    + '.bc svg { display: block; margin: 0 auto; max-width: 3.5in; }'
-    + '.desc { font-size: ' + Math.min(descSize, 20) + 'px; text-align: center; font-weight: 500; }'
+    + '.bc svg { display: block; margin: 0 auto; max-width: ' + (isLetter ? '8in' : '3.5in') + '; }'
+    + '.desc { font-size: ' + descPrintSize + 'px; text-align: center; font-weight: 500; }'
+    + '.model-type { font-size: ' + (isLetter ? '40px' : '28px') + '; font-weight: 900; text-align: center; text-transform: uppercase; letter-spacing: 2px; }'
     + '.divider { width: 100%; border-top: 2px solid #000; }'
     + '</style></head><body><div class="label">'
     + '<div class="logo"><img src="' + logoUrl + '"></div>'
@@ -228,6 +288,7 @@ function printLabel() {
     + '<div class="cartid">' + cartId + '</div>'
     + '<div class="bc">' + barcodeHtml + '</div>'
     + '<div class="divider"></div>'
+    + (modelType ? '<div class="model-type">' + modelType + '</div><div class="divider"></div>' : '')
     + (desc ? '<div class="desc">' + desc + '</div>' : '')
     + '</div></body></html>');
   win.document.close();
@@ -237,9 +298,24 @@ function printLabel() {
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
 const URL_KEY = 'fwa_script_url';
 let _jsonpCounter = 0;
-const scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec';
+const scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzJ-PEyynaW80eJVyCzwo7nSKKR4a4t4KBe5VwWy0esuw-DqieAepfFuGHSG_m3tTdkcw/exec';
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {

@@ -211,6 +211,17 @@ function doGet(e) {
       return _respond({ success: true, data: rows }, callback);
     }
 
+    // ---- READ STANDARD CART NOTES ----
+    if (action === 'readstandardnotes') {
+      var snSheet = ss.getSheetByName('Cart - Standard Note');
+      if (!snSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = snSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = snSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      var notes = data.map(function(row) { return row[0] ? row[0].toString().trim() : ''; }).filter(function(n) { return n; });
+      return _respond({ success: true, data: notes }, callback);
+    }
+
     // ---- Device Issues ----
     if (action === 'readreceiptissues') {
       var riSheet = ss.getSheetByName('Device Issues');
@@ -308,8 +319,8 @@ function doGet(e) {
       if (!cartsSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = cartsSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = cartsSheet.getRange(2, 1, lastRow - 1, 6).getValues();
-      var headers = ['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed', 'Note'];
+      var data = cartsSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var headers = ['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed', 'Model Type', 'Note'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -336,7 +347,7 @@ function doGet(e) {
       if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
       var note = (e.parameter.note || '').toString().trim();
       var sheetRow = row + 2;
-      cartsSheet.getRange(sheetRow, 6).setValue(note);
+      cartsSheet.getRange(sheetRow, 7).setValue(note);
       return _respond({ success: true }, callback);
     }
 
@@ -356,16 +367,17 @@ function doGet(e) {
       var cartsSheet = ss.getSheetByName('Carts');
       if (!cartsSheet) {
         cartsSheet = ss.insertSheet('Carts');
-        cartsSheet.getRange(1, 1, 1, 5).setValues([['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed']]);
+        cartsSheet.getRange(1, 1, 1, 7).setValues([['Cart ID', 'Location', 'Cart Status', 'Date Created', 'Date Removed', 'Note', 'Model Type']]);
       }
       var cartId = (e.parameter.cartid || '').toString().trim();
       var location = (e.parameter.location || '').toString().trim();
       var status = (e.parameter.status || 'Active').toString().trim();
       var note = (e.parameter.note || '').toString().trim();
+      var modelType = (e.parameter.modeltype || '').toString().trim();
       if (!cartId) return _respond({ success: false, error: 'Cart ID required' }, callback);
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
-      cartsSheet.appendRow([cartId, location, status, ts, '', note]);
+      cartsSheet.appendRow([cartId, location, status, ts, '', modelType, note]);
       var lastRow = cartsSheet.getLastRow();
       cartsSheet.getRange(lastRow, 1).setNumberFormat('@');
       cartsSheet.getRange(lastRow, 1).setValue(cartId);

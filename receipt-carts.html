@@ -19,7 +19,10 @@
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
   .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
-  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
   .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
   .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
   .header h1 { font-size: 22px; font-weight: 600; }
@@ -93,24 +96,32 @@
 <nav class="sidebar">
   <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
   <div class="sidebar-nav">
-    <div class="nav-section">Tester Health</div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
     <a href="index.html"><span class="icon">🏠</span> Overview</a>
     <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
     <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
     <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    <div class="nav-section">Product/Device Issues</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
     <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html" class="active"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
-    <div class="nav-section">Audit Tools</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
     <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
-    <div class="nav-section">System</div>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
     <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
   </div>
 </nav>
 <div class="main-wrap">
@@ -148,6 +159,7 @@
           <th style="padding:10px 14px;text-align:left;">Location</th>
           <th style="padding:10px 14px;text-align:left;">Status</th>
           <th style="padding:10px 14px;text-align:center;">Units</th>
+          <th style="padding:10px 14px;text-align:left;">Model Type</th>
           <th style="padding:10px 14px;text-align:left;">Note</th>
           <th style="padding:10px 14px;text-align:left;">Last Added</th>
         </tr></thead>
@@ -185,8 +197,19 @@
         <option value="Active">Active</option>
         <option value="Inactive">Inactive</option>
       </select>
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;margin-top:12px;">Model Type</label>
+      <select id="newCartModelType" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;">
+        <option value="">— Select Model —</option>
+        <option value="Titan 3">Titan 3</option>
+        <option value="Titan 4">Titan 4</option>
+        <option value="Mixed">Mixed</option>
+      </select>
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;margin-top:12px;">Note (optional)</label>
-      <input type="text" id="newCartNote" placeholder="e.g. Titan 3 units, Row B" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;">
+      <select id="newCartNoteSelect" onchange="var v=this.value;var el=document.getElementById('newCartNote');if(v==='__custom__'){el.style.display='block';el.value='';el.focus();}else{el.style.display='none';el.value=v;}" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;margin-bottom:8px;">
+        <option value="">— Select Standard Note —</option>
+        <option value="__custom__">Custom (type your own)</option>
+      </select>
+      <input type="text" id="newCartNote" placeholder="Type custom note..." style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;display:none;">
     </div>
     <div class="modal-footer">
       <button onclick="closeCreateCart()" style="padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
@@ -202,7 +225,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allCartInfo = [], allCarts = [], cartSummary = {}, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxXa-eo7irNfecnXLvmmpWZsf-rNIiDCD-k3Apm58fqQJtq55HIL1FTMEq4VXSo4b0xvQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzJ-PEyynaW80eJVyCzwo7nSKKR4a4t4KBe5VwWy0esuw-DqieAepfFuGHSG_m3tTdkcw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -235,15 +258,24 @@ async function loadData() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
   setStatus('pending', 'Loading...');
   try {
-    const [cartInfoJson, cartsJson] = await Promise.all([
+    const [cartInfoJson, cartsJson, notesJson] = await Promise.all([
       jsonpRequest(scriptUrl, { action: 'readcartinfo' }),
-      jsonpRequest(scriptUrl, { action: 'readcarts' })
+      jsonpRequest(scriptUrl, { action: 'readcarts' }),
+      jsonpRequest(scriptUrl, { action: 'readstandardnotes' }).catch(() => ({ success: false }))
     ]);
     if (cartInfoJson.success) {
       allCartInfo = cartInfoJson.data || [];
     }
     if (cartsJson.success) {
       allCarts = cartsJson.data || [];
+    }
+    if (notesJson.success && notesJson.data) {
+      window._standardNotes = notesJson.data;
+      // Populate create cart dropdown
+      const sel = document.getElementById('newCartNoteSelect');
+      sel.innerHTML = '<option value="">— Select Standard Note —</option>'
+        + notesJson.data.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('')
+        + '<option value="__custom__">Custom (type your own)</option>';
     }
     setStatus('connected', 'Connected');
     buildSummary();
@@ -273,12 +305,12 @@ function renderCartTable() {
     const cartId = (c['Cart ID']||'').trim();
     const units = cartSummary[cartId] ? cartSummary[cartId].units.length : 0;
     const lastAdded = cartSummary[cartId] ? cartSummary[cartId].lastAdded : '';
-    return { cartId, location: c['Location']||'', status: c['Cart Status']||'', note: c['Note']||'', units, lastAdded };
+    return { cartId, location: c['Location']||'', status: c['Cart Status']||'', modelType: c['Model Type']||'', note: c['Note']||'', units, lastAdded };
   });
   // Also include carts from Device Location that aren't in the Carts sheet
   Object.keys(cartSummary).forEach(cartId => {
     if (!activeCarts.some(c => (c['Cart ID']||'').trim() === cartId)) {
-      carts.push({ cartId, location: '', status: '', note: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
+      carts.push({ cartId, location: '', status: '', modelType: '', note: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
     }
   });
   carts.sort((a, b) => a.cartId.localeCompare(b.cartId));
@@ -296,6 +328,7 @@ function renderCartTable() {
       + '<td style="padding:12px 14px;font-size:13px;">' + (c.location||'—') + '</td>'
       + '<td style="padding:12px 14px;"><span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;' + statusStyle + '">' + (c.status||'—') + '</span></td>'
       + '<td style="padding:12px 14px;font-weight:700;font-size:16px;text-align:center;">' + c.units + '</td>'
+      + '<td style="padding:12px 14px;font-size:12px;">' + (c.modelType||'—') + '</td>'
       + '<td style="padding:12px 14px;font-size:12px;color:#555;">' + (c.note||'—') + '</td>'
       + '<td style="padding:12px 14px;font-size:12px;font-family:Consolas,monospace;color:#888;">' + fmtDate(c.lastAdded) + '</td>'
       + '</tr>';
@@ -342,6 +375,9 @@ function showCartDetail(cartId) {
 
   let html = '';
 
+  // Export CSV button
+  html += '<div style="margin-bottom:14px;"><button onclick="exportCartCSV(\'' + cartId.replace(/'/g, "\\'") + '\')" style="padding:8px 18px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button></div>';
+
   if (units.length) {
     html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
     html += '<tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;">IMEI</th><th style="padding:8px 10px;text-align:left;">Serial Number</th><th style="padding:8px 10px;text-align:left;">Device Model</th><th style="padding:8px 10px;text-align:left;">Date Added</th><th></th></tr>';
@@ -376,8 +412,14 @@ function showCartDetail(cartId) {
 
   html += '<div style="margin-bottom:16px;">';
   html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Cart Note</div>';
+  html += '<select id="editCartNoteSelect" onchange="var v=this.value;var el=document.getElementById(\'editCartNote\');if(v===\'__custom__\'){el.style.display=\'block\';el.value=\'\';el.focus();}else if(v){el.style.display=\'none\';el.value=v;}else{el.style.display=\'block\';}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;margin-bottom:6px;">';
+  html += '<option value="">— Select Standard Note —</option>';
+  if (window._standardNotes) { window._standardNotes.forEach(function(n) { html += '<option value="' + n.replace(/"/g,'&quot;') + '"' + (n === currentNote ? ' selected' : '') + '>' + n + '</option>'; }); }
+  html += '<option value="__custom__"' + (!currentNote || (window._standardNotes && !window._standardNotes.includes(currentNote)) ? ' selected' : '') + '>Custom (type your own)</option>';
+  html += '</select>';
+  const showCustom = !currentNote || !window._standardNotes || !window._standardNotes.includes(currentNote);
   html += '<div style="display:flex;gap:8px;">';
-  html += '<input type="text" id="editCartNote" value="' + currentNote.replace(/"/g,'&quot;') + '" placeholder="Add a note..." style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">';
+  html += '<input type="text" id="editCartNote" value="' + currentNote.replace(/"/g,'&quot;') + '" placeholder="Add a note..." style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;' + (showCustom ? '' : 'display:none;') + '">';
   html += '<button onclick="saveCartNote(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
   html += '</div>';
   html += '<div id="noteUpdateFeedback" style="margin-top:4px;font-size:11px;"></div>';
@@ -532,8 +574,46 @@ async function saveCartLocation(cartId) {
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
 }
 
+function exportCartCSV(cartId) {
+  const units = cartSummary[cartId] ? cartSummary[cartId].units : [];
+  const cartInfo = allCarts.find(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
+  const location = cartInfo ? (cartInfo['Location']||'') : '';
+  const modelType = cartInfo ? (cartInfo['Model Type']||'') : '';
+  const note = cartInfo ? (cartInfo['Note']||'') : '';
+
+  const rows = [];
+  rows.push(['Cart Report']);
+  rows.push([]);
+  rows.push(['Cart ID', cartId]);
+  rows.push(['Location', location]);
+  rows.push(['Model Type', modelType]);
+  rows.push(['Note', note]);
+  rows.push(['Total Units', units.length.toString()]);
+  rows.push([]);
+  rows.push(['IMEI', 'Serial Number', 'Device Model', 'Date Added']);
+  units.forEach(u => {
+    rows.push([u['IMEI']||'', u['Serial Number']||'', u['Device Model']||'', u['Date Added']||'']);
+  });
+
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Cart_' + cartId + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function saveCartNote(cartId) {
-  const note = document.getElementById('editCartNote').value.trim();
+  const noteInput = document.getElementById('editCartNote');
+  const noteSelect = document.getElementById('editCartNoteSelect');
+  let note = '';
+  if (noteSelect && noteSelect.value && noteSelect.value !== '__custom__') {
+    note = noteSelect.value;
+  } else {
+    note = noteInput.value.trim();
+  }
   const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
   if (idx < 0) { return; }
   const fb = document.getElementById('noteUpdateFeedback');
@@ -551,6 +631,10 @@ function openCreateCart() {
   document.getElementById('newCartId').value = '';
   document.getElementById('newCartLocation').value = 'Coatesville';
   document.getElementById('newCartStatus').value = 'Active';
+  document.getElementById('newCartModelType').value = '';
+  document.getElementById('newCartNoteSelect').value = '';
+  document.getElementById('newCartNote').value = '';
+  document.getElementById('newCartNote').style.display = 'none';
   document.getElementById('createCartModal').classList.add('show');
   document.getElementById('newCartId').focus();
 }
@@ -561,13 +645,20 @@ async function submitCreateCart() {
   const cartId = document.getElementById('newCartId').value.trim();
   const location = document.getElementById('newCartLocation').value.trim();
   const status = document.getElementById('newCartStatus').value;
-  const note = document.getElementById('newCartNote').value.trim();
+  const modelType = document.getElementById('newCartModelType').value;
+  const noteSelect = document.getElementById('newCartNoteSelect');
+  let note = '';
+  if (noteSelect.value && noteSelect.value !== '__custom__') {
+    note = noteSelect.value;
+  } else {
+    note = document.getElementById('newCartNote').value.trim();
+  }
   if (!cartId) { alert('Cart ID is required'); return; }
 
   const btn = document.getElementById('createCartBtn');
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status, note: note });
+    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status, note: note, modeltype: modelType });
     if (json.success) {
       closeCreateCart();
       loadData();
@@ -580,6 +671,21 @@ function closeModal() { document.getElementById('cartModal').classList.remove('s
 
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
 
 loadData();
 </script>
