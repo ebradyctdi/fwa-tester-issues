@@ -106,6 +106,7 @@
     <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
     <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
     </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
     <div class="nav-group">
@@ -168,7 +169,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzJ-PEyynaW80eJVyCzwo7nSKKR4a4t4KBe5VwWy0esuw-DqieAepfFuGHSG_m3tTdkcw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzIkjoXZpMlvIGHVKASKUhjbXrbhA3Fy_1JmfyFbEvdUOwhFKvbKneuQUedZT1376SrjA/exec'; } catch(e) {}
 
 let allAudits = [];
 let allIssues = [];
@@ -198,7 +199,11 @@ function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
-  return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  var hours = d.getHours();
+  var ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + hours + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0') + ' ' + ampm;
 }
 
 async function loadData() {

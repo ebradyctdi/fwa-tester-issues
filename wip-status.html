@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - WIP Status by Carts</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .upload-zone { border: 2px dashed #ccc; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
+  .upload-zone:hover { border-color: #1a3a5c; background: #f8f9fa; }
+  .upload-zone.dragover { border-color: #28a745; background: #f0fff0; }
+  .upload-zone .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone .upload-text { font-size: 14px; color: #666; }
+  .upload-zone .upload-hint { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+  .file-info { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #d4edda; border-radius: 8px; margin-bottom: 16px; }
+  .file-info .file-name { font-size: 13px; font-weight: 600; color: #155724; flex: 1; }
+  .file-info .file-rows { font-size: 11px; color: #155724; }
+  .file-info .file-clear { padding: 4px 12px; background: #c3e6cb; color: #155724; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .file-info .file-clear:hover { background: #a5d6a7; }
+
+  .cart-table { width: 100%; border-collapse: collapse; }
+  .cart-table th { padding: 12px 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
+  .cart-table td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .cart-table tr { cursor: pointer; transition: background 0.1s; }
+  .cart-table tbody tr:hover { background: #f8f9fa; }
+  .cart-table .cart-id { font-weight: 700; font-family: Consolas, monospace; color: #1a3a5c; font-size: 14px; }
+  .cart-table .process-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .process-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 32px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 700px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; background: #1a3a5c; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .modal-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; }
+  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .process-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .process-bar-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; min-width: 20px; transition: width 0.3s; }
+
+  .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .breakdown-table th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 2px solid #e0e0e0; }
+  .breakdown-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+
+  .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html" class="active"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>WIP Status by Carts</h1><div class="header-sub">Cross-reference WIP process data with active carts</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- KPIs -->
+    <div class="kpi-row" id="kpiRow" style="display:none;">
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotalUnits">0</div><div class="kpi-label">Total Units on Carts</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiDisassociated">0</div><div class="kpi-label">Dis-Associated</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiAwaiting">0</div><div class="kpi-label">Awaiting Dis-Association</div></div>
+      <div class="kpi" style="border-top:4px solid #6f42c1;"><div class="kpi-val" id="kpiNotInWip">0</div><div class="kpi-label">Not in WIP File</div></div>
+    </div>
+
+    <!-- UPLOAD SECTION -->
+    <div class="card">
+      <h2>Upload WIP File</h2>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Click or drag & drop an Excel file (.xlsx, .xls)</div>
+        <div class="upload-hint">File should contain at minimum: IMEI and PROCESS columns</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleFileSelect(event)">
+      <div id="fileInfoBar" style="display:none;"></div>
+    </div>
+
+    <!-- CART RESULTS TABLE -->
+    <div class="card" id="resultsCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Active Carts — WIP Breakdown</h2>
+        <button onclick="exportSummaryCSV()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
+      </div>
+      <div style="margin-bottom:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="cartFilter" placeholder="Filter by Cart ID..." oninput="renderResults()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label for="greenThreshold" style="font-size:12px;color:#555;white-space:nowrap;">Green Dis-Association %:</label>
+          <input type="number" id="greenThreshold" value="85" min="0" max="100" oninput="renderResults()" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:70px;">
+          <span style="font-size:12px;color:#888;">%</span>
+        </div>
+      </div>
+      <table class="cart-table">
+        <thead><tr>
+          <th style="cursor:pointer;" onclick="toggleCartSort()">Cart ID <span id="sortArrow">▲</span></th>
+          <th>Model Type</th>
+          <th>Note</th>
+          <th>Units on Cart</th>
+          <th>Dis-Associated</th>
+          <th>Awaiting Dis-Association</th>
+          <th>Not in WIP File</th>
+          <th>Dis-Association %</th>
+        </tr></thead>
+        <tbody id="cartResultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Cart Details</h3>
+      <div class="modal-sub" id="modalSub"></div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer"><button onclick="exportCartCSV()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button><button onclick="closeModal()">Close</button></div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allCartInfo = [], allCarts = [], wipData = [], cartWipMap = {}, _jsonpCounter = 0;
+let cartSortAsc = true; // true = A-Z
+let selectedCartId = null;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzIkjoXZpMlvIGHVKASKUhjbXrbhA3Fy_1JmfyFbEvdUOwhFKvbKneuQUedZT1376SrjA/exec'; } catch(e) {}
+
+// Process colors for consistent visual mapping
+const processColors = [
+  '#0d6efd', '#28a745', '#fd7e14', '#6f42c1', '#17a2b8',
+  '#dc3545', '#ffc107', '#20c997', '#6610f2', '#e83e8c',
+  '#795548', '#607d8b', '#009688', '#ff5722', '#3f51b5'
+];
+let processColorMap = {};
+
+function getProcessColor(process) {
+  if (!processColorMap[process]) {
+    const idx = Object.keys(processColorMap).length % processColors.length;
+    processColorMap[process] = processColors[idx];
+  }
+  return processColorMap[process];
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 3000);
+}
+
+// ---- FILE UPLOAD ----
+const uploadZone = document.getElementById('uploadZone');
+
+uploadZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', function(e) {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+});
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length) parseFile(files[0]);
+});
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) parseFile(file);
+}
+
+function parseFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!json.length) {
+        showToast('File is empty or has no data rows', 'error');
+        return;
+      }
+
+      // Find IMEI and PROCESS columns (case-insensitive)
+      const headers = Object.keys(json[0]);
+      const imeiCol = headers.find(h => h.toUpperCase().replace(/[^A-Z0-9]/g,'') === 'IMEI') || headers.find(h => h.toUpperCase().includes('IMEI'));
+      const processCol = headers.find(h => h.toUpperCase().replace(/[^A-Z0-9]/g,'') === 'PROCESS') || headers.find(h => h.toUpperCase().includes('PROCESS'));
+
+      if (!imeiCol) {
+        showToast('Could not find an "IMEI" column in the file', 'error');
+        return;
+      }
+      if (!processCol) {
+        showToast('Could not find a "PROCESS" column in the file', 'error');
+        return;
+      }
+
+      // Parse WIP data
+      wipData = json.map(row => ({
+        imei: (row[imeiCol] || '').toString().trim(),
+        process: (row[processCol] || '').toString().trim()
+      })).filter(r => r.imei);
+
+      // Show file info
+      document.getElementById('fileInfoBar').style.display = 'block';
+      document.getElementById('fileInfoBar').innerHTML = '<div class="file-info"><span class="file-name">📄 ' + file.name + '</span><span class="file-rows">' + wipData.length + ' rows with IMEI</span><button class="file-clear" onclick="clearFile()">✕ Clear</button></div>';
+      uploadZone.style.display = 'none';
+
+      // Reset color map
+      processColorMap = {};
+
+      // Cross-reference with carts
+      crossReference();
+
+    } catch(err) {
+      showToast('Error parsing file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearFile() {
+  wipData = [];
+  document.getElementById('fileInfoBar').style.display = 'none';
+  document.getElementById('fileInfoBar').innerHTML = '';
+  uploadZone.style.display = '';
+  document.getElementById('fileInput').value = '';
+
+  // Rebuild cart map without WIP data (shows dashes)
+  buildCartMap();
+}
+
+// ---- CROSS REFERENCE ----
+function crossReference() {
+  if (!wipData.length) return;
+
+  // Key process steps for "Awaiting Dis-Association"
+  const AWAITING_PROCESSES = ['DIS-PHOLD', 'DIS-RHOLD'];
+
+  // Build IMEI → process lookup from uploaded file
+  const imeiProcessMap = {};
+  wipData.forEach(row => {
+    imeiProcessMap[row.imei] = row.process;
+  });
+
+  // Build cart → units map (active only - units currently on cart)
+  const cartUnitsMap = {};
+  allCartInfo.forEach(item => {
+    const cartId = (item['Cart ID']||'').trim();
+    const status = (item['Status']||'').trim();
+    if (!cartId || status === 'Removed') return;
+    if (!cartUnitsMap[cartId]) cartUnitsMap[cartId] = [];
+    cartUnitsMap[cartId].push(item);
+  });
+
+  // Get active carts
+  const activeCarts = allCarts.filter(c => !(c['Date Removed']||'').trim() && (c['Cart Status']||'').toLowerCase() === 'active');
+
+  // Cross-reference
+  cartWipMap = {};
+  let totalDisassociated = 0;
+  let totalAwaiting = 0;
+  let totalNotInWip = 0;
+  let totalUnitsOnCarts = 0;
+
+  activeCarts.forEach(cart => {
+    const cartId = (cart['Cart ID']||'').trim();
+    const units = cartUnitsMap[cartId] || [];
+    const breakdown = {};
+    let disassociatedCount = 0;
+    let awaitingCount = 0;
+    let notInWipCount = 0;
+    let notInWipUnits = [];
+
+    units.forEach(unit => {
+      const imei = (unit['IMEI']||'').trim();
+      if (imeiProcessMap[imei] !== undefined) {
+        const process = imeiProcessMap[imei] || '(blank)';
+        if (!breakdown[process]) breakdown[process] = [];
+        breakdown[process].push({ imei, serial: (unit['Serial Number']||'').trim(), model: (unit['Device Model']||'').trim() });
+
+        if (AWAITING_PROCESSES.includes(process.toUpperCase())) {
+          awaitingCount++;
+        } else {
+          disassociatedCount++;
+        }
+      } else {
+        notInWipCount++;
+        notInWipUnits.push({ imei, serial: (unit['Serial Number']||'').trim(), model: (unit['Device Model']||'').trim() });
+      }
+    });
+
+    totalDisassociated += disassociatedCount;
+    totalAwaiting += awaitingCount;
+    totalNotInWip += notInWipCount;
+    totalUnitsOnCarts += units.length;
+
+    cartWipMap[cartId] = {
+      totalUnits: units.length,
+      matchedCount: disassociatedCount + awaitingCount,
+      disassociatedCount,
+      awaitingCount,
+      notInWipCount,
+      notInWipUnits,
+      breakdown,
+      modelType: cart['Model Type'] || '',
+      note: cart['Note'] || '',
+      location: cart['Location'] || ''
+    };
+  });
+
+  // Update KPIs
+  document.getElementById('kpiTotalUnits').textContent = totalUnitsOnCarts;
+  document.getElementById('kpiDisassociated').textContent = totalDisassociated;
+  document.getElementById('kpiAwaiting').textContent = totalAwaiting;
+  document.getElementById('kpiNotInWip').textContent = totalNotInWip;
+  document.getElementById('kpiRow').style.display = 'grid';
+
+  // Render table
+  renderResults();
+}
+
+function toggleCartSort() {
+  cartSortAsc = !cartSortAsc;
+  document.getElementById('sortArrow').textContent = cartSortAsc ? '▲' : '▼';
+  renderResults();
+}
+
+function renderResults() {
+  const tbody = document.getElementById('cartResultsBody');
+  const filterVal = (document.getElementById('cartFilter') ? document.getElementById('cartFilter').value : '').trim().toLowerCase();
+  const hasWip = wipData.length > 0;
+
+  let entries = Object.entries(cartWipMap).filter(([id, d]) => d.totalUnits > 0);
+
+  // Apply filter
+  if (filterVal) {
+    entries = entries.filter(([cartId]) => cartId.toLowerCase().includes(filterVal));
+  }
+
+  // Sort by Cart ID alphabetically
+  entries.sort((a, b) => {
+    const cmp = a[0].localeCompare(b[0]);
+    return cartSortAsc ? cmp : -cmp;
+  });
+
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="no-data">' + (filterVal ? 'No carts match the filter.' : 'No active carts with units found.') + '</td></tr>';
+    document.getElementById('resultsCard').style.display = 'block';
+    return;
+  }
+
+  tbody.innerHTML = entries.map(([cartId, data]) => {
+    if (hasWip && data.disassociatedCount !== null) {
+      const disPct = data.totalUnits > 0 ? Math.round((data.disassociatedCount / data.totalUnits) * 100) : 0;
+      const greenThreshold = parseInt(document.getElementById('greenThreshold').value) || 85;
+      const pctColor = disPct >= greenThreshold ? '#28a745' : disPct >= 50 ? '#fd7e14' : '#dc3545';
+
+      return '<tr onclick="showCartBreakdown(\'' + cartId.replace(/'/g, "\\'") + '\')">'
+        + '<td class="cart-id">' + cartId + '</td>'
+        + '<td>' + (data.modelType || '—') + '</td>'
+        + '<td style="font-size:12px;color:#555;">' + (data.note || '—') + '</td>'
+        + '<td>' + data.totalUnits + '</td>'
+        + '<td style="font-weight:700;color:#28a745;">' + data.disassociatedCount + '</td>'
+        + '<td style="font-weight:700;color:#fd7e14;">' + data.awaitingCount + '</td>'
+        + '<td style="color:#888;">' + data.notInWipCount + '</td>'
+        + '<td style="font-weight:700;color:' + pctColor + ';">' + disPct + '%</td>'
+        + '</tr>';
+    } else {
+      return '<tr>'
+        + '<td class="cart-id">' + cartId + '</td>'
+        + '<td>' + (data.modelType || '—') + '</td>'
+        + '<td style="font-size:12px;color:#555;">' + (data.note || '—') + '</td>'
+        + '<td>' + data.totalUnits + '</td>'
+        + '<td style="color:#ccc;">—</td>'
+        + '<td style="color:#ccc;">—</td>'
+        + '<td style="color:#ccc;">—</td>'
+        + '<td style="color:#ccc;">—</td>'
+        + '</tr>';
+    }
+  }).join('');
+
+  document.getElementById('resultsCard').style.display = 'block';
+}
+
+function showCartBreakdown(cartId) {
+  selectedCartId = cartId;
+  const data = cartWipMap[cartId];
+  if (!data) return;
+
+  const AWAITING_PROCESSES = ['DIS-PHOLD', 'DIS-RHOLD'];
+  const disPct = data.totalUnits > 0 ? Math.round((data.disassociatedCount / data.totalUnits) * 100) : 0;
+
+  document.getElementById('modalTitle').textContent = 'Cart: ' + cartId;
+  document.getElementById('modalSub').textContent = (data.modelType ? data.modelType + ' — ' : '') + data.totalUnits + ' units on cart • Dis-Association: ' + disPct + '%';
+
+  let html = '';
+
+  // Summary stats
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
+  html += '<div style="text-align:center;padding:12px;background:#e8f5e9;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#28a745;">' + data.disassociatedCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Dis-Associated</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:#fff3e0;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#fd7e14;">' + data.awaitingCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Awaiting</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:#f5f5f5;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#888;">' + data.notInWipCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Not in WIP</div></div>';
+  html += '</div>';
+
+  // Process bar
+  const total = data.matchedCount;
+  if (total > 0) {
+    html += '<div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:6px;">Process Distribution</div>';
+    html += '<div class="process-bar">';
+    Object.entries(data.breakdown).sort((a,b) => b[1].length - a[1].length).forEach(([process, units]) => {
+      const pct = (units.length / data.totalUnits * 100).toFixed(1);
+      const isAwaiting = AWAITING_PROCESSES.includes(process.toUpperCase());
+      const color = isAwaiting ? '#fd7e14' : '#28a745';
+      html += '<div class="process-bar-seg" style="width:' + pct + '%;background:' + color + ';" title="' + process + ': ' + units.length + ' (' + pct + '%)">' + (parseFloat(pct) > 8 ? units.length : '') + '</div>';
+    });
+    // Not in WIP portion
+    if (data.notInWipCount > 0) {
+      const notPct = (data.notInWipCount / data.totalUnits * 100).toFixed(1);
+      html += '<div class="process-bar-seg" style="width:' + notPct + '%;background:#ddd;" title="Not in WIP: ' + data.notInWipCount + ' (' + notPct + '%)">' + (parseFloat(notPct) > 8 ? data.notInWipCount : '') + '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Breakdown table
+  html += '<table class="breakdown-table">';
+  html += '<thead><tr><th>Process</th><th>Status</th><th>Count</th><th>% of Cart</th></tr></thead><tbody>';
+  Object.entries(data.breakdown).sort((a,b) => b[1].length - a[1].length).forEach(([process, units]) => {
+    const pct = (units.length / data.totalUnits * 100).toFixed(1);
+    const isAwaiting = AWAITING_PROCESSES.includes(process.toUpperCase());
+    const statusLabel = isAwaiting ? 'Awaiting' : 'Dis-Associated';
+    const statusColor = isAwaiting ? '#fd7e14' : '#28a745';
+    html += '<tr onclick="toggleProcessIMEIs(this)" style="cursor:pointer;">'
+      + '<td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + statusColor + ';margin-right:8px;"></span>' + process + '</td>'
+      + '<td style="font-size:11px;font-weight:600;color:' + statusColor + ';">' + statusLabel + '</td>'
+      + '<td style="font-weight:700;">' + units.length + '</td>'
+      + '<td>' + pct + '%</td>'
+      + '</tr>';
+    html += '<tr class="imei-detail-row" style="display:none;"><td colspan="4" style="padding:0 12px 12px 30px;"><div class="imei-list" style="max-height:200px;overflow-y:auto;font-size:11px;font-family:Consolas,monospace;background:#f8f9fa;padding:8px 12px;border-radius:4px;">';
+    units.forEach(u => {
+      html += '<div style="padding:2px 0;">' + u.imei + (u.serial ? ' | ' + u.serial : '') + '</div>';
+    });
+    html += '</div></td></tr>';
+  });
+
+  // Not in WIP row
+  if (data.notInWipUnits && data.notInWipUnits.length > 0) {
+    const notPct = (data.notInWipUnits.length / data.totalUnits * 100).toFixed(1);
+    html += '<tr onclick="toggleProcessIMEIs(this)" style="cursor:pointer;">'
+      + '<td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#888;margin-right:8px;"></span>Not in WIP</td>'
+      + '<td style="font-size:11px;font-weight:600;color:#888;">—</td>'
+      + '<td style="font-weight:700;">' + data.notInWipUnits.length + '</td>'
+      + '<td>' + notPct + '%</td>'
+      + '</tr>';
+    html += '<tr class="imei-detail-row" style="display:none;"><td colspan="4" style="padding:0 12px 12px 30px;"><div class="imei-list" style="max-height:200px;overflow-y:auto;font-size:11px;font-family:Consolas,monospace;background:#f8f9fa;padding:8px 12px;border-radius:4px;">';
+    data.notInWipUnits.forEach(u => {
+      html += '<div style="padding:2px 0;">' + u.imei + (u.serial ? ' | ' + u.serial : '') + '</div>';
+    });
+    html += '</div></td></tr>';
+  }
+
+  html += '</tbody></table>';
+
+  // Summary footer
+  html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#888;">'
+    + 'Total units on cart: ' + data.totalUnits + ' | Dis-Associated: ' + data.disassociatedCount + ' | Awaiting: ' + data.awaitingCount + ' | Not in WIP: ' + data.notInWipCount
+    + '</div>';
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function toggleProcessIMEIs(rowEl) {
+  const detailRow = rowEl.nextElementSibling;
+  if (detailRow && detailRow.classList.contains('imei-detail-row')) {
+    detailRow.style.display = detailRow.style.display === 'none' ? 'table-row' : 'none';
+  }
+}
+
+function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
+
+function exportCartCSV() {
+  if (!selectedCartId || !cartWipMap[selectedCartId]) return;
+  const data = cartWipMap[selectedCartId];
+  const AWAITING_PROCESSES = ['DIS-PHOLD', 'DIS-RHOLD'];
+
+  let csv = 'IMEI,Serial Number,Process,Status\n';
+  Object.entries(data.breakdown).forEach(([process, units]) => {
+    const isAwaiting = AWAITING_PROCESSES.includes(process.toUpperCase());
+    const status = isAwaiting ? 'Awaiting Dis-Association' : 'Dis-Associated';
+    units.forEach(u => {
+      csv += '"' + u.imei + '","' + u.serial + '","' + process + '","' + status + '"\n';
+    });
+  });
+  if (data.notInWipUnits && data.notInWipUnits.length) {
+    data.notInWipUnits.forEach(u => {
+      csv += '"' + u.imei + '","' + u.serial + '","","Not in WIP"\n';
+    });
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'WIP_Cart_' + selectedCartId + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported for ' + selectedCartId, 'success');
+}
+
+// ---- EXPORT CSV ----
+function exportSummaryCSV() {
+  const entries = Object.entries(cartWipMap).filter(([id, d]) => d.totalUnits > 0).sort((a, b) => b[1].totalUnits - a[1].totalUnits);
+  if (!entries.length) { showToast('No data to export', 'error'); return; }
+
+  let csv = 'Cart ID,Units on Cart,Dis-Associated,Awaiting Dis-Association,Not in WIP File,Dis-Association %\n';
+  entries.forEach(([cartId, data]) => {
+    const disPct = data.totalUnits > 0 ? Math.round((data.disassociatedCount / data.totalUnits) * 100) : 0;
+    csv += '"' + cartId + '",' + data.totalUnits + ',' + data.disassociatedCount + ',' + data.awaitingCount + ',' + data.notInWipCount + ',' + disPct + '%\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'wip-status-by-carts.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported', 'success');
+}
+
+// ---- LOAD CART DATA ----
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading cart data...');
+  try {
+    const [cartInfoJson, cartsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readcartinfo' }),
+      jsonpRequest(scriptUrl, { action: 'readcarts' })
+    ]);
+    if (cartInfoJson.success) allCartInfo = cartInfoJson.data || [];
+    if (cartsJson.success) allCarts = cartsJson.data || [];
+    setStatus('connected', 'Connected');
+
+    // Build initial cart map and show table
+    buildCartMap();
+
+    // If file already loaded, re-run cross-reference
+    if (wipData.length) crossReference();
+
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    showToast('Failed to load cart data: ' + err.message, 'error');
+  }
+}
+
+// Build cart map without WIP data (shows units on cart, dashes for WIP fields)
+function buildCartMap() {
+  const cartUnitsMap = {};
+  allCartInfo.forEach(item => {
+    const cartId = (item['Cart ID']||'').trim();
+    const status = (item['Status']||'').trim();
+    if (!cartId || status === 'Removed') return;
+    if (!cartUnitsMap[cartId]) cartUnitsMap[cartId] = [];
+    cartUnitsMap[cartId].push(item);
+  });
+
+  const activeCarts = allCarts.filter(c => !(c['Date Removed']||'').trim() && (c['Cart Status']||'').toLowerCase() === 'active');
+
+  cartWipMap = {};
+  let totalUnitsOnCarts = 0;
+
+  activeCarts.forEach(cart => {
+    const cartId = (cart['Cart ID']||'').trim();
+    const units = cartUnitsMap[cartId] || [];
+    totalUnitsOnCarts += units.length;
+
+    cartWipMap[cartId] = {
+      totalUnits: units.length,
+      matchedCount: null,
+      disassociatedCount: null,
+      awaitingCount: null,
+      notInWipCount: null,
+      notInWipUnits: [],
+      breakdown: {},
+      modelType: cart['Model Type'] || '',
+      note: cart['Note'] || '',
+      location: cart['Location'] || ''
+    };
+  });
+
+  // Update KPIs
+  document.getElementById('kpiTotalUnits').textContent = totalUnitsOnCarts;
+  document.getElementById('kpiDisassociated').textContent = '—';
+  document.getElementById('kpiAwaiting').textContent = '—';
+  document.getElementById('kpiNotInWip').textContent = '—';
+  document.getElementById('kpiRow').style.display = 'grid';
+  document.getElementById('resultsCard').style.display = 'block';
+
+  renderResults();
+}
+
+// ---- NAV ----
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+// Init
+loadData();
+</script>
+</body>
+</html>
