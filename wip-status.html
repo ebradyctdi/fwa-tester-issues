@@ -51,12 +51,12 @@
   .file-info .file-clear { padding: 4px 12px; background: #c3e6cb; color: #155724; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
   .file-info .file-clear:hover { background: #a5d6a7; }
 
-  .cart-table { width: 100%; border-collapse: collapse; }
-  .cart-table th { padding: 12px 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
-  .cart-table td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .cart-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .cart-table th { padding: 12px 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
+  .cart-table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
   .cart-table tr { cursor: pointer; transition: background 0.1s; }
   .cart-table tbody tr:hover { background: #f8f9fa; }
-  .cart-table .cart-id { font-weight: 700; font-family: Consolas, monospace; color: #1a3a5c; font-size: 14px; }
+  .cart-table .cart-id { font-weight: 700; font-family: Consolas, monospace; color: #1a3a5c; font-size: 14px; white-space: nowrap; }
   .cart-table .process-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .process-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
 
@@ -179,14 +179,14 @@
       </div>
       <table class="cart-table">
         <thead><tr>
-          <th style="cursor:pointer;" onclick="toggleCartSort()">Cart ID <span id="sortArrow">▲</span></th>
-          <th>Model Type</th>
+          <th style="cursor:pointer;width:90px;" onclick="toggleCartSort()">Cart ID <span id="sortArrow">▲</span></th>
+          <th style="width:80px;">Model Type</th>
           <th>Note</th>
-          <th>Units on Cart</th>
-          <th>Dis-Associated</th>
-          <th>Awaiting Dis-Association</th>
-          <th>Not in WIP File</th>
-          <th>Dis-Association %</th>
+          <th style="width:80px;">Units on Cart</th>
+          <th style="width:90px;">Dis-Associated</th>
+          <th style="width:100px;">Awaiting Dis-Association</th>
+          <th style="width:80px;">Not in WIP File</th>
+          <th style="width:95px;">Dis-Association %</th>
         </tr></thead>
         <tbody id="cartResultsBody"></tbody>
       </table>
