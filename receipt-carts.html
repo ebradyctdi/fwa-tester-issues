@@ -411,6 +411,22 @@ function showCartDetail(cartId) {
   html += '<div id="locationUpdateFeedback" style="margin-top:4px;font-size:11px;"></div>';
   html += '</div>';
 
+  // Model Type
+  const currentModelType = cartInfo ? (cartInfo['Model Type']||'') : '';
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Model Type</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<select id="editCartModelType" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;background:white;">';
+  html += '<option value=""' + (!currentModelType ? ' selected' : '') + '>— None —</option>';
+  html += '<option value="Titan 3"' + (currentModelType === 'Titan 3' ? ' selected' : '') + '>Titan 3</option>';
+  html += '<option value="Titan 4"' + (currentModelType === 'Titan 4' ? ' selected' : '') + '>Titan 4</option>';
+  html += '<option value="Mixed"' + (currentModelType === 'Mixed' ? ' selected' : '') + '>Mixed</option>';
+  html += '</select>';
+  html += '<button onclick="saveCartModelType(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
+  html += '</div>';
+  html += '<div id="modelTypeUpdateFeedback" style="margin-top:4px;font-size:11px;"></div>';
+  html += '</div>';
+
   html += '<div style="margin-bottom:16px;">';
   html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Cart Note</div>';
   html += '<select id="editCartNoteSelect" onchange="var v=this.value;var el=document.getElementById(\'editCartNote\');if(v===\'__custom__\'){el.style.display=\'block\';el.value=\'\';el.focus();}else if(v){el.style.display=\'none\';el.value=v;}else{el.style.display=\'block\';}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;margin-bottom:6px;">';
@@ -570,6 +586,21 @@ async function saveCartLocation(cartId) {
     if (json.success) {
       fb.innerHTML = '<span style="color:#28a745;">✓ Location saved</span>';
       allCarts[idx]['Location'] = location;
+      renderCartTable();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
+}
+
+async function saveCartModelType(cartId) {
+  const modelType = document.getElementById('editCartModelType').value;
+  const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
+  if (idx < 0) return;
+  const fb = document.getElementById('modelTypeUpdateFeedback');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecartmodeltype', row: idx, modeltype: modelType });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Model Type saved</span>';
+      allCarts[idx]['Model Type'] = modelType;
       renderCartTable();
     } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }

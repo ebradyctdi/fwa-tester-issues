@@ -351,6 +351,17 @@ function doGet(e) {
       return _respond({ success: true }, callback);
     }
 
+    if (action === 'updatecartmodeltype') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var modeltype = (e.parameter.modeltype || '').toString().trim();
+      var sheetRow = row + 2;
+      cartsSheet.getRange(sheetRow, 6).setValue(modeltype);
+      return _respond({ success: true }, callback);
+    }
+
     if (action === 'retirecart') {
       var cartsSheet = ss.getSheetByName('Carts');
       if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
