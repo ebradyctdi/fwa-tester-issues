@@ -100,6 +100,11 @@
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
     </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
     <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -139,9 +144,9 @@
         </div>
       </div>
       <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
-      <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;">
+      <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
       </div>
-      <div style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. Cart, Model, Reported By, and Note are locked from setup.</div>
+      <div style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. You can change Device Model between scans.</div>
       <div id="batchLog" style="margin-top:14px;"></div>
       <div id="batchLog" style="margin-top:14px;"></div>
     </div>
@@ -262,7 +267,7 @@ function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
-  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function statusBadge(s) {
@@ -501,7 +506,7 @@ function startBatchMode() {
   document.getElementById('bSerial').value = '';
   document.getElementById('batchSteadyValues').innerHTML = ''
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Cart</span><div style="font-size:13px;font-weight:600;font-family:Consolas,monospace;">' + cart + '</div></div>'
-    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Device Model</span><div style="font-size:13px;font-weight:600;">' + model + '</div></div>'
+    + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Device Model</span><div><select id="batchDeviceModel" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;font-weight:600;background:white;"><option value="Titan 3"' + (model === 'Titan 3' ? ' selected' : '') + '>Titan 3</option><option value="Titan 4"' + (model === 'Titan 4' ? ' selected' : '') + '>Titan 4</option></select></div></div>'
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Reported By</span><div style="font-size:13px;font-weight:600;">' + reporter + '</div></div>'
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Note</span><div style="font-size:13px;font-weight:600;">' + note + '</div></div>';
   document.getElementById('bIMEI').focus();
@@ -563,7 +568,7 @@ async function submitBatch() {
   const imei = document.getElementById('bIMEI').value.trim();
   const serial = document.getElementById('bSerial').value.trim();
   const cart = document.getElementById('fCart').value.trim();
-  const deviceModel = document.getElementById('fDeviceModel').value;
+  const deviceModel = document.getElementById('batchDeviceModel').value;
   const reportedBy = document.getElementById('fReportedBy').value.trim();
   const note = document.getElementById('fNote').value.trim();
 
@@ -655,15 +660,30 @@ function renderBatchLog() {
 }
 
 async function deleteBatchRecord(rowIdx, logIdx) {
-  if (!confirm('Delete this record?')) return;
+  if (!confirm('Delete this record? This will also remove the unit from the cart.')) return;
   try {
+    const entry = batchLog[logIdx];
     const json = await jsonpRequest(scriptUrl, { action: 'deletereceiptissue', row: rowIdx });
     if (json.success) {
+      // Also remove the unit from the cart (Device Location sheet)
+      if (entry && entry.imei) {
+        try {
+          const cartInfoJson = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
+          if (cartInfoJson.success && cartInfoJson.data) {
+            const match = cartInfoJson.data.findIndex(d => (d['IMEI']||'').trim() === entry.imei && !(d['Date Removed']||'').trim());
+            if (match >= 0) {
+              await jsonpRequest(scriptUrl, { action: 'removefromcart', row: match });
+              cartTotalCount--;
+              document.getElementById('cartTotal').textContent = cartTotalCount;
+            }
+          }
+        } catch(e) { /* cart removal failed silently */ }
+      }
       batchLog.splice(logIdx, 1);
       batchSessionCount--;
       document.getElementById('batchCount').textContent = batchSessionCount;
       renderBatchLog();
-      showBatchFeedback('Record deleted', 'success');
+      showBatchFeedback('Record deleted & removed from cart', 'success');
     } else { showBatchFeedback(json.error || 'Failed', 'error'); }
   } catch(err) { showBatchFeedback('Error: ' + err.message, 'error'); }
 }

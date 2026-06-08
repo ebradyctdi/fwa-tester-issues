@@ -117,6 +117,11 @@
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
     </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
     <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -148,11 +153,14 @@
     <!-- CART SUMMARY -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;border:none;padding:0;">Active Carts <span id="cartCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <h2 style="margin:0;border:none;padding:0;">Carts <span id="cartCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
         <div style="display:flex;gap:8px;">
           <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
           <button onclick="openCreateCart()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create A Cart</button>
         </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:13px;color:#555;cursor:pointer;user-select:none;"><input type="checkbox" id="showInactive" onchange="renderCartTable()" style="margin-right:6px;cursor:pointer;"> Show Inactive Carts</label>
       </div>
       <table class="hist-table" id="cartTable" style="width:100%;border-collapse:collapse;">
         <thead><tr>
@@ -193,11 +201,6 @@
       <input type="text" id="newCartId" placeholder="e.g. FWA-001" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Location</label>
       <input type="text" id="newCartLocation" placeholder="e.g. Coatesville" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:12px;">
-      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Status</label>
-      <select id="newCartStatus" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;">
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-      </select>
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;margin-top:12px;">Model Type</label>
       <select id="newCartModelType" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;">
         <option value="">— Select Model —</option>
@@ -252,7 +255,7 @@ function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
-  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 async function loadData() {
@@ -300,9 +303,11 @@ function buildSummary() {
 }
 
 function renderCartTable() {
-  // Merge cart info with carts sheet data
-  const activeCarts = allCarts.filter(c => !(c['Date Removed']||'').trim());
-  const carts = activeCarts.map(c => {
+  // Check if inactive carts should be shown
+  const showInactive = document.getElementById('showInactive') && document.getElementById('showInactive').checked;
+  const filteredCarts = showInactive ? allCarts : allCarts.filter(c => !(c['Date Removed']||'').trim() && (c['Cart Status']||'').toLowerCase() !== 'inactive');
+
+  const carts = filteredCarts.map(c => {
     const cartId = (c['Cart ID']||'').trim();
     const units = cartSummary[cartId] ? cartSummary[cartId].units.length : 0;
     const lastAdded = cartSummary[cartId] ? cartSummary[cartId].lastAdded : '';
@@ -310,7 +315,7 @@ function renderCartTable() {
   });
   // Also include carts from Device Location that aren't in the Carts sheet
   Object.keys(cartSummary).forEach(cartId => {
-    if (!activeCarts.some(c => (c['Cart ID']||'').trim() === cartId)) {
+    if (!filteredCarts.some(c => (c['Cart ID']||'').trim() === cartId)) {
       carts.push({ cartId, location: '', status: '', modelType: '', note: '', units: cartSummary[cartId].units.length, lastAdded: cartSummary[cartId].lastAdded });
     }
   });
@@ -468,12 +473,7 @@ function showCartDetail(cartId) {
 
   // Retire button
   html += '<div style="text-align:center;padding-top:12px;border-top:1px solid #eee;">';
-  if (units.length === 0) {
-    html += '<button onclick="retireCart(\'' + cartId.replace(/'/g,"\\'") + '\')" style="padding:10px 24px;background:#dc3545;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Retire Cart</button>';
-  } else {
-    html += '<button disabled style="padding:10px 24px;background:#ccc;color:#888;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:default;">Retire Cart</button>';
-    html += '<div style="font-size:11px;color:#888;margin-top:6px;">Remove all units before retiring this cart.</div>';
-  }
+  html += '<button onclick="retireCart(\'' + cartId.replace(/'/g,"\\'") + '\',' + units.length + ')" style="padding:10px 24px;background:#dc3545;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Retire Cart</button>';
   html += '</div>';
 
   document.getElementById('modalBody').innerHTML = html;
@@ -498,12 +498,27 @@ function showCartDetail(cartId) {
   }, 50);
 }
 
-async function retireCart(cartId) {
-  if (!confirm('Retire cart "' + cartId + '"? This will mark it as inactive.')) return;
+async function retireCart(cartId, unitCount) {
+  let msg = 'Retire cart "' + cartId + '"? This will mark it as inactive.';
+  if (unitCount > 0) {
+    msg = 'Cart "' + cartId + '" still has ' + unitCount + ' unit(s) on it.\n\nRetiring this cart will remove all associated units from the cart.\n\nAre you sure you want to proceed?';
+  }
+  if (!confirm(msg)) return;
+
   // Find the row in allCarts
   const idx = allCarts.findIndex(c => (c['Cart ID']||'').trim() === cartId && !(c['Date Removed']||'').trim());
   if (idx < 0) { alert('Cart not found'); return; }
+
   try {
+    // If there are units, remove them all first
+    if (unitCount > 0) {
+      const units = cartSummary[cartId] ? cartSummary[cartId].units : [];
+      for (let i = units.length - 1; i >= 0; i--) {
+        await jsonpRequest(scriptUrl, { action: 'removefromcart', row: units[i]._row });
+      }
+    }
+
+    // Now retire the cart
     const json = await jsonpRequest(scriptUrl, { action: 'retirecart', row: idx });
     if (json.success) {
       closeModal();
@@ -660,9 +675,21 @@ async function saveCartNote(cartId) {
 }
 
 function openCreateCart() {
-  document.getElementById('newCartId').value = '';
+  // Determine next sequential Cart ID (FWA-xxxx)
+  let maxNum = 0;
+  allCarts.forEach(c => {
+    const id = (c['Cart ID']||'').trim().toUpperCase();
+    const match = id.match(/^FWA-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  const nextNum = maxNum + 1;
+  const nextId = 'FWA-' + String(nextNum).padStart(4, '0');
+
+  document.getElementById('newCartId').value = nextId;
   document.getElementById('newCartLocation').value = 'Coatesville';
-  document.getElementById('newCartStatus').value = 'Active';
   document.getElementById('newCartModelType').value = '';
   document.getElementById('newCartNoteSelect').value = '';
   document.getElementById('newCartNote').value = '';
@@ -676,7 +703,6 @@ function closeCreateCart() { document.getElementById('createCartModal').classLis
 async function submitCreateCart() {
   const cartId = document.getElementById('newCartId').value.trim();
   const location = document.getElementById('newCartLocation').value.trim();
-  const status = document.getElementById('newCartStatus').value;
   const modelType = document.getElementById('newCartModelType').value;
   const noteSelect = document.getElementById('newCartNoteSelect');
   let note = '';
@@ -687,10 +713,17 @@ async function submitCreateCart() {
   }
   if (!cartId) { alert('Cart ID is required'); return; }
 
+  // Check for duplicate Cart ID (including inactive carts)
+  const duplicate = allCarts.find(c => (c['Cart ID']||'').trim().toLowerCase() === cartId.toLowerCase());
+  if (duplicate) {
+    alert('A cart with ID "' + cartId + '" already exists. Please use a different Cart ID.');
+    return;
+  }
+
   const btn = document.getElementById('createCartBtn');
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: status, note: note, modeltype: modelType });
+    const json = await jsonpRequest(scriptUrl, { action: 'createcart', cartid: cartId, location: location, status: 'Active', note: note, modeltype: modelType });
     if (json.success) {
       closeCreateCart();
       loadData();

@@ -115,6 +115,11 @@
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
     </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
     <div class="nav-group">
     <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
@@ -198,7 +203,7 @@ function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
-  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function getIssuesForTester(testerID) {

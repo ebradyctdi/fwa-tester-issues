@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Repaired Pallet Build</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
+  th { background: #f8f9fa; font-weight: 600; color: #1a3a5c; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  tr:hover { background: #f8f9fa; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .badge-open { background: #d4edda; color: #155724; }
+  .badge-closed { background: #e9ecef; color: #495057; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; }
+  .modal-header { padding: 16px 24px; color: white; background: #28a745; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-footer button { padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .empty-state { text-align: center; padding: 30px; color: #aaa; font-size: 14px; }
+
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html" class="active"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Repaired Pallet Build</h1><div class="header-sub">WNC Repair Tools</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- Pallets Table -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Repair Pallets</h2>
+        <button onclick="openCreatePallet()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create Pallet</button>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:13px;color:#555;cursor:pointer;user-select:none;"><input type="checkbox" id="showClosedPallets" onchange="renderTable()" style="margin-right:6px;cursor:pointer;"> Show Closed Pallets</label>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="cursor:pointer;" onclick="sortTable('Pallet ID')">Pallet ID <span id="sort_Pallet ID"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Pallet PO #')">Pallet PO # <span id="sort_Pallet PO #"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('SKU')">SKU <span id="sort_SKU"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Units')">Units <span id="sort_Units"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Pallet Status')">Status <span id="sort_Pallet Status"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Pallet Open Date')">Open Date <span id="sort_Pallet Open Date"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Pallet Close Date')">Close Date <span id="sort_Pallet Close Date"></span></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="palletTableBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE PALLET MODAL -->
+<div class="modal-overlay" id="createPalletModal" onclick="if(event.target===this)closeCreatePallet()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create Repair Pallet</h3>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Pallet ID</label>
+      <input type="text" id="newPalletId" placeholder="e.g. PLB00002700" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Pallet PO #</label>
+      <input type="text" id="newPalletPO" placeholder="e.g. PO-12345" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">SKU</label>
+      <input type="text" id="newPalletSKU" value="WNC-CR200A-CLR" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeCreatePallet()" style="background:#e9ecef;color:#333;">Cancel</button>
+      <button onclick="submitCreatePallet()" id="createPalletBtn" style="background:#28a745;color:white;font-weight:600;">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- ADD UNITS MODAL -->
+<div class="modal-overlay" id="addUnitsModal" onclick="if(event.target===this)closeAddUnits()">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header" style="background:#1a3a5c;">
+      <h3 id="addUnitsTitle">Add Units to Pallet</h3>
+      <div style="font-size:12px;opacity:0.8;margin-top:2px;" id="addUnitsSub"></div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">
+        <div style="text-align:center;"><div id="addUnitsCount" style="font-size:36px;font-weight:700;color:#28a745;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">This Session</div></div>
+        <div style="text-align:center;"><div id="addUnitsPalletTotal" style="font-size:36px;font-weight:700;color:#1a3a5c;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">Pallet Total</div></div>
+        <div style="flex:1;"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Scan IMEI (15 chars)</label>
+        <input type="text" id="addUnitIMEI" placeholder="Scan IMEI..." maxlength="15" autocomplete="off" style="width:100%;padding:14px 12px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
+      </div>
+      <div id="addUnitFeedback" style="padding:10px 14px;border-radius:6px;font-size:13px;font-weight:600;text-align:center;display:none;margin-bottom:12px;"></div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px;">Scan IMEI → auto-submits after 15 characters. Duplicates are blocked.</div>
+      <div id="addUnitsLog" style="max-height:250px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeAddUnits()" style="background:#e9ecef;color:#333;">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT/CLOSE PALLET MODAL -->
+<div class="modal-overlay" id="editPalletModal" onclick="if(event.target===this)closeEditPallet()">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header" style="background:#fd7e14;">
+      <h3 id="editPalletTitle">Edit Pallet</h3>
+      <div style="font-size:12px;opacity:0.8;margin-top:2px;" id="editPalletSub"></div>
+    </div>
+    <div class="modal-body" id="editPalletBody" style="max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button id="closePalletBtn" onclick="closePalletAction()" style="background:#dc3545;color:white;font-weight:600;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Close Pallet</button>
+      <button id="reopenPalletBtn" onclick="reopenPalletAction()" style="background:#28a745;color:white;font-weight:600;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;display:none;">Re-Open Pallet</button>
+      <button onclick="closeEditPallet()" style="background:#e9ecef;color:#333;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allPallets = [], _jsonpCounter = 0;
+let tableSortCol = 'Pallet Status';
+let tableSortAsc = true;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzIkjoXZpMlvIGHVKASKUhjbXrbhA3Fy_1JmfyFbEvdUOwhFKvbKneuQUedZT1376SrjA/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 3000);
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  // If already formatted with EST/EDT suffix from Apps Script, display as-is
+  if (str.includes('EST') || str.includes('EDT')) return str.replace(/ EST| EDT/, '');
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [palletsJson, buildJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readrepairpallets' }),
+      jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' })
+    ]);
+    if (palletsJson.success) {
+      allPallets = palletsJson.data || [];
+    } else { throw new Error(palletsJson.error); }
+    if (buildJson.success) {
+      allPalletBuildUnits = buildJson.data || [];
+    }
+    setStatus('connected', 'Connected');
+    renderTable();
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+  }
+}
+
+function sortTable(col) {
+  if (tableSortCol === col) {
+    tableSortAsc = !tableSortAsc;
+  } else {
+    tableSortCol = col;
+    tableSortAsc = true;
+  }
+  renderTable();
+}
+
+function updateSortArrows() {
+  const cols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date'];
+  cols.forEach(c => {
+    const el = document.getElementById('sort_' + c);
+    if (el) el.textContent = tableSortCol === c ? (tableSortAsc ? '▲' : '▼') : '';
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('palletTableBody');
+  const showClosed = document.getElementById('showClosedPallets') && document.getElementById('showClosedPallets').checked;
+
+  if (!allPallets.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No pallets created yet.</td></tr>';
+    updateSortArrows();
+    return;
+  }
+
+  // Filter: only open by default, show all if checkbox checked
+  let filtered = allPallets;
+  if (!showClosed) {
+    filtered = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'open');
+  }
+
+  // Build unit counts for sorting
+  const unitCounts = {};
+  filtered.forEach(p => {
+    const pid = (p['Pallet ID']||'').trim();
+    unitCounts[pid] = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === pid && (u['Status']||'').trim() === 'On Pallet').length;
+  });
+
+  // Sort
+  const sorted = filtered.slice().sort((a, b) => {
+    let valA, valB;
+    const pidA = (a['Pallet ID']||'').trim();
+    const pidB = (b['Pallet ID']||'').trim();
+
+    if (tableSortCol === 'Units') {
+      valA = unitCounts[pidA] || 0;
+      valB = unitCounts[pidB] || 0;
+      return tableSortAsc ? valA - valB : valB - valA;
+    } else {
+      valA = (a[tableSortCol]||'').toString().toLowerCase();
+      valB = (b[tableSortCol]||'').toString().toLowerCase();
+      const cmp = valA.localeCompare(valB);
+      return tableSortAsc ? cmp : -cmp;
+    }
+  });
+
+  updateSortArrows();
+
+  tbody.innerHTML = sorted.map(p => {
+    const palletId = (p['Pallet ID']||'').trim();
+    const status = (p['Pallet Status']||'').trim();
+    const isOpen = status.toLowerCase() === 'open';
+    const statusBadge = isOpen ? '<span class="badge badge-open">Open</span>' : '<span class="badge badge-closed">' + (status || 'Closed') + '</span>';
+    const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+    const addBtn = isOpen ? '<button onclick="openAddUnits(\'' + palletId.replace(/'/g,"\\'") + '\',\'' + (p['Pallet PO #']||'').replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">+ Add Units</button> ' : '';
+    const editBtnLabel = isOpen ? 'Edit/Close Pallet' : 'Review / Reopen Pallet';
+    const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">' + editBtnLabel + '</button>';
+    return '<tr>'
+      + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + (palletId||'—') + '</td>'
+      + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
+      + '<td>' + (p['SKU']||'—') + '</td>'
+      + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '<td>' + fmtDate(p['Pallet Open Date']) + '</td>'
+      + '<td>' + fmtDate(p['Pallet Close Date']) + '</td>'
+      + '<td style="text-align:right;white-space:nowrap;">' + addBtn + editBtn + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function openCreatePallet() {
+  document.getElementById('newPalletId').value = '';
+  document.getElementById('newPalletPO').value = '';
+  document.getElementById('newPalletSKU').value = 'WNC-CR200A-CLR';
+  document.getElementById('createPalletModal').classList.add('show');
+  document.getElementById('newPalletId').focus();
+}
+
+function closeCreatePallet() {
+  document.getElementById('createPalletModal').classList.remove('show');
+}
+
+async function submitCreatePallet() {
+  const palletId = document.getElementById('newPalletId').value.trim();
+  const palletPO = document.getElementById('newPalletPO').value.trim();
+  const sku = document.getElementById('newPalletSKU').value.trim();
+
+  if (!palletId) { showToast('Pallet ID is required', 'error'); return; }
+  if (!palletPO) { showToast('Pallet PO # is required', 'error'); return; }
+  if (!sku) { showToast('SKU is required', 'error'); return; }
+
+  // Check for duplicate
+  const duplicate = allPallets.find(p => (p['Pallet ID']||'').trim().toLowerCase() === palletId.toLowerCase());
+  if (duplicate) { showToast('A pallet with ID "' + palletId + '" already exists', 'error'); return; }
+
+  const btn = document.getElementById('createPalletBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'createrepairpallet', palletid: palletId, palletpo: palletPO, sku: sku });
+    if (json.success) {
+      showToast('Pallet created: ' + palletId, 'success');
+      closeCreatePallet();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+
+  btn.disabled = false; btn.textContent = 'Create';
+}
+
+// Allow Enter key to submit in the modal
+document.getElementById('newPalletId').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPalletPO').focus(); } });
+document.getElementById('newPalletPO').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPalletSKU').focus(); } });
+document.getElementById('newPalletSKU').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); submitCreatePallet(); } });
+
+// ---- EDIT/CLOSE PALLET ----
+let editPalletId = '';
+
+function openEditPallet(palletId) {
+  editPalletId = palletId;
+  const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
+  const isOpen = pallet && (pallet['Pallet Status']||'').trim().toLowerCase() === 'open';
+
+  document.getElementById('editPalletTitle').textContent = 'Edit Pallet: ' + palletId;
+  document.getElementById('editPalletSub').textContent = (pallet ? 'PO: ' + (pallet['Pallet PO #']||'') + ' • SKU: ' + (pallet['SKU']||'') : '');
+
+  // Show/hide close button or reopen button based on status
+  document.getElementById('closePalletBtn').style.display = isOpen ? '' : 'none';
+  document.getElementById('reopenPalletBtn').style.display = isOpen ? 'none' : '';
+
+  // Build units table
+  const units = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet');
+
+  let html = '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Units on Pallet (' + units.length + ')</div>';
+
+  if (units.length) {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Put to Pallet Date</th><th></th></tr></thead><tbody>';
+    units.forEach((u, i) => {
+      const imei = (u['IMEI']||'').trim();
+      const rowIdx = allPalletBuildUnits.indexOf(u);
+      html += '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:8px 10px;color:#888;">' + (i + 1) + '</td>'
+        + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-weight:600;">' + imei + '</td>'
+        + '<td style="padding:8px 10px;font-size:11px;color:#888;">' + (u['Put to Pallet Date']||'—') + '</td>'
+        + '<td style="padding:8px 10px;text-align:right;">' + (isOpen ? '<button onclick="removeFromPallet(' + rowIdx + ',\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:4px 10px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Remove</button>' : '') + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">No units on this pallet.</div>';
+  }
+
+  document.getElementById('editPalletBody').innerHTML = html;
+  document.getElementById('editPalletModal').classList.add('show');
+}
+
+function closeEditPallet() {
+  document.getElementById('editPalletModal').classList.remove('show');
+  editPalletId = '';
+}
+
+async function removeFromPallet(rowIdx, palletId) {
+  if (!confirm('Remove this unit from the pallet?')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'removefromrepairpallet', row: rowIdx });
+    if (json.success) {
+      showToast('Unit removed from pallet', 'success');
+      // Refresh data
+      const buildJson = await jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' });
+      if (buildJson.success) allPalletBuildUnits = buildJson.data || [];
+      renderTable();
+      openEditPallet(palletId); // Refresh the modal
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function closePalletAction() {
+  if (!confirm('Close pallet "' + editPalletId + '"? This will mark it as Closed and record the close date.')) return;
+  const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === editPalletId);
+  if (idx < 0) { showToast('Pallet not found', 'error'); return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'closerepairpallet', row: idx });
+    if (json.success) {
+      showToast('Pallet closed: ' + editPalletId, 'success');
+      closeEditPallet();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function reopenPalletAction() {
+  if (!confirm('Re-open pallet "' + editPalletId + '"? This will set the status back to Open.')) return;
+  const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === editPalletId);
+  if (idx < 0) { showToast('Pallet not found', 'error'); return; }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'reopenrepairpallet', row: idx });
+    if (json.success) {
+      showToast('Pallet re-opened: ' + editPalletId, 'success');
+      closeEditPallet();
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+// ---- ADD UNITS TO PALLET ----
+let addUnitsPalletId = '';
+let addUnitsSessionCount = 0;
+let addUnitsLog = [];
+let addUnitsPalletTotal = 0;
+let addUnitsQueue = [];
+let addUnitsQueueProcessing = false;
+let addUnitsSubmitting = false;
+let allPalletBuildUnits = [];
+
+function playBeep(success) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = success ? 880 : 220;
+    osc.type = success ? 'sine' : 'square';
+    gain.gain.value = 0.5;
+    osc.start();
+    setTimeout(() => { osc.stop(); ctx.close(); }, success ? 200 : 500);
+  } catch(e) {}
+}
+
+async function openAddUnits(palletId, palletPO) {
+  addUnitsPalletId = palletId;
+  addUnitsSessionCount = 0;
+  addUnitsLog = [];
+  document.getElementById('addUnitsTitle').textContent = 'Add Units to ' + palletId;
+  document.getElementById('addUnitsSub').textContent = 'PO: ' + palletPO;
+  document.getElementById('addUnitsCount').textContent = '0';
+  document.getElementById('addUnitIMEI').value = '';
+  document.getElementById('addUnitFeedback').style.display = 'none';
+  document.getElementById('addUnitsLog').innerHTML = '';
+  document.getElementById('addUnitsModal').classList.add('show');
+
+  // Load existing units for this pallet
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' });
+    if (json.success) {
+      allPalletBuildUnits = json.data || [];
+      addUnitsPalletTotal = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+      document.getElementById('addUnitsPalletTotal').textContent = addUnitsPalletTotal;
+    }
+  } catch(e) { addUnitsPalletTotal = 0; }
+
+  setTimeout(() => document.getElementById('addUnitIMEI').focus(), 100);
+}
+
+function closeAddUnits() {
+  document.getElementById('addUnitsModal').classList.remove('show');
+  addUnitsPalletId = '';
+  renderTable();
+}
+
+function showAddUnitFeedback(msg, type) {
+  const el = document.getElementById('addUnitFeedback');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#d4edda' : '#f8d7da';
+  el.style.color = type === 'success' ? '#155724' : '#721c24';
+  setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+function renderAddUnitsLog() {
+  const el = document.getElementById('addUnitsLog');
+  if (!addUnitsLog.length) { el.innerHTML = ''; return; }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Status</th></tr>';
+  addUnitsLog.forEach((entry, i) => {
+    const num = addUnitsSessionCount - i;
+    const t = entry.time;
+    const timeStr = String(t.getHours() % 12 || 12) + ':' + String(t.getMinutes()).padStart(2,'0') + ':' + String(t.getSeconds()).padStart(2,'0') + ' ' + (t.getHours() >= 12 ? 'PM' : 'AM');
+    const statusIcon = entry.status === 'saved' ? '<span style="color:#28a745;font-weight:600;">✓ Saved</span>' : '<span style="color:#fd7e14;font-weight:600;">⏳ Saving...</span>';
+    html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '">'
+      + '<td style="padding:6px 10px;color:#888;">' + num + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + timeStr + '</td>'
+      + '<td style="padding:6px 10px;">' + statusIcon + '</td>'
+      + '</tr>';
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+// Auto-submit IMEI after 15 chars
+document.getElementById('addUnitIMEI').addEventListener('input', function() {
+  if (this.value.length === 15) {
+    submitAddUnit();
+  }
+});
+document.getElementById('addUnitIMEI').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) submitAddUnit(); }
+});
+
+function submitAddUnit() {
+  if (addUnitsSubmitting) return;
+  addUnitsSubmitting = true;
+
+  const imei = document.getElementById('addUnitIMEI').value.trim();
+
+  if (!imei || imei.length !== 15) { showAddUnitFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showAddUnitFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
+
+  // Check for duplicates (already on this pallet)
+  const alreadyOnPallet = allPalletBuildUnits.some(u => (u['Pallet ID']||'').trim() === addUnitsPalletId && (u['IMEI']||'').trim() === imei);
+  const alreadyInSession = addUnitsLog.some(l => l.imei === imei);
+  if (alreadyOnPallet || alreadyInSession) {
+    showAddUnitFeedback('IMEI ' + imei + ' is already on this pallet', 'error');
+    playBeep(false);
+    document.getElementById('addUnitIMEI').select();
+    addUnitsSubmitting = false;
+    return;
+  }
+
+  // Update UI immediately
+  addUnitsSessionCount++;
+  addUnitsPalletTotal++;
+  document.getElementById('addUnitsCount').textContent = addUnitsSessionCount;
+  document.getElementById('addUnitsPalletTotal').textContent = addUnitsPalletTotal;
+  addUnitsLog.unshift({ imei, time: new Date(), status: 'pending' });
+  if (addUnitsLog.length > 20) addUnitsLog.pop();
+  renderAddUnitsLog();
+  showAddUnitFeedback('✓ Queued — ' + imei, 'success');
+  playBeep(true);
+  document.getElementById('addUnitIMEI').value = '';
+  document.getElementById('addUnitIMEI').focus();
+  addUnitsSubmitting = false;
+
+  // Queue for background save
+  addUnitsQueue.push({ palletId: addUnitsPalletId, imei });
+  processAddUnitsQueue();
+}
+
+async function processAddUnitsQueue() {
+  if (addUnitsQueueProcessing) return;
+  addUnitsQueueProcessing = true;
+
+  while (addUnitsQueue.length > 0) {
+    const item = addUnitsQueue.shift();
+    try {
+      const json = await jsonpRequest(scriptUrl, { action: 'addtorepairpallet', palletid: item.palletId, imei: item.imei });
+      if (json.success) {
+        const logEntry = addUnitsLog.find(e => e.imei === item.imei && e.status === 'pending');
+        if (logEntry) logEntry.status = 'saved';
+        // Add to local tracking
+        allPalletBuildUnits.push({ 'Pallet ID': item.palletId, 'IMEI': item.imei, 'Put to Pallet Date': new Date().toString(), 'Status': 'On Pallet' });
+        renderAddUnitsLog();
+      } else {
+        showAddUnitFeedback('Failed: ' + item.imei + ' — ' + (json.error||''), 'error');
+        playBeep(false);
+      }
+    } catch(err) {
+      showAddUnitFeedback('Connection error for: ' + item.imei, 'error');
+      playBeep(false);
+      addUnitsQueue.unshift(item);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+
+  addUnitsQueueProcessing = false;
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>

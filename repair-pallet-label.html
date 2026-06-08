@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Repair Pallet Label Re-Print</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bwip-js@4.1.1/dist/bwip-js-min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .form-row { display: flex; gap: 16px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+  .form-group { flex: 1; min-width: 200px; }
+  .form-group label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+  .form-group select { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: white; }
+
+  .btn-print { padding: 10px 24px; background: #1a3a5c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-print:hover { background: #2c5f8a; }
+
+  .label-preview-wrap { display: flex; justify-content: center; margin-top: 16px; }
+  .label-preview { width: 4in; height: 6in; border: 2px solid #333; background: white; padding: 0.2in; display: flex; flex-direction: column; font-family: Arial, sans-serif; color: black; transform-origin: top center; transform: scale(0.85); }
+
+  .label-title { text-align: center; font-size: 22px; font-weight: 700; padding: 8px 0 6px; border-bottom: 2px solid black; }
+  .label-row { display: flex; border-bottom: 1px solid black; min-height: 44px; }
+  .label-cell { padding: 6px 8px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: flex-start; }
+  .label-cell-left { flex: 1; border-right: 1px solid black; }
+  .label-cell-right { flex: 1; }
+  .label-cell .cell-label { font-size: 9px; color: #555; }
+  .label-cell .cell-value { font-size: 12px; font-weight: 700; flex: 1; display: flex; align-items: center; }
+  .label-barcode-section { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; }
+  .label-footer { text-align: center; font-size: 11px; padding: 6px 0; border-top: 1px solid black; }
+
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: absolute; left: 0; top: 0; width: 4in; height: 6in; }
+    .label-preview { transform: none; border: none; width: 4in; height: 6in; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html" class="active"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Repair Pallet Label Re-Print</h1><div class="header-sub">WNC Repair Tools</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <h2>Select Pallet</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Closed Pallet</label>
+          <select id="palletSelect" onchange="updatePreview()">
+            <option value="">— Select a closed pallet —</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-print" onclick="printLabel()" id="printBtn" disabled>🖨️ Print Label</button>
+    </div>
+
+    <!-- LABEL PREVIEW -->
+    <div class="card" id="previewCard" style="display:none;">
+      <h2>Label Preview (4" × 6")</h2>
+      <div class="label-preview-wrap">
+        <div id="printArea">
+          <div class="label-preview" id="labelPreview">
+            <div style="text-align:center;padding:10px 0;border-bottom:2px solid black;"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="height:36px;filter:invert(1);"></div>
+            <div class="label-title">Packing Slip</div>
+            <div class="label-row">
+              <div class="label-cell label-cell-left"><span class="cell-value">WNC corporation</span></div>
+              <div class="label-cell label-cell-right"><span class="cell-label">PO#</span><span class="cell-value" id="lbl-po">—</span></div>
+            </div>
+            <div class="label-row">
+              <div class="label-cell label-cell-left"><span class="cell-value">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</span></div>
+              <div class="label-cell label-cell-right"><span class="cell-label">SKU</span><span class="cell-value" id="lbl-sku">—</span></div>
+            </div>
+            <div class="label-row">
+              <div class="label-cell label-cell-left"><span class="cell-value">VERIZON WIRELESS</span></div>
+              <div class="label-cell label-cell-right"><span class="cell-label">Total # of pieces in shipment</span><span class="cell-value" id="lbl-qty">—</span></div>
+            </div>
+            <div class="label-row">
+              <div class="label-cell label-cell-left"><span class="cell-value">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</span></div>
+              <div class="label-cell label-cell-right">
+                <span class="cell-label">Pallet ID</span>
+                <canvas id="lbl-barcode" style="width:100%;height:30px;margin-top:2px;"></canvas>
+                <span style="font-size:9px;margin-top:1px;" id="lbl-palletid-text">Pallet ID : —</span>
+              </div>
+            </div>
+            <div class="label-row">
+              <div class="label-cell label-cell-left"><span class="cell-value">FED</span></div>
+              <div class="label-cell label-cell-right"><span class="cell-value" id="lbl-pallets">1 of 1 (pallets in shipment)</span></div>
+            </div>
+            <div class="label-barcode-section">
+              <canvas id="lbl-barcode-2d" style="width:80%;max-height:100px;"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allPallets = [], allPalletBuildUnits = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzIkjoXZpMlvIGHVKASKUhjbXrbhA3Fy_1JmfyFbEvdUOwhFKvbKneuQUedZT1376SrjA/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 3000);
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [palletsJson, buildJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readrepairpallets' }),
+      jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' })
+    ]);
+    if (palletsJson.success) allPallets = palletsJson.data || [];
+    if (buildJson.success) allPalletBuildUnits = buildJson.data || [];
+    setStatus('connected', 'Connected');
+    populateDropdown();
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+  }
+}
+
+function populateDropdown() {
+  const sel = document.getElementById('palletSelect');
+  const closed = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'closed');
+  sel.innerHTML = '<option value="">— Select a closed pallet —</option>' + closed.map(p => {
+    const pid = (p['Pallet ID']||'').trim();
+    const po = (p['Pallet PO #']||'').trim();
+    return '<option value="' + pid + '">' + pid + ' — PO: ' + po + '</option>';
+  }).join('');
+}
+
+function updatePreview() {
+  const palletId = document.getElementById('palletSelect').value;
+  if (!palletId) {
+    document.getElementById('previewCard').style.display = 'none';
+    document.getElementById('printBtn').disabled = true;
+    return;
+  }
+
+  const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
+  if (!pallet) return;
+
+  const po = (pallet['Pallet PO #']||'').trim();
+  const sku = (pallet['SKU']||'WNC-CR200A-CLR').trim();
+  const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+
+  // Update label fields
+  document.getElementById('lbl-po').textContent = po;
+  document.getElementById('lbl-sku').textContent = sku;
+  document.getElementById('lbl-qty').textContent = unitCount;
+  document.getElementById('lbl-palletid-text').textContent = 'Pallet ID : ' + palletId;
+
+  // Generate barcode
+  try {
+    JsBarcode('#lbl-barcode', palletId, { format: 'CODE128', width: 1.5, height: 28, displayValue: false, margin: 0 });
+  } catch(e) {}
+
+  // Generate PDF417 barcode for bottom section
+  // Format: PO#,SKU,SKU,UnitCount,1,UnitCount,UnitCount
+  try {
+    const pdf417Data = po + ',' + sku + ',' + sku + ',' + unitCount + ',1,' + unitCount + ',' + unitCount;
+    bwipjs.toCanvas('lbl-barcode-2d', {
+      bcid: 'pdf417',
+      text: pdf417Data,
+      scale: 2,
+      height: 10,
+      width: 60,
+      columns: 4
+    });
+  } catch(e) { console.log('PDF417 error:', e); }
+
+  document.getElementById('previewCard').style.display = 'block';
+  document.getElementById('printBtn').disabled = false;
+}
+
+function printLabel() {
+  window.print();
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>

@@ -582,6 +582,117 @@ function doGet(e) {
       return _respond({ success: true, message: 'Audit logged' }, callback);
     }
 
+    // ---- READ REPAIR PALLETS ----
+    if (action === 'readrepairpallets') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = rpSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = rpSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    // ---- CREATE REPAIR PALLET ----
+    if (action === 'createrepairpallet') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) {
+        rpSheet = ss.insertSheet('Repair - Pallets');
+        rpSheet.getRange(1, 1, 1, 6).setValues([['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date']]);
+      }
+      var palletId = (e.parameter.palletid || '').toString().trim();
+      var palletPO = (e.parameter.palletpo || '').toString().trim();
+      var sku = (e.parameter.sku || 'WNC-CR200A-CLR').toString().trim();
+      if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
+      if (!palletPO) return _respond({ success: false, error: 'Pallet PO # required' }, callback);
+
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
+
+      rpSheet.appendRow([palletId, palletPO, sku, 'Open', ts, '']);
+      return _respond({ success: true, message: 'Pallet created' }, callback);
+    }
+
+    // ---- READ REPAIR PALLET BUILD (units) ----
+    if (action === 'readrepairpalletbuild') {
+      var rpbSheet = ss.getSheetByName('Repair - Pallet Build');
+      if (!rpbSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = rpbSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = rpbSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      var headers = ['Pallet ID', 'IMEI', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    // ---- ADD UNIT TO REPAIR PALLET ----
+    if (action === 'addtorepairpallet') {
+      var rpbSheet = ss.getSheetByName('Repair - Pallet Build');
+      if (!rpbSheet) {
+        rpbSheet = ss.insertSheet('Repair - Pallet Build');
+        rpbSheet.getRange(1, 1, 1, 5).setValues([['Pallet ID', 'IMEI', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status']]);
+      }
+      var palletId = (e.parameter.palletid || '').toString().trim();
+      var imei = (e.parameter.imei || '').toString().trim();
+      if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
+      if (!imei) return _respond({ success: false, error: 'IMEI required' }, callback);
+
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
+
+      rpbSheet.appendRow([palletId, imei, ts, '', 'On Pallet']);
+      return _respond({ success: true, message: 'Unit added to pallet' }, callback);
+    }
+
+    // ---- REMOVE UNIT FROM REPAIR PALLET ----
+    if (action === 'removefromrepairpallet') {
+      var rpbSheet = ss.getSheetByName('Repair - Pallet Build');
+      if (!rpbSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
+      rpbSheet.getRange(sheetRow, 4).setValue(ts);
+      rpbSheet.getRange(sheetRow, 5).setValue('Removed');
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- CLOSE REPAIR PALLET ----
+    if (action === 'closerepairpallet') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
+      rpSheet.getRange(sheetRow, 4).setValue('Closed');
+      rpSheet.getRange(sheetRow, 6).setValue(ts);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- RE-OPEN REPAIR PALLET ----
+    if (action === 'reopenrepairpallet') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      rpSheet.getRange(sheetRow, 4).setValue('Open');
+      rpSheet.getRange(sheetRow, 6).setValue('');
+      return _respond({ success: true }, callback);
+    }
+
     // ---- DEFAULT ----
     return _respond({ success: false, error: 'Unknown action: ' + action }, callback);
 
