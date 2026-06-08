@@ -70,6 +70,8 @@
   }
   @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bwip-js@4.1.1/dist/bwip-js-min.js"></script>
 </head>
 <body>
 <nav class="sidebar">
@@ -122,25 +124,46 @@
     <!-- Pallets Table -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;border:none;padding:0;">Repair Pallets</h2>
+        <h2 style="margin:0;border:none;padding:0;">Open Pallets</h2>
         <button onclick="openCreatePallet()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create Pallet</button>
       </div>
       <div style="margin-bottom:12px;">
-        <label style="font-size:13px;color:#555;cursor:pointer;user-select:none;"><input type="checkbox" id="showClosedPallets" onchange="renderTable()" style="margin-right:6px;cursor:pointer;"> Show Closed Pallets</label>
+        <input type="text" id="openPalletFilter" placeholder="Filter by Pallet ID..." oninput="renderTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
       </div>
+      <div style="max-height:440px;overflow-y:auto;">
       <table>
         <thead><tr>
           <th style="cursor:pointer;" onclick="sortTable('Pallet ID')">Pallet ID <span id="sort_Pallet ID"></span></th>
           <th style="cursor:pointer;" onclick="sortTable('Pallet PO #')">Pallet PO # <span id="sort_Pallet PO #"></span></th>
           <th style="cursor:pointer;" onclick="sortTable('SKU')">SKU <span id="sort_SKU"></span></th>
-          <th style="cursor:pointer;" onclick="sortTable('Units')">Units <span id="sort_Units"></span></th>
-          <th style="cursor:pointer;" onclick="sortTable('Pallet Status')">Status <span id="sort_Pallet Status"></span></th>
+          <th style="cursor:pointer;text-align:center;" onclick="sortTable('Units')">Units <span id="sort_Units"></span></th>
           <th style="cursor:pointer;" onclick="sortTable('Pallet Open Date')">Open Date <span id="sort_Pallet Open Date"></span></th>
-          <th style="cursor:pointer;" onclick="sortTable('Pallet Close Date')">Close Date <span id="sort_Pallet Close Date"></span></th>
           <th></th>
         </tr></thead>
-        <tbody id="palletTableBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="palletTableBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
       </table>
+      </div>
+    </div>
+
+    <!-- Closed Pallets Table -->
+    <div class="card">
+      <h2>Closed Pallets</h2>
+      <div style="margin-bottom:12px;">
+        <input type="text" id="closedPalletFilter" placeholder="Filter by Pallet ID..." oninput="renderTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
+      </div>
+      <div style="max-height:440px;overflow-y:auto;">
+      <table>
+        <thead><tr>
+          <th style="cursor:pointer;" onclick="sortClosedTable('Pallet ID')">Pallet ID <span id="csort_Pallet ID"></span></th>
+          <th style="cursor:pointer;" onclick="sortClosedTable('Pallet PO #')">Pallet PO # <span id="csort_Pallet PO #"></span></th>
+          <th style="cursor:pointer;" onclick="sortClosedTable('SKU')">SKU <span id="csort_SKU"></span></th>
+          <th style="cursor:pointer;text-align:center;" onclick="sortClosedTable('Units')">Units <span id="csort_Units"></span></th>
+          <th style="cursor:pointer;" onclick="sortClosedTable('Pallet Close Date')">Close Date <span id="csort_Pallet Close Date"></span></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="closedPalletTableBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+      </div>
     </div>
   </div>
 </div>
@@ -211,11 +234,29 @@
   </div>
 </div>
 
+<!-- PRINT LABEL MODAL -->
+<div class="modal-overlay" id="printLabelModal" onclick="if(event.target===this)closePrintLabelModal()">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header" style="background:#0d6efd;">
+      <h3 id="printLabelTitle">Print Pallet Label</h3>
+    </div>
+    <div class="modal-body" style="text-align:center;overflow-y:auto;">
+      <div id="printLabelPreview" style="display:inline-block;border:2px solid #333;background:white;width:4in;height:6in;padding:0.2in;text-align:left;font-family:Arial,sans-serif;color:black;font-size:11px;transform:scale(0.75);transform-origin:top center;margin-bottom:-80px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="doPrintLabel()" style="background:#0d6efd;color:white;font-weight:600;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨️ Print</button>
+      <button onclick="closePrintLabelModal()" style="background:#e9ecef;color:#333;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allPallets = [], _jsonpCounter = 0;
-let tableSortCol = 'Pallet Status';
+let tableSortCol = 'Pallet ID';
 let tableSortAsc = true;
+let closedSortCol = 'Pallet Close Date';
+let closedSortAsc = false;
 try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzFHRPEVVUJpDMg8-KdRL6T83uGN09LIQODQo2oNPalXVUOwSFezXiTAEP6D5-IfFOQxA/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
@@ -285,43 +326,54 @@ function sortTable(col) {
   renderTable();
 }
 
+function sortClosedTable(col) {
+  if (closedSortCol === col) {
+    closedSortAsc = !closedSortAsc;
+  } else {
+    closedSortCol = col;
+    closedSortAsc = true;
+  }
+  renderTable();
+}
+
 function updateSortArrows() {
-  const cols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date'];
-  cols.forEach(c => {
+  const openCols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Open Date'];
+  openCols.forEach(c => {
     const el = document.getElementById('sort_' + c);
     if (el) el.textContent = tableSortCol === c ? (tableSortAsc ? '▲' : '▼') : '';
+  });
+  const closedCols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Close Date'];
+  closedCols.forEach(c => {
+    const el = document.getElementById('csort_' + c);
+    if (el) el.textContent = closedSortCol === c ? (closedSortAsc ? '▲' : '▼') : '';
   });
 }
 
 function renderTable() {
   const tbody = document.getElementById('palletTableBody');
-  const showClosed = document.getElementById('showClosedPallets') && document.getElementById('showClosedPallets').checked;
+  const closedTbody = document.getElementById('closedPalletTableBody');
+  const openFilter = (document.getElementById('openPalletFilter') ? document.getElementById('openPalletFilter').value : '').trim().toLowerCase();
+  const closedFilter = (document.getElementById('closedPalletFilter') ? document.getElementById('closedPalletFilter').value : '').trim().toLowerCase();
 
-  if (!allPallets.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No pallets created yet.</td></tr>';
-    updateSortArrows();
-    return;
-  }
+  let openPallets = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'open');
+  let closedPalletsList = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() !== 'open');
 
-  // Filter: only open by default, show all if checkbox checked
-  let filtered = allPallets;
-  if (!showClosed) {
-    filtered = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'open');
-  }
+  // Apply filters
+  if (openFilter) openPallets = openPallets.filter(p => (p['Pallet ID']||'').toLowerCase().includes(openFilter));
+  if (closedFilter) closedPalletsList = closedPalletsList.filter(p => (p['Pallet ID']||'').toLowerCase().includes(closedFilter));
 
-  // Build unit counts for sorting
+  // Build unit counts
   const unitCounts = {};
-  filtered.forEach(p => {
+  allPallets.forEach(p => {
     const pid = (p['Pallet ID']||'').trim();
     unitCounts[pid] = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === pid && (u['Status']||'').trim() === 'On Pallet').length;
   });
 
-  // Sort
-  const sorted = filtered.slice().sort((a, b) => {
+  // Sort open pallets
+  const sortedOpen = openPallets.slice().sort((a, b) => {
     let valA, valB;
     const pidA = (a['Pallet ID']||'').trim();
     const pidB = (b['Pallet ID']||'').trim();
-
     if (tableSortCol === 'Units') {
       valA = unitCounts[pidA] || 0;
       valB = unitCounts[pidB] || 0;
@@ -334,33 +386,80 @@ function renderTable() {
     }
   });
 
-  updateSortArrows();
+  // Render open pallets
+  if (!sortedOpen.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">' + (openFilter ? 'No open pallets match the filter.' : 'No open pallets.') + '</td></tr>';
+  } else {
+    tbody.innerHTML = sortedOpen.map(p => {
+      const palletId = (p['Pallet ID']||'').trim();
+      const unitCount = unitCounts[palletId] || 0;
+      const addBtn = '<button onclick="openAddUnits(\'' + palletId.replace(/'/g,"\\'") + '\',\'' + (p['Pallet PO #']||'').replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">+ Add Units</button> ';
+      const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Edit/Close Pallet</button>';
+      return '<tr>'
+        + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + palletId + '</td>'
+        + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
+        + '<td>' + (p['SKU']||'—') + '</td>'
+        + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
+        + '<td>' + fmtDate(p['Pallet Open Date']) + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;">' + addBtn + editBtn + '</td>'
+        + '</tr>';
+    }).join('');
+  }
 
-  tbody.innerHTML = sorted.map(p => {
-    const palletId = (p['Pallet ID']||'').trim();
-    const status = (p['Pallet Status']||'').trim();
-    const isOpen = status.toLowerCase() === 'open';
-    const statusBadge = isOpen ? '<span class="badge badge-open">Open</span>' : '<span class="badge badge-closed">' + (status || 'Closed') + '</span>';
-    const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
-    const addBtn = isOpen ? '<button onclick="openAddUnits(\'' + palletId.replace(/'/g,"\\'") + '\',\'' + (p['Pallet PO #']||'').replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">+ Add Units</button> ' : '';
-    const editBtnLabel = isOpen ? 'Edit/Close Pallet' : 'Review / Reopen Pallet';
-    const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">' + editBtnLabel + '</button>';
-    return '<tr>'
-      + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + (palletId||'—') + '</td>'
-      + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
-      + '<td>' + (p['SKU']||'—') + '</td>'
-      + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
-      + '<td>' + statusBadge + '</td>'
-      + '<td>' + fmtDate(p['Pallet Open Date']) + '</td>'
-      + '<td>' + fmtDate(p['Pallet Close Date']) + '</td>'
-      + '<td style="text-align:right;white-space:nowrap;">' + addBtn + editBtn + '</td>'
-      + '</tr>';
-  }).join('');
+  // Render closed pallets
+  if (!closedPalletsList.length) {
+    closedTbody.innerHTML = '<tr><td colspan="6" class="empty-state">' + (closedFilter ? 'No closed pallets match the filter.' : 'No closed pallets.') + '</td></tr>';
+  } else {
+    const sortedClosed = closedPalletsList.slice().sort((a, b) => {
+      let valA, valB;
+      const pidA = (a['Pallet ID']||'').trim();
+      const pidB = (b['Pallet ID']||'').trim();
+      if (closedSortCol === 'Units') {
+        valA = unitCounts[pidA] || 0;
+        valB = unitCounts[pidB] || 0;
+        return closedSortAsc ? valA - valB : valB - valA;
+      } else {
+        valA = (a[closedSortCol]||'').toString().toLowerCase();
+        valB = (b[closedSortCol]||'').toString().toLowerCase();
+        const cmp = valA.localeCompare(valB);
+        return closedSortAsc ? cmp : -cmp;
+      }
+    });
+    closedTbody.innerHTML = sortedClosed.map(p => {
+      const palletId = (p['Pallet ID']||'').trim();
+      const unitCount = unitCounts[palletId] || 0;
+      const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Review / Reopen Pallet</button>';
+      const printBtn = ' <button onclick="openPrintLabelModal(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print Label</button>';
+      return '<tr>'
+        + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + palletId + '</td>'
+        + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
+        + '<td>' + (p['SKU']||'—') + '</td>'
+        + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
+        + '<td>' + fmtDate(p['Pallet Close Date']) + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;">' + editBtn + printBtn + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  updateSortArrows();
 }
 
 function openCreatePallet() {
-  document.getElementById('newPalletId').value = '';
-  document.getElementById('newPalletPO').value = '';
+  // Determine next sequential Pallet ID (RPRxxxxxxxx - 11 chars total, 3 prefix + 8 digits)
+  let maxNum = 0;
+  allPallets.forEach(p => {
+    const id = (p['Pallet ID']||'').trim().toUpperCase();
+    const match = id.match(/^RPR(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  const nextNum = maxNum + 1;
+  const nextId = 'RPR' + String(nextNum).padStart(8, '0');
+
+  document.getElementById('newPalletId').value = nextId;
+  document.getElementById('newPalletPO').value = '-';
   document.getElementById('newPalletSKU').value = 'WNC-CR200A-CLR';
   document.getElementById('createPalletModal').classList.add('show');
   document.getElementById('newPalletId').focus();
@@ -376,6 +475,7 @@ async function submitCreatePallet() {
   const sku = document.getElementById('newPalletSKU').value.trim();
 
   if (!palletId) { showToast('Pallet ID is required', 'error'); return; }
+  if (palletId.length !== 11) { showToast('Pallet ID must be exactly 11 characters', 'error'); return; }
   if (!palletPO) { showToast('Pallet PO # is required', 'error'); return; }
   if (!sku) { showToast('SKU is required', 'error'); return; }
 
@@ -422,6 +522,7 @@ function openEditPallet(palletId) {
   const units = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet');
 
   let html = '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Units on Pallet (' + units.length + ')</div>';
+  html += '<div style="margin-bottom:10px;"><input type="text" id="editPalletImeiFilter" placeholder="Filter by IMEI..." oninput="filterEditPalletTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;font-family:Consolas,monospace;"></div>';
 
   if (units.length) {
     html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
@@ -429,7 +530,7 @@ function openEditPallet(palletId) {
     units.forEach((u, i) => {
       const imei = (u['IMEI']||'').trim();
       const rowIdx = allPalletBuildUnits.indexOf(u);
-      html += '<tr style="border-bottom:1px solid #f0f0f0;">'
+      html += '<tr class="edit-pallet-unit-row" data-imei="' + imei.toLowerCase() + '" style="border-bottom:1px solid #f0f0f0;">'
         + '<td style="padding:8px 10px;color:#888;">' + (i + 1) + '</td>'
         + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-weight:600;">' + imei + '</td>'
         + '<td style="padding:8px 10px;font-size:11px;color:#888;">' + (u['Put to Pallet Date']||'—') + '</td>'
@@ -448,6 +549,15 @@ function openEditPallet(palletId) {
 function closeEditPallet() {
   document.getElementById('editPalletModal').classList.remove('show');
   editPalletId = '';
+}
+
+function filterEditPalletTable() {
+  const filter = (document.getElementById('editPalletImeiFilter').value || '').trim().toLowerCase();
+  const rows = document.querySelectorAll('.edit-pallet-unit-row');
+  rows.forEach(row => {
+    const imei = row.getAttribute('data-imei') || '';
+    row.style.display = (!filter || imei.includes(filter)) ? '' : 'none';
+  });
 }
 
 async function removeFromPallet(rowIdx, palletId) {
@@ -476,8 +586,90 @@ async function closePalletAction() {
       showToast('Pallet closed: ' + editPalletId, 'success');
       closeEditPallet();
       loadData();
+      // Ask to print label
+      if (confirm('Pallet "' + editPalletId + '" has been closed.\n\nWould you like to print a label for this pallet?')) {
+        printClosedPalletLabel(editPalletId);
+      }
     } else { showToast(json.error || 'Failed', 'error'); }
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+let printLabelPalletId = '';
+
+function openPrintLabelModal(palletId) {
+  printLabelPalletId = palletId;
+  const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
+  const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
+  const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+
+  document.getElementById('printLabelTitle').textContent = 'Print Label: ' + palletId;
+
+  // Build label preview (Current style) - matching reprint page proportions
+  let html = '';
+  html += '<div style="text-align:center;padding:10px 0;border-bottom:2px solid black;"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" style="height:36px;filter:invert(1);"></div>';
+  html += '<div style="text-align:center;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;padding-top:4px;">Pallet ID</div>';
+  html += '<div style="text-align:center;font-size:22px;font-weight:700;padding:4px 0;">' + palletId + '</div>';
+  html += '<div style="text-align:center;padding:4px 0 6px;border-bottom:2px solid black;"><canvas id="plbl-bc1" style="height:28px;"></canvas></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;">' + po + '</div></div></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-size:12px;font-weight:700;">1 of 1 (pallets in shipment)</div></div>';
+  html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px;"><canvas id="plbl-bc2" style="max-width:80%;"></canvas></div>';
+
+  document.getElementById('printLabelPreview').innerHTML = html;
+  document.getElementById('printLabelModal').classList.add('show');
+
+  // Generate barcodes after render
+  setTimeout(() => {
+    try { JsBarcode('#plbl-bc1', palletId, { format: 'CODE128', width: 1.2, height: 22, displayValue: false, margin: 0 }); } catch(e) {}
+    try {
+      const pdf417Data = po + ',' + sku + ',' + sku + ',' + unitCount + ',1,' + unitCount + ',' + unitCount;
+      bwipjs.toCanvas('plbl-bc2', { bcid: 'pdf417', text: pdf417Data, scale: 2, height: 8, width: 50, columns: 4 });
+    } catch(e) {}
+  }, 100);
+}
+
+function closePrintLabelModal() {
+  document.getElementById('printLabelModal').classList.remove('show');
+  printLabelPalletId = '';
+}
+
+function doPrintLabel() {
+  if (printLabelPalletId) printClosedPalletLabel(printLabelPalletId);
+}
+
+function printClosedPalletLabel(palletId) {
+  const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
+  const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
+  const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+
+  // Build print window with "Current" style label
+  const printWin = window.open('', '_blank', 'width=500,height=700');
+  printWin.document.write('<html><head><title>Pallet Label - ' + palletId + '</title>');
+  printWin.document.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+  printWin.document.write('<script src="https://cdn.jsdelivr.net/npm/bwip-js@4.1.1/dist/bwip-js-min.js"><\/script>');
+  printWin.document.write('<style>@page{size:4in 6in;margin:0;}body{margin:0;padding:0.2in;font-family:Arial,sans-serif;width:4in;height:6in;box-sizing:border-box;}</style>');
+  printWin.document.write('</head><body>');
+  printWin.document.write('<div style="text-align:center;padding:10px 0;border-bottom:2px solid black;"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" style="height:36px;filter:invert(1);"></div>');
+  printWin.document.write('<div style="text-align:center;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;padding-top:4px;">Pallet ID</div>');
+  printWin.document.write('<div style="text-align:center;font-size:22px;font-weight:700;padding:4px 0;">' + palletId + '</div>');
+  printWin.document.write('<div style="text-align:center;padding:4px 0 6px;border-bottom:2px solid black;"><canvas id="bc1"></canvas></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;margin-top:auto;">' + po + '</div></div></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-weight:700;">1 of 1 (pallets in shipment)</div></div>');
+  printWin.document.write('<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;"><canvas id="bc2"></canvas></div>');
+  printWin.document.write('<script>');
+  printWin.document.write('window.onload=function(){');
+  printWin.document.write('try{JsBarcode("#bc1","' + palletId + '",{format:"CODE128",width:1.5,height:28,displayValue:false,margin:0});}catch(e){}');
+  printWin.document.write('try{bwipjs.toCanvas("bc2",{bcid:"pdf417",text:"' + po + ',' + sku + ',' + sku + ',' + unitCount + ',1,' + unitCount + ',' + unitCount + '",scale:2,height:10,width:60,columns:4});}catch(e){}');
+  printWin.document.write('setTimeout(function(){window.print();},500);');
+  printWin.document.write('};');
+  printWin.document.write('<\/script>');
+  printWin.document.write('</body></html>');
+  printWin.document.close();
 }
 
 async function reopenPalletAction() {
@@ -597,10 +789,11 @@ function submitAddUnit() {
   const imei = document.getElementById('addUnitIMEI').value.trim();
 
   if (!imei || imei.length !== 15) { showAddUnitFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
+  if (!/^\d+$/.test(imei)) { showAddUnitFeedback('IMEI must be all numbers', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
   if (!imei.startsWith('3')) { showAddUnitFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
 
-  // Check for duplicates (already on this pallet)
-  const alreadyOnPallet = allPalletBuildUnits.some(u => (u['Pallet ID']||'').trim() === addUnitsPalletId && (u['IMEI']||'').trim() === imei);
+  // Check for duplicates (only units currently "On Pallet")
+  const alreadyOnPallet = allPalletBuildUnits.some(u => (u['Pallet ID']||'').trim() === addUnitsPalletId && (u['IMEI']||'').trim() === imei && (u['Status']||'').trim() === 'On Pallet');
   const alreadyInSession = addUnitsLog.some(l => l.imei === imei);
   if (alreadyOnPallet || alreadyInSession) {
     showAddUnitFeedback('IMEI ' + imei + ' is already on this pallet', 'error');

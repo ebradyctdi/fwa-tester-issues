@@ -50,7 +50,7 @@
   .label-preview-wrap { display: flex; justify-content: center; margin-top: 16px; }
   .label-preview { width: 4in; height: 6in; border: 2px solid #333; background: white; padding: 0.2in; display: flex; flex-direction: column; font-family: Arial, sans-serif; color: black; transform-origin: top center; transform: scale(0.85); }
 
-  .label-title { text-align: center; font-size: 22px; font-weight: 700; padding: 8px 0 6px; border-bottom: 2px solid black; }
+  .label-title { text-align: center; font-size: 22px; font-weight: 700; padding: 8px 0 6px; }
   .label-row { display: flex; border-bottom: 1px solid black; min-height: 44px; }
   .label-cell { padding: 6px 8px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: flex-start; }
   .label-cell-left { flex: 1; border-right: 1px solid black; }
@@ -133,9 +133,18 @@
       <h2>Select Pallet</h2>
       <div class="form-row">
         <div class="form-group">
+          <label>Search / Scan Pallet ID</label>
+          <input type="text" id="palletFilter" placeholder="Type or scan to filter..." autocomplete="off" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:8px;" oninput="filterPalletDropdown()">
           <label>Closed Pallet</label>
-          <select id="palletSelect" onchange="updatePreview()">
+          <select id="palletSelect" onchange="onPalletSelectChange()" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;background:white;">
             <option value="">— Select a closed pallet —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Title Style</label>
+          <select id="titleStyle" onchange="updatePreview()">
+            <option value="palletid">Current</option>
+            <option value="packing">Old</option>
           </select>
         </div>
       </div>
@@ -149,7 +158,11 @@
         <div id="printArea">
           <div class="label-preview" id="labelPreview">
             <div style="text-align:center;padding:10px 0;border-bottom:2px solid black;"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="height:36px;filter:invert(1);"></div>
-            <div class="label-title">Packing Slip</div>
+            <div id="lbl-title-header" style="text-align:center;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;padding-top:4px;display:none;">Pallet ID</div>
+            <div class="label-title" id="lbl-title">Packing Slip</div>
+            <div id="lbl-title-barcode" style="text-align:center;padding:4px 0 6px;border-bottom:2px solid black;display:none;">
+              <canvas id="lbl-title-barcode-canvas" style="height:30px;"></canvas>
+            </div>
             <div class="label-row">
               <div class="label-cell label-cell-left"><span class="cell-value">WNC corporation</span></div>
               <div class="label-cell label-cell-right"><span class="cell-label">PO#</span><span class="cell-value" id="lbl-po">—</span></div>
@@ -162,15 +175,15 @@
               <div class="label-cell label-cell-left"><span class="cell-value">VERIZON WIRELESS</span></div>
               <div class="label-cell label-cell-right"><span class="cell-label">Total # of pieces in shipment</span><span class="cell-value" id="lbl-qty">—</span></div>
             </div>
-            <div class="label-row">
+            <div class="label-row" id="lbl-row-palletid">
               <div class="label-cell label-cell-left"><span class="cell-value">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</span></div>
-              <div class="label-cell label-cell-right">
+              <div class="label-cell label-cell-right" id="lbl-palletid-cell">
                 <span class="cell-label">Pallet ID</span>
                 <canvas id="lbl-barcode" style="width:100%;height:30px;margin-top:2px;"></canvas>
                 <span style="font-size:9px;margin-top:1px;" id="lbl-palletid-text">Pallet ID : —</span>
               </div>
             </div>
-            <div class="label-row">
+            <div class="label-row" id="lbl-row-fed">
               <div class="label-cell label-cell-left"><span class="cell-value">FED</span></div>
               <div class="label-cell label-cell-right"><span class="cell-value" id="lbl-pallets">1 of 1 (pallets in shipment)</span></div>
             </div>
@@ -236,17 +249,51 @@ async function loadData() {
 }
 
 function populateDropdown() {
+  buildClosedPalletsList();
+  renderPalletOptions('');
+}
+
+let selectedPalletId = '';
+let closedPallets = [];
+
+function buildClosedPalletsList() {
+  closedPallets = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'closed');
+}
+
+function renderPalletOptions(filter) {
   const sel = document.getElementById('palletSelect');
-  const closed = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'closed');
-  sel.innerHTML = '<option value="">— Select a closed pallet —</option>' + closed.map(p => {
+  const filtered = filter ? closedPallets.filter(p => (p['Pallet ID']||'').toLowerCase().includes(filter.toLowerCase())) : closedPallets;
+  sel.innerHTML = '<option value="">— Select a closed pallet —</option>' + filtered.map(p => {
     const pid = (p['Pallet ID']||'').trim();
-    const po = (p['Pallet PO #']||'').trim();
-    return '<option value="' + pid + '">' + pid + ' — PO: ' + po + '</option>';
+    return '<option value="' + pid + '"' + (pid === selectedPalletId ? ' selected' : '') + '>' + pid + '</option>';
   }).join('');
 }
 
+function filterPalletDropdown() {
+  const val = document.getElementById('palletFilter').value.trim();
+  renderPalletOptions(val);
+
+  // Auto-select if exact match
+  const exact = closedPallets.find(p => (p['Pallet ID']||'').trim().toLowerCase() === val.toLowerCase());
+  if (exact) {
+    selectedPalletId = (exact['Pallet ID']||'').trim();
+    document.getElementById('palletSelect').value = selectedPalletId;
+    updatePreview();
+  }
+}
+
+function onPalletSelectChange() {
+  selectedPalletId = document.getElementById('palletSelect').value;
+  if (selectedPalletId) {
+    updatePreview();
+  } else {
+    document.getElementById('previewCard').style.display = 'none';
+    document.getElementById('printBtn').disabled = true;
+  }
+}
+
 function updatePreview() {
-  const palletId = document.getElementById('palletSelect').value;
+  const palletId = selectedPalletId;
   if (!palletId) {
     document.getElementById('previewCard').style.display = 'none';
     document.getElementById('printBtn').disabled = true;
@@ -261,15 +308,33 @@ function updatePreview() {
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
 
   // Update label fields
+  const titleStyle = document.getElementById('titleStyle').value;
+  document.getElementById('lbl-title').textContent = titleStyle === 'palletid' ? palletId : 'Packing Slip';
+  
+  // Variant: Pallet ID as title
+  if (titleStyle === 'palletid') {
+    // Show barcode under title, no border on title
+    document.getElementById('lbl-title').style.borderBottom = 'none';
+    document.getElementById('lbl-title-header').style.display = 'block';
+    document.getElementById('lbl-title-barcode').style.display = 'block';
+    try { JsBarcode('#lbl-title-barcode-canvas', palletId, { format: 'CODE128', width: 1.5, height: 28, displayValue: false, margin: 0 }); } catch(e) {}
+    // Hide the FED row
+    document.getElementById('lbl-row-fed').style.display = 'none';
+    // Replace pallet ID cell content with "1 of 1" text
+    document.getElementById('lbl-palletid-cell').innerHTML = '<span class="cell-value">1 of 1 (pallets in shipment)</span>';
+  } else {
+    // Standard: hide title barcode, show FED row, restore pallet ID cell
+    document.getElementById('lbl-title').style.borderBottom = '2px solid black';
+    document.getElementById('lbl-title-header').style.display = 'none';
+    document.getElementById('lbl-title-barcode').style.display = 'none';
+    document.getElementById('lbl-row-fed').style.display = 'flex';
+    document.getElementById('lbl-palletid-cell').innerHTML = '<span class="cell-label">Pallet ID</span><canvas id="lbl-barcode" style="width:100%;height:30px;margin-top:2px;"></canvas><span style="font-size:9px;margin-top:1px;" id="lbl-palletid-text">Pallet ID : ' + palletId + '</span>';
+    try { JsBarcode('#lbl-barcode', palletId, { format: 'CODE128', width: 1.5, height: 28, displayValue: false, margin: 0 }); } catch(e) {}
+  }
+
   document.getElementById('lbl-po').textContent = po;
   document.getElementById('lbl-sku').textContent = sku;
   document.getElementById('lbl-qty').textContent = unitCount;
-  document.getElementById('lbl-palletid-text').textContent = 'Pallet ID : ' + palletId;
-
-  // Generate barcode
-  try {
-    JsBarcode('#lbl-barcode', palletId, { format: 'CODE128', width: 1.5, height: 28, displayValue: false, margin: 0 });
-  } catch(e) {}
 
   // Generate PDF417 barcode for bottom section
   // Format: PO#,SKU,SKU,UnitCount,1,UnitCount,UnitCount
