@@ -133,7 +133,17 @@
           <button onclick="toggleBatchMode()" style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Exit Batch Mode</button>
         </div>
       </div>
-      <div style="display:flex;gap:16px;align-items:flex-end;">
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;font-weight:600;color:#555;">Scan Mode:</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
+          <input type="radio" name="batchScanMode" value="individual" checked onchange="toggleScanMode()"> Scan Values Individually
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
+          <input type="radio" name="batchScanMode" value="qr" onchange="toggleScanMode()"> Scan QR Code
+        </label>
+      </div>
+      <!-- Individual scan fields -->
+      <div id="batchIndividualFields" style="display:flex;gap:16px;align-items:flex-end;">
         <div style="flex:1;">
           <label class="form-label">IMEI (15 chars)</label>
           <input type="text" class="form-input" id="bIMEI" placeholder="Scan IMEI..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="15">
@@ -143,10 +153,15 @@
           <input type="text" class="form-input" id="bSerial" placeholder="Scan Serial..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="11">
         </div>
       </div>
+      <!-- QR scan field -->
+      <div id="batchQRField" style="display:none;">
+        <label class="form-label">Scan QR Code</label>
+        <input type="text" class="form-input" id="bQR" placeholder="Scan unit QR code..." autocomplete="off" style="font-size:18px;padding:14px;">
+      </div>
       <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
       <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
       </div>
-      <div style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. You can change Device Model between scans.</div>
+      <div id="batchHintText" style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. You can change Device Model between scans.</div>
       <div id="batchLog" style="margin-top:14px;"></div>
       <div id="batchLog" style="margin-top:14px;"></div>
     </div>
@@ -241,7 +256,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], _jsonpCounter = 0, cartData = [];
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzFHRPEVVUJpDMg8-KdRL6T83uGN09LIQODQo2oNPalXVUOwSFezXiTAEP6D5-IfFOQxA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbz4AqJACaab13YKDdRidXbXpyu4yG8YjznjbXWFFj2t1HSbuoMuFPePIY7y3zxLZkvimw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -561,6 +576,105 @@ document.getElementById('bSerial').addEventListener('input', function() {
 document.getElementById('bSerial').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) submitBatch(); }
 });
+
+// ---- QR SCAN MODE ----
+function toggleScanMode() {
+  const mode = document.querySelector('input[name="batchScanMode"]:checked').value;
+  if (mode === 'qr') {
+    document.getElementById('batchIndividualFields').style.display = 'none';
+    document.getElementById('batchQRField').style.display = 'block';
+    document.getElementById('batchHintText').textContent = 'Scan unit QR code → auto-parses IMEI, Serial, and Model → auto-submits.';
+    document.getElementById('bQR').value = '';
+    document.getElementById('bQR').focus();
+  } else {
+    document.getElementById('batchIndividualFields').style.display = 'flex';
+    document.getElementById('batchQRField').style.display = 'none';
+    document.getElementById('batchHintText').textContent = 'Scan IMEI → auto-advances to Serial → auto-submits. You can change Device Model between scans.';
+    document.getElementById('bIMEI').focus();
+  }
+}
+
+// QR field - only submit on Enter (scanner sends Enter after full scan)
+document.getElementById('bQR').addEventListener('input', function() {
+  // Don't auto-submit on input - wait for Enter key or a clear end signal
+});
+document.getElementById('bQR').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (val.length > 20) submitQRBatch(val);
+  }
+});
+
+function parseQRCode(raw) {
+  // Extract IMEI from E: field (15 digits)
+  const imeiMatch = raw.match(/;E:(\d{15})/);
+  // Extract Serial from S: field after M: (starts with A, 11 chars)
+  const serialMatch = raw.match(/;S:(A[A-Za-z0-9]{10})/);
+  // Extract Model from M: field
+  const modelMatch = raw.match(/M:(ASK-NCM1100|WNC-CR200A)/);
+
+  if (!imeiMatch) return { error: 'Could not find IMEI in QR code. Make sure the full QR code was scanned.' };
+  if (!serialMatch) return { error: 'Could not find Serial Number in QR code.' };
+
+  const imei = imeiMatch[1];
+  const serial = serialMatch[1];
+  const modelRaw = modelMatch ? modelMatch[1] : '';
+  let deviceModel = '';
+  if (modelRaw.includes('CR200A')) deviceModel = 'Titan 3';
+  else if (modelRaw.includes('NCM1100')) deviceModel = 'Titan 4';
+
+  return { imei, serial, deviceModel };
+}
+
+async function submitQRBatch(raw) {
+  if (batchSubmitting) return;
+  batchSubmitting = true;
+
+  const parsed = parseQRCode(raw);
+  if (parsed.error) {
+    showBatchFeedback(parsed.error, 'error');
+    playBeep(false);
+    document.getElementById('bQR').select();
+    batchSubmitting = false;
+    return;
+  }
+
+  const { imei, serial, deviceModel } = parsed;
+
+  // Validate IMEI
+  if (imei.length !== 15) { showBatchFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showBatchFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  // Validate Serial
+  if (serial.length !== 11) { showBatchFeedback('Serial must be 11 characters (got: ' + serial + ')', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+
+  // Auto-set device model if detected
+  if (deviceModel) {
+    document.getElementById('batchDeviceModel').value = deviceModel;
+  }
+
+  const cart = document.getElementById('fCart').value.trim();
+  const model = document.getElementById('batchDeviceModel').value;
+  const reportedBy = document.getElementById('fReportedBy').value.trim();
+  const note = document.getElementById('fNote').value.trim();
+
+  // Immediately update UI
+  batchSessionCount++;
+  document.getElementById('batchCount').textContent = batchSessionCount;
+  batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
+  if (batchLog.length > 10) batchLog.pop();
+  renderBatchLog();
+  showBatchFeedback('✓ QR Scanned — ' + imei + ' | ' + serial + (deviceModel ? ' | ' + deviceModel : ''), 'success');
+  playBeep(true);
+  document.getElementById('bQR').value = '';
+  document.getElementById('bQR').focus();
+  batchSubmitting = false;
+
+  // Queue for background save
+  batchQueue.push({ imei, serial, cart, deviceModel: model, reportedBy, note });
+  processBatchQueue();
+}
 
 async function submitBatch() {
   if (batchSubmitting) return;

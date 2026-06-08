@@ -374,6 +374,17 @@ function doGet(e) {
       return _respond({ success: true }, callback);
     }
 
+    if (action === 'activatecart') {
+      var cartsSheet = ss.getSheetByName('Carts');
+      if (!cartsSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      cartsSheet.getRange(sheetRow, 3).setValue('Active');
+      cartsSheet.getRange(sheetRow, 5).setValue('');
+      return _respond({ success: true }, callback);
+    }
+
     if (action === 'createcart') {
       var cartsSheet = ss.getSheetByName('Carts');
       if (!cartsSheet) {
@@ -624,8 +635,8 @@ function doGet(e) {
       if (!rpbSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = rpbSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = rpbSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-      var headers = ['Pallet ID', 'IMEI', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status'];
+      var data = rpbSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+      var headers = ['Pallet ID', 'IMEI', 'Serial Number', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -639,17 +650,18 @@ function doGet(e) {
       var rpbSheet = ss.getSheetByName('Repair - Pallet Build');
       if (!rpbSheet) {
         rpbSheet = ss.insertSheet('Repair - Pallet Build');
-        rpbSheet.getRange(1, 1, 1, 5).setValues([['Pallet ID', 'IMEI', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status']]);
+        rpbSheet.getRange(1, 1, 1, 6).setValues([['Pallet ID', 'IMEI', 'Serial Number', 'Put to Pallet Date', 'Removed from Pallet Date', 'Status']]);
       }
       var palletId = (e.parameter.palletid || '').toString().trim();
       var imei = (e.parameter.imei || '').toString().trim();
+      var serial = (e.parameter.serial || '').toString().trim();
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!imei) return _respond({ success: false, error: 'IMEI required' }, callback);
 
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
 
-      rpbSheet.appendRow([palletId, imei, ts, '', 'On Pallet']);
+      rpbSheet.appendRow([palletId, imei, serial, ts, '', 'On Pallet']);
       return _respond({ success: true, message: 'Unit added to pallet' }, callback);
     }
 
@@ -662,8 +674,8 @@ function doGet(e) {
       var sheetRow = row + 2;
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
-      rpbSheet.getRange(sheetRow, 4).setValue(ts);
-      rpbSheet.getRange(sheetRow, 5).setValue('Removed');
+      rpbSheet.getRange(sheetRow, 5).setValue(ts);
+      rpbSheet.getRange(sheetRow, 6).setValue('Removed');
       return _respond({ success: true }, callback);
     }
 

@@ -204,12 +204,29 @@
         <div style="text-align:center;"><div id="addUnitsPalletTotal" style="font-size:36px;font-weight:700;color:#1a3a5c;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">Pallet Total</div></div>
         <div style="flex:1;"></div>
       </div>
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Scan IMEI (15 chars)</label>
-        <input type="text" id="addUnitIMEI" placeholder="Scan IMEI..." maxlength="15" autocomplete="off" style="width:100%;padding:14px 12px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;">Scan Mode:</span>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="radio" name="addUnitScanMode" value="imei" checked onchange="toggleAddUnitScanMode()"> IMEI Barcode</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="radio" name="addUnitScanMode" value="qr" onchange="toggleAddUnitScanMode()"> QR Code</label>
+      </div>
+      <div id="addUnitIMEIField" style="margin-bottom:12px;">
+        <div style="display:flex;gap:12px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">IMEI (15 chars)</label>
+            <input type="text" id="addUnitIMEI" placeholder="Scan IMEI..." maxlength="15" autocomplete="off" style="width:100%;padding:14px 12px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Serial Number (11 chars)</label>
+            <input type="text" id="addUnitSerial" placeholder="Scan Serial..." maxlength="11" autocomplete="off" style="width:100%;padding:14px 12px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
+          </div>
+        </div>
+      </div>
+      <div id="addUnitQRField" style="margin-bottom:12px;display:none;">
+        <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Scan QR Code</label>
+        <input type="text" id="addUnitQR" placeholder="Scan unit QR code..." autocomplete="off" style="width:100%;padding:14px 12px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
       </div>
       <div id="addUnitFeedback" style="padding:10px 14px;border-radius:6px;font-size:13px;font-weight:600;text-align:center;display:none;margin-bottom:12px;"></div>
-      <div style="font-size:11px;color:#888;margin-bottom:12px;">Scan IMEI → auto-submits after 15 characters. Duplicates are blocked.</div>
+      <div id="addUnitHint" style="font-size:11px;color:#888;margin-bottom:12px;">Scan IMEI → auto-submits after 15 characters. Duplicates are blocked.</div>
       <div id="addUnitsLog" style="max-height:250px;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
@@ -257,7 +274,7 @@ let tableSortCol = 'Pallet ID';
 let tableSortAsc = true;
 let closedSortCol = 'Pallet Close Date';
 let closedSortAsc = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzFHRPEVVUJpDMg8-KdRL6T83uGN09LIQODQo2oNPalXVUOwSFezXiTAEP6D5-IfFOQxA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbz4AqJACaab13YKDdRidXbXpyu4yG8YjznjbXWFFj2t1HSbuoMuFPePIY7y3zxLZkvimw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -772,13 +789,108 @@ function renderAddUnitsLog() {
   el.innerHTML = html;
 }
 
-// Auto-submit IMEI after 15 chars
+// Toggle scan mode
+function toggleAddUnitScanMode() {
+  const mode = document.querySelector('input[name="addUnitScanMode"]:checked').value;
+  if (mode === 'qr') {
+    document.getElementById('addUnitIMEIField').style.display = 'none';
+    document.getElementById('addUnitQRField').style.display = 'block';
+    document.getElementById('addUnitHint').textContent = 'Scan unit QR code → auto-parses IMEI & Serial → auto-submits on Enter.';
+    document.getElementById('addUnitQR').value = '';
+    document.getElementById('addUnitQR').focus();
+  } else {
+    document.getElementById('addUnitIMEIField').style.display = 'block';
+    document.getElementById('addUnitQRField').style.display = 'none';
+    document.getElementById('addUnitHint').textContent = 'Scan IMEI → auto-advances to Serial → auto-submits after 11 chars.';
+    document.getElementById('addUnitIMEI').value = '';
+    document.getElementById('addUnitSerial').value = '';
+    document.getElementById('addUnitIMEI').focus();
+  }
+}
+
+// QR code field - submit on Enter
+document.getElementById('addUnitQR').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (val.length > 20) submitAddUnitQR(val);
+  }
+});
+
+function parseRepairQR(raw) {
+  const imeiMatch = raw.match(/;E:(\d{15})/);
+  const serialMatch = raw.match(/;S:(A[A-Za-z0-9]{10})/);
+  if (!imeiMatch) return { error: 'Could not find IMEI in QR code.' };
+  if (!serialMatch) return { error: 'Could not find Serial Number in QR code.' };
+  return { imei: imeiMatch[1], serial: serialMatch[1] };
+}
+
+function submitAddUnitQR(raw) {
+  if (addUnitsSubmitting) return;
+  addUnitsSubmitting = true;
+
+  const parsed = parseRepairQR(raw);
+  if (parsed.error) {
+    showAddUnitFeedback(parsed.error, 'error');
+    playBeep(false);
+    document.getElementById('addUnitQR').select();
+    addUnitsSubmitting = false;
+    return;
+  }
+
+  const { imei, serial } = parsed;
+
+  // Validate
+  if (!/^\d{15}$/.test(imei)) { showAddUnitFeedback('IMEI must be 15 digits', 'error'); playBeep(false); document.getElementById('addUnitQR').select(); addUnitsSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showAddUnitFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('addUnitQR').select(); addUnitsSubmitting = false; return; }
+
+  // Check duplicates
+  const alreadyOnPallet = allPalletBuildUnits.some(u => (u['Pallet ID']||'').trim() === addUnitsPalletId && (u['IMEI']||'').trim() === imei && (u['Status']||'').trim() === 'On Pallet');
+  const alreadyInSession = addUnitsLog.some(l => l.imei === imei);
+  if (alreadyOnPallet || alreadyInSession) {
+    showAddUnitFeedback('IMEI ' + imei + ' is already on this pallet', 'error');
+    playBeep(false);
+    document.getElementById('addUnitQR').select();
+    addUnitsSubmitting = false;
+    return;
+  }
+
+  // Update UI
+  addUnitsSessionCount++;
+  addUnitsPalletTotal++;
+  document.getElementById('addUnitsCount').textContent = addUnitsSessionCount;
+  document.getElementById('addUnitsPalletTotal').textContent = addUnitsPalletTotal;
+  addUnitsLog.unshift({ imei, serial, time: new Date(), status: 'pending' });
+  if (addUnitsLog.length > 20) addUnitsLog.pop();
+  renderAddUnitsLog();
+  showAddUnitFeedback('✓ QR Scanned — ' + imei + ' | ' + serial, 'success');
+  playBeep(true);
+  document.getElementById('addUnitQR').value = '';
+  document.getElementById('addUnitQR').focus();
+  addUnitsSubmitting = false;
+
+  // Queue
+  addUnitsQueue.push({ palletId: addUnitsPalletId, imei, serial });
+  processAddUnitsQueue();
+}
+
+// Auto-advance IMEI to Serial after 15 chars
 document.getElementById('addUnitIMEI').addEventListener('input', function() {
   if (this.value.length === 15) {
-    submitAddUnit();
+    setTimeout(() => document.getElementById('addUnitSerial').focus(), 50);
   }
 });
 document.getElementById('addUnitIMEI').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addUnitSerial').focus(); }
+});
+
+// Auto-submit Serial after 11 chars
+document.getElementById('addUnitSerial').addEventListener('input', function() {
+  if (this.value.length === 11) {
+    submitAddUnit();
+  }
+});
+document.getElementById('addUnitSerial').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) submitAddUnit(); }
 });
 
@@ -787,10 +899,16 @@ function submitAddUnit() {
   addUnitsSubmitting = true;
 
   const imei = document.getElementById('addUnitIMEI').value.trim();
+  const serial = document.getElementById('addUnitSerial').value.trim();
 
+  // Validate IMEI
   if (!imei || imei.length !== 15) { showAddUnitFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
   if (!/^\d+$/.test(imei)) { showAddUnitFeedback('IMEI must be all numbers', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
   if (!imei.startsWith('3')) { showAddUnitFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('addUnitIMEI').select(); addUnitsSubmitting = false; return; }
+
+  // Validate Serial
+  if (!serial || serial.length !== 11) { showAddUnitFeedback('Serial must be 11 characters', 'error'); playBeep(false); document.getElementById('addUnitSerial').select(); addUnitsSubmitting = false; return; }
+  if (!serial.toUpperCase().startsWith('A')) { showAddUnitFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('addUnitSerial').select(); addUnitsSubmitting = false; return; }
 
   // Check for duplicates (only units currently "On Pallet")
   const alreadyOnPallet = allPalletBuildUnits.some(u => (u['Pallet ID']||'').trim() === addUnitsPalletId && (u['IMEI']||'').trim() === imei && (u['Status']||'').trim() === 'On Pallet');
@@ -811,14 +929,15 @@ function submitAddUnit() {
   addUnitsLog.unshift({ imei, time: new Date(), status: 'pending' });
   if (addUnitsLog.length > 20) addUnitsLog.pop();
   renderAddUnitsLog();
-  showAddUnitFeedback('✓ Queued — ' + imei, 'success');
+  showAddUnitFeedback('✓ Queued — ' + imei + ' | ' + serial, 'success');
   playBeep(true);
   document.getElementById('addUnitIMEI').value = '';
+  document.getElementById('addUnitSerial').value = '';
   document.getElementById('addUnitIMEI').focus();
   addUnitsSubmitting = false;
 
   // Queue for background save
-  addUnitsQueue.push({ palletId: addUnitsPalletId, imei });
+  addUnitsQueue.push({ palletId: addUnitsPalletId, imei, serial });
   processAddUnitsQueue();
 }
 
@@ -829,12 +948,12 @@ async function processAddUnitsQueue() {
   while (addUnitsQueue.length > 0) {
     const item = addUnitsQueue.shift();
     try {
-      const json = await jsonpRequest(scriptUrl, { action: 'addtorepairpallet', palletid: item.palletId, imei: item.imei });
+      const json = await jsonpRequest(scriptUrl, { action: 'addtorepairpallet', palletid: item.palletId, imei: item.imei, serial: item.serial || '' });
       if (json.success) {
         const logEntry = addUnitsLog.find(e => e.imei === item.imei && e.status === 'pending');
         if (logEntry) logEntry.status = 'saved';
         // Add to local tracking
-        allPalletBuildUnits.push({ 'Pallet ID': item.palletId, 'IMEI': item.imei, 'Put to Pallet Date': new Date().toString(), 'Status': 'On Pallet' });
+        allPalletBuildUnits.push({ 'Pallet ID': item.palletId, 'IMEI': item.imei, 'Serial Number': item.serial || '', 'Put to Pallet Date': new Date().toString(), 'Status': 'On Pallet' });
         renderAddUnitsLog();
       } else {
         showAddUnitFeedback('Failed: ' + item.imei + ' — ' + (json.error||''), 'error');

@@ -188,7 +188,7 @@
     <div id="auditSection" style="display:none;">
       <div class="scan-section">
         <h2>Scan Unit IMEIs</h2>
-        <input type="text" class="scan-input" id="auditScanInput" placeholder="Scan unit IMEI...">
+        <input type="text" class="scan-input" id="auditScanInput" placeholder="Scan IMEI barcode or unit QR code...">
         <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
           <span id="auditPalletLabel" style="font-size:13px;font-weight:600;color:#1a3a5c;"></span>
           <div style="display:flex;gap:10px;">
@@ -322,7 +322,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzFHRPEVVUJpDMg8-KdRL6T83uGN09LIQODQo2oNPalXVUOwSFezXiTAEP6D5-IfFOQxA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbz4AqJACaab13YKDdRidXbXpyu4yG8YjznjbXWFFj2t1HSbuoMuFPePIY7y3zxLZkvimw/exec'; } catch(e) {}
 
 let palletID = '';
 let partNumber = '';
@@ -445,12 +445,24 @@ function beginAudit() {
   renderTable();
 }
 
-// --- Audit Scan (individual IMEI) ---
+// --- Audit Scan (individual IMEI or QR code) ---
 document.getElementById('auditScanInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    const val = this.value.trim();
+    let val = this.value.trim();
     this.value = '';
     if (!val) return;
+
+    // Check if this is a QR code scan (longer than 15 chars, contains device info)
+    if (val.length > 15 && (val.includes(';E:') || val.includes('ROUTER:'))) {
+      const imeiMatch = val.match(/;E:(\d{15})/);
+      if (imeiMatch) {
+        val = imeiMatch[1];
+      } else {
+        showAlert('QR Parse Error', 'Could not find a valid IMEI in the scanned QR code.');
+        this.focus();
+        return;
+      }
+    }
 
     // Validate IMEI length
     if (val.length !== 15) {
