@@ -148,7 +148,8 @@
   </div>
   <div class="container">
     <!-- Reset -->
-    <div style="text-align:right;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <button class="btn" style="background:#0d6efd;color:white;" onclick="showWorkInstruction()">📋 Audit Work Instruction</button>
       <button class="btn btn-reset" onclick="resetAll()">Reset / New Audit</button>
     </div>
 
@@ -319,6 +320,64 @@
 </div>
 
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- Work Instruction Modal -->
+<div class="modal-overlay" id="workInstructionModal" onclick="if(event.target===this)closeWorkInstruction()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:700px;width:90%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;"><h3 style="font-size:16px;margin:0;">📋 Pallet Audit Work Instruction</h3></div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;font-size:13px;line-height:1.6;">
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 1: Scan Pallet ID</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Place cursor in the Pallet ID field</li>
+        <li>Scan the pallet barcode (11 chars, starts with "PLB")</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 2: Scan Part Number</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Scan the Part Number barcode</li>
+        <li>Valid: <strong>WNC-CR200A</strong> (Titan 3) or <strong>ASK-NCM1100</strong> (Titan 4)</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 3: Scan IMEI Barcodes (Manifest)</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Scan each expected IMEI from the pallet manifest</li>
+        <li>Each IMEI must be 15 characters</li>
+        <li>Duplicates are automatically rejected</li>
+        <li>Click <strong>"Begin Audit"</strong> when all manifest IMEIs are scanned</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 4: Audit — Scan Physical Units</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Scan each unit's IMEI barcode or QR code on the actual pallet</li>
+        <li><strong>Match:</strong> Unit marked green ✓</li>
+        <li><strong>Not on manifest:</strong> Alert appears — can record as issue</li>
+        <li><strong>Already scanned:</strong> Duplicate warning (not counted again)</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 5: Report Issues (If Needed)</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Click <strong>"Record as Issue"</strong> on unexpected IMEI alerts</li>
+        <li>Or click red <strong>"Report Issue"</strong> button for standalone issues</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 6: Complete the Audit</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Click <strong>"Complete Audit"</strong></li>
+        <li>Enter Auditor Name and any Notes</li>
+        <li>Select result: <strong>OK To Ship</strong> (green) or <strong>Hold for Action</strong> (red)</li>
+        <li>"OK To Ship" is disabled if there are open issues</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Step 7: Print Label</h4>
+      <ul style="margin-left:16px;margin-bottom:14px;">
+        <li>Print the 4×6 audit label and affix to pallet</li>
+      </ul>
+      <h4 style="color:#1a3a5c;margin-bottom:8px;">Validation Rules</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;">
+        <tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;border:1px solid #ddd;">Field</th><th style="padding:6px 10px;text-align:left;border:1px solid #ddd;">Rule</th></tr>
+        <tr><td style="padding:6px 10px;border:1px solid #ddd;">Pallet ID</td><td style="padding:6px 10px;border:1px solid #ddd;">11 chars, starts with "PLB"</td></tr>
+        <tr><td style="padding:6px 10px;border:1px solid #ddd;">Part Number</td><td style="padding:6px 10px;border:1px solid #ddd;">WNC-CR200A or ASK-NCM1100</td></tr>
+        <tr><td style="padding:6px 10px;border:1px solid #ddd;">IMEI</td><td style="padding:6px 10px;border:1px solid #ddd;">15 digits, starts with "3"</td></tr>
+      </table>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;"><button onclick="closeWorkInstruction()" style="padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Close</button></div>
+  </div>
+</div>
+
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
@@ -431,8 +490,32 @@ document.getElementById('imeiBarcodInput').addEventListener('keydown', function(
   }
 });
 // --- Begin Audit ---
-function beginAudit() {
+async function beginAudit() {
   if (palletIMEIs.length === 0) return;
+
+  // Check for open issues on this pallet or its IMEIs
+  try {
+    const issuesJson = await jsonpRequest(scriptUrl, { action: 'readpalletauditissues' });
+    if (issuesJson.success && issuesJson.data) {
+      const openIssues = issuesJson.data.filter(i => {
+        if ((i['Status']||'').trim().toUpperCase() === 'RESOLVED') return false;
+        const issuePallet = (i['Pallet ID']||'').trim();
+        const issueIMEI = (i['IMEI']||'').trim();
+        // Match by pallet ID or by IMEI being in our manifest
+        return issuePallet === palletID || palletIMEIs.includes(issueIMEI);
+      });
+      if (openIssues.length > 0) {
+        let msg = '⚠️ There are ' + openIssues.length + ' open issue(s) associated with this pallet or its IMEIs:\n\n';
+        openIssues.slice(0, 5).forEach(i => {
+          msg += '• ' + (i['IMEI']||'—') + ' — ' + (i['Issue']||'') + '\n';
+        });
+        if (openIssues.length > 5) msg += '... and ' + (openIssues.length - 5) + ' more\n';
+        msg += '\nDo you want to continue with the audit?';
+        if (!confirm(msg)) return;
+      }
+    }
+  } catch(e) { /* proceed even if issues check fails */ }
+
   auditStartTime = new Date();
   auditMode = true;
   document.getElementById('loadSection').style.display = 'none';
@@ -616,6 +699,13 @@ function renderTable() {
       + '</div>';
   });
   document.getElementById('imeiGridContainer').innerHTML = html;
+}
+
+function showWorkInstruction() {
+  document.getElementById('workInstructionModal').style.display = 'flex';
+}
+function closeWorkInstruction() {
+  document.getElementById('workInstructionModal').style.display = 'none';
 }
 
 function resetAll() {

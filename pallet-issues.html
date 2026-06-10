@@ -148,8 +148,8 @@
             <th>Pallet ID</th>
             <th>Audit Date</th>
             <th>Audit Result</th>
-            <th>Open Issues</th>
-            <th>Total Issues</th>
+            <th style="text-align:center;">Open Issues</th>
+            <th style="text-align:center;">Total Issues</th>
             <th>Auditor</th>
           </tr>
         </thead>
@@ -157,6 +157,32 @@
           <tr><td colspan="6" class="empty-state">Loading...</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Resolved Pallets Table -->
+    <div style="margin-top:24px;margin-bottom:12px;">
+      <label style="font-size:13px;color:#555;cursor:pointer;user-select:none;"><input type="checkbox" id="showResolvedPallets" onchange="document.getElementById('resolvedPalletsSection').style.display=this.checked?'block':'none'" style="margin-right:6px;cursor:pointer;"> Show Resolved Pallets</label>
+    </div>
+    <div id="resolvedPalletsSection" style="display:none;">
+    <div class="table-section">
+      <div class="table-header">
+        <h2>Resolved Pallets</h2>
+      </div>
+      <table class="pallet-table">
+        <thead>
+          <tr>
+            <th>Pallet ID</th>
+            <th>Audit Date</th>
+            <th style="text-align:center;">Total Issues</th>
+            <th>Latest Resolution</th>
+            <th>Auditor</th>
+          </tr>
+        </thead>
+        <tbody id="resolvedPalletTableBody">
+          <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
     </div>
   </div>
 </div>
@@ -202,8 +228,15 @@ function setStatus(state, label) {
 
 function fmtDate(str) {
   if (!str) return '—';
+  // If already formatted with EST/EDT from Apps Script, display as-is without seconds
+  if (str.includes('EST') || str.includes('EDT')) {
+    return str.replace(/ EST| EDT/, '').replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/:\d{2}$/, '');
+  }
   const d = new Date(str);
-  if (isNaN(d.getTime())) return str;
+  if (isNaN(d.getTime())) {
+    // Try stripping seconds from raw string
+    return str.replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/(\d{1,2}:\d{2}):\d{2}/, '$1');
+  }
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
@@ -231,45 +264,85 @@ async function loadData() {
 
 function renderTable() {
   const tbody = document.getElementById('palletTableBody');
+  const resolvedTbody = document.getElementById('resolvedPalletTableBody');
 
-  // Find pallets with open issues
-  const palletsWithOpenIssues = {};
+  // Find pallets with issues and categorize
+  const palletsWithIssues = {};
   allIssues.forEach((issue, idx) => {
     const pid = (issue['Pallet ID'] || '').trim();
     if (!pid) return;
-    if (!palletsWithOpenIssues[pid]) palletsWithOpenIssues[pid] = { open: 0, total: 0 };
-    palletsWithOpenIssues[pid].total++;
+    if (!palletsWithIssues[pid]) palletsWithIssues[pid] = { open: 0, total: 0 };
+    palletsWithIssues[pid].total++;
     if ((issue['Status'] || '').trim().toUpperCase() !== 'RESOLVED') {
-      palletsWithOpenIssues[pid].open++;
+      palletsWithIssues[pid].open++;
     }
   });
 
-  // Filter to only pallets with at least one open issue
-  const openPallets = Object.keys(palletsWithOpenIssues).filter(pid => palletsWithOpenIssues[pid].open > 0);
+  // Split into open and resolved pallets
+  const openPallets = Object.keys(palletsWithIssues).filter(pid => palletsWithIssues[pid].open > 0);
+  const resolvedPallets = Object.keys(palletsWithIssues).filter(pid => palletsWithIssues[pid].open === 0);
 
+  // Render open pallets
   if (openPallets.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No pallets with open issues</td></tr>';
-    return;
+  } else {
+    let html = '';
+    openPallets.forEach(pid => {
+      const audit = [...allAudits].reverse().find(a => (a['Pallet ID'] || '').trim() === pid);
+      const auditDate = audit ? fmtDate(audit['Audit Start Timestamp']) : '—';
+      const auditResult = audit ? (audit['Audit Result'] || '—') : '—';
+      const auditor = audit ? (audit['Audit Performed By'] || '—') : '—';
+      const info = palletsWithIssues[pid];
+
+      html += '<tr class="clickable" onclick="showPalletIssues(\'' + pid.replace(/'/g, "\\'") + '\')">'
+        + '<td class="mono" style="font-weight:600;">' + pid + '</td>'
+        + '<td>' + auditDate + '</td>'
+        + '<td><span class="badge badge-open">' + auditResult + '</span></td>'
+        + '<td style="text-align:center;color:#dc3545;font-weight:700;">' + info.open + '</td>'
+        + '<td style="text-align:center;">' + info.total + '</td>'
+        + '<td>' + auditor + '</td>'
+        + '</tr>';
+    });
+    tbody.innerHTML = html;
   }
 
-  let html = '';
-  openPallets.forEach(pid => {
-    const audit = [...allAudits].reverse().find(a => (a['Pallet ID'] || '').trim() === pid);
-    const auditDate = audit ? fmtDate(audit['Audit Start Timestamp']) : '—';
-    const auditResult = audit ? (audit['Audit Result'] || '—') : '—';
-    const auditor = audit ? (audit['Audit Performed By'] || '—') : '—';
-    const info = palletsWithOpenIssues[pid];
+  // Render resolved pallets (most recent first based on audit date)
+  if (resolvedPallets.length === 0) {
+    resolvedTbody.innerHTML = '<tr><td colspan="5" class="empty-state">No resolved pallets</td></tr>';
+  } else {
+    const resolvedWithDates = resolvedPallets.map(pid => {
+      const audit = [...allAudits].reverse().find(a => (a['Pallet ID'] || '').trim() === pid);
+      return { pid, audit };
+    }).sort((a, b) => {
+      const da = a.audit ? a.audit['Audit Start Timestamp'] || '' : '';
+      const db = b.audit ? b.audit['Audit Start Timestamp'] || '' : '';
+      return db.localeCompare(da);
+    });
 
-    html += '<tr class="clickable" onclick="showPalletIssues(\'' + pid.replace(/'/g, "\\'") + '\')">'
-      + '<td class="mono" style="font-weight:600;">' + pid + '</td>'
-      + '<td>' + auditDate + '</td>'
-      + '<td><span class="badge badge-open">' + auditResult + '</span></td>'
-      + '<td style="text-align:center;color:#dc3545;font-weight:700;">' + info.open + '</td>'
-      + '<td style="text-align:center;">' + info.total + '</td>'
-      + '<td>' + auditor + '</td>'
-      + '</tr>';
-  });
-  tbody.innerHTML = html;
+    let html = '';
+    resolvedWithDates.slice(0, 20).forEach(({ pid, audit }) => {
+      const auditDate = audit ? fmtDate(audit['Audit Start Timestamp']) : '—';
+      const auditor = audit ? (audit['Audit Performed By'] || '—') : '—';
+      const info = palletsWithIssues[pid];
+
+      // Find most recent resolution timestamp for this pallet
+      const palletIssues = allIssues.filter(i => (i['Pallet ID'] || '').trim() === pid && (i['Status'] || '').trim().toUpperCase() === 'RESOLVED');
+      let latestResolution = '—';
+      if (palletIssues.length) {
+        const timestamps = palletIssues.map(i => (i['Resolution Timestamp'] || '')).filter(t => t).sort().reverse();
+        if (timestamps.length) latestResolution = fmtDate(timestamps[0]);
+      }
+
+      html += '<tr class="clickable" onclick="showPalletIssues(\'' + pid.replace(/'/g, "\\'") + '\')">'
+        + '<td class="mono" style="font-weight:600;">' + pid + '</td>'
+        + '<td>' + auditDate + '</td>'
+        + '<td style="text-align:center;">' + info.total + '</td>'
+        + '<td>' + latestResolution + '</td>'
+        + '<td>' + auditor + '</td>'
+        + '</tr>';
+    });
+    resolvedTbody.innerHTML = html;
+  }
 }
 function showPalletIssues(palletId) {
   document.getElementById('issuesModalTitle').textContent = 'Issues — ' + palletId;
@@ -292,12 +365,13 @@ function showPalletIssues(palletId) {
 
     if (isOpen) {
       html += '<div id="resolveForm_' + globalIdx + '" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #f0c0c0;">'
+        + '<input type="text" id="resolvedBy_' + globalIdx + '" placeholder="Resolved by..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;">'
         + '<textarea id="resolveNote_' + globalIdx + '" placeholder="Resolution note..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:40px;margin-bottom:6px;"></textarea>'
         + '<div style="display:flex;gap:8px;">'
         + '<button style="padding:5px 14px;background:#28a745;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;" onclick="resolveIssue(' + globalIdx + ', \'' + palletId.replace(/'/g, "\\'") + '\')">Confirm</button>'
-        + '<button style="padding:5px 12px;background:#e9ecef;color:#333;border:none;border-radius:4px;font-size:11px;cursor:pointer;" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'none\'">Cancel</button>'
+        + '<button style="padding:5px 12px;background:#e9ecef;color:#333;border:none;border-radius:4px;font-size:11px;cursor:pointer;" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'none\';document.getElementById(\'resolveBtn_' + globalIdx + '\').style.display=\'inline-block\'">Cancel</button>'
         + '</div></div>';
-      html += '<button class="resolve-btn" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'block\'">✓ Mark as Resolved</button>';
+      html += '<button id="resolveBtn_' + globalIdx + '" class="resolve-btn" onclick="document.getElementById(\'resolveForm_' + globalIdx + '\').style.display=\'block\';this.style.display=\'none\'">✓ Mark as Resolved</button>';
     } else {
       if (issue['Resolution Note']) {
         html += '<div style="font-size:11px;color:#28a745;margin-top:4px;font-style:italic;">Resolution: ' + issue['Resolution Note'] + '</div>';
@@ -320,18 +394,23 @@ function closeIssuesModal() {
 }
 
 async function resolveIssue(rowIdx, palletId) {
+  const resolvedByEl = document.getElementById('resolvedBy_' + rowIdx);
   const noteEl = document.getElementById('resolveNote_' + rowIdx);
+  const resolvedBy = resolvedByEl ? resolvedByEl.value.trim() : '';
   const resolutionNote = noteEl ? noteEl.value.trim() : '';
+  if (!resolvedBy) { showToast('Resolved By is required', 'error'); return; }
   if (!resolutionNote) { showToast('Resolution note is required', 'error'); return; }
 
   try {
     const json = await jsonpRequest(scriptUrl, {
       action: 'resolvepalletauditissue',
       row: rowIdx.toString(),
+      resolvedby: resolvedBy,
       resolutionnote: resolutionNote
     });
     if (json.success) {
       allIssues[rowIdx]['Status'] = 'RESOLVED';
+      allIssues[rowIdx]['Resolved By'] = resolvedBy;
       allIssues[rowIdx]['Resolution Note'] = resolutionNote;
       showPalletIssues(palletId);
       renderTable();

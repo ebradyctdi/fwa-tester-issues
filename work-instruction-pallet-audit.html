@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Work Instruction — Pallet Audit Tool</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.75in; }
+  body { font-family: Arial, sans-serif; color: #333; max-width: 7.5in; margin: 0 auto; padding: 30px; line-height: 1.5; }
+  h1 { text-align: center; font-size: 24px; color: #1a3a5c; margin-bottom: 4px; }
+  .doc-sub { text-align: center; font-size: 12px; color: #666; margin-bottom: 24px; }
+  .logo { text-align: center; margin-bottom: 12px; }
+  .logo img { height: 36px; filter: invert(1); }
+  h2 { font-size: 16px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin-top: 24px; margin-bottom: 10px; }
+  h3 { font-size: 14px; color: #1a3a5c; margin-top: 16px; margin-bottom: 6px; }
+  ol, ul { margin-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; font-size: 13px; }
+  .step-section { margin-bottom: 20px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+  .step-section h3 { margin-top: 0; }
+  .note { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .note strong { color: #856404; }
+  .important { background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .important strong { color: #721c24; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+  th { background: #1a3a5c; color: white; font-size: 11px; text-transform: uppercase; }
+  code { background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 12px; font-family: Consolas, monospace; }
+  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #888; text-align: center; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+
+<div class="logo"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI"></div>
+<h1>Work Instruction: Pallet Audit Tool</h1>
+<div class="doc-sub">FWA Operations — CTDI Coatesville</div>
+
+<h2>1. Purpose</h2>
+<p style="font-size:13px;">This work instruction describes how to use the Pallet Audit Tool to verify the contents of a pallet before shipment. The audit confirms that all expected IMEIs are physically present on the pallet and records the audit result.</p>
+
+<h2>2. Before You Begin</h2>
+<ul>
+  <li>Navigate to the <strong>Pallet Audit Tool</strong> page (Audit Tools → Pallet Audit Tool)</li>
+  <li>Ensure your barcode scanner is connected and functioning</li>
+  <li>Have the pallet manifest (list of expected IMEIs) available — these will be scanned during setup</li>
+  <li>Confirm the connection status indicator shows <strong>green (Connected)</strong></li>
+</ul>
+
+<h2>3. Audit Process</h2>
+
+<div class="step-section">
+<h3>Step 1: Scan Pallet ID</h3>
+<ol>
+  <li>Place your cursor in the <strong>Pallet ID</strong> field</li>
+  <li>Scan the pallet's barcode label (11 characters, starts with "PLB")</li>
+  <li>The system will validate the format and advance to the next step</li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Step 2: Scan Part Number</h3>
+<ol>
+  <li>Scan the Part Number barcode on the pallet</li>
+  <li>Valid part numbers:
+    <ul>
+      <li><code>WNC-CR200A</code> — Titan 3</li>
+      <li><code>ASK-NCM1100</code> — Titan 4</li>
+    </ul>
+  </li>
+  <li>The model type will display next to the part number</li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Step 3: Scan IMEI Barcodes (Pallet Manifest)</h3>
+<ol>
+  <li>Scan each IMEI barcode from the pallet manifest (the expected units)</li>
+  <li>Each IMEI must be 15 characters — invalid lengths will show an error</li>
+  <li>Duplicate IMEIs are automatically rejected</li>
+  <li>The scan count updates as you add each IMEI</li>
+  <li>When all expected IMEIs are scanned, click <strong>"Begin Audit"</strong></li>
+</ol>
+<div class="note"><strong>Note:</strong> You can scan any number of IMEIs for the manifest. There is no hard limit.</div>
+</div>
+
+<div class="step-section">
+<h3>Step 4: Perform the Audit (Scan Physical Units)</h3>
+<ol>
+  <li>The system enters Audit Mode — you will now scan the <strong>actual units on the pallet</strong></li>
+  <li>Scan each unit's IMEI barcode <strong>or</strong> QR code (both are supported)</li>
+  <li>For each scan:
+    <ul>
+      <li><strong>Match found:</strong> The unit is marked green in the table ✓</li>
+      <li><strong>Not on manifest:</strong> An alert appears — you can record this as an issue</li>
+      <li><strong>Already scanned:</strong> A duplicate warning appears (not counted again)</li>
+    </ul>
+  </li>
+  <li>Monitor the KPI cards at the top:
+    <ul>
+      <li><strong>IMEIs on Pallet</strong> — total expected</li>
+      <li><strong>Matched</strong> — successfully verified</li>
+      <li><strong>Remaining</strong> — still to scan</li>
+      <li><strong>Issues Logged</strong> — problems recorded</li>
+    </ul>
+  </li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Step 5: Report Issues (If Needed)</h3>
+<ol>
+  <li>If an unexpected IMEI is scanned, click <strong>"Record as Issue"</strong> on the alert popup</li>
+  <li>To report a standalone issue, click the red <strong>"Report Issue"</strong> button</li>
+  <li>Enter the IMEI and describe the issue in the popup</li>
+  <li>Issues are logged to the Pallet Audit Issues sheet</li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Step 6: Complete the Audit</h3>
+<ol>
+  <li>When all units have been scanned, click <strong>"Complete Audit"</strong></li>
+  <li>A summary popup shows audit metrics (match rate, issues, etc.)</li>
+  <li>Enter the <strong>Auditor Name</strong> (required)</li>
+  <li>Add any <strong>Notes</strong> (optional)</li>
+  <li>Select the audit result:
+    <ul>
+      <li><strong>OK To Ship</strong> (green) — Pallet passes audit (disabled if open issues exist)</li>
+      <li><strong>Hold for Action</strong> (red) — Pallet fails audit</li>
+    </ul>
+  </li>
+  <li>Click the result button to save the audit</li>
+</ol>
+<div class="important"><strong>Important:</strong> You cannot select "OK To Ship" if there are any open issues associated with the pallet. All issues must be resolved first.</div>
+</div>
+
+<div class="step-section">
+<h3>Step 7: Print Audit Label</h3>
+<ol>
+  <li>After saving, the <strong>Print Label</strong> button appears</li>
+  <li>A 4×6 label preview is shown with the audit result, pallet details, and a barcode</li>
+  <li>Click <strong>"Print Label"</strong> to send to the Zebra ZD421 printer</li>
+  <li>Affix the label to the pallet</li>
+</ol>
+</div>
+
+<h2>4. Starting a New Audit</h2>
+<p style="font-size:13px;">Click <strong>"Reset / New Audit"</strong> at the top of the page to clear all data and begin a fresh audit for the next pallet.</p>
+
+<h2>5. Validation Rules</h2>
+<table>
+  <tr><th>Field</th><th>Rule</th><th>Example</th></tr>
+  <tr><td>Pallet ID</td><td>11 characters, starts with "PLB"</td><td>PLB00002624</td></tr>
+  <tr><td>Part Number</td><td>WNC-CR200A or ASK-NCM1100</td><td>WNC-CR200A</td></tr>
+  <tr><td>IMEI</td><td>15 numeric characters, starts with "3"</td><td>351010695593399</td></tr>
+</table>
+
+<h2>6. Audit Results</h2>
+<table>
+  <tr><th>Result</th><th>Meaning</th><th>Label Shows</th></tr>
+  <tr><td>OK To Ship</td><td>Pallet contents verified, no open issues</td><td>✓ OK To Ship</td></tr>
+  <tr><td>Hold for Action</td><td>Issues found, pallet should not ship</td><td>✗ Hold For Action</td></tr>
+</table>
+
+<h2>7. Where to Find Records</h2>
+<table>
+  <tr><th>What</th><th>Where</th></tr>
+  <tr><td>Completed audits</td><td>Audit Tools → Audit Log</td></tr>
+  <tr><td>Open pallet issues</td><td>Audit Tools → Open Pallet Issues</td></tr>
+  <tr><td>Reprint a label</td><td>Audit Log → Details → Reprint Label button</td></tr>
+</table>
+
+<div class="footer">
+  CTDI — FWA Operations | Pallet Audit Tool Work Instruction | Rev 1.0
+</div>
+
+</body>
+</html>

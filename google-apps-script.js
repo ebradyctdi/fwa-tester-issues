@@ -501,10 +501,15 @@ function doGet(e) {
       if (!paiSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
       var row = parseInt(e.parameter.row);
       if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var resolvedBy = (e.parameter.resolvedby || '').toString().trim();
       var resolutionNote = (e.parameter.resolutionnote || '').toString().trim();
       var sheetRow = row + 2;
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
       paiSheet.getRange(sheetRow, 6).setValue('RESOLVED');
-      paiSheet.getRange(sheetRow, 7).setValue(resolutionNote);
+      paiSheet.getRange(sheetRow, 7).setValue(resolvedBy);
+      paiSheet.getRange(sheetRow, 8).setValue(ts);
+      paiSheet.getRange(sheetRow, 9).setValue(resolutionNote);
       return _respond({ success: true }, callback);
     }
 
@@ -514,8 +519,8 @@ function doGet(e) {
       if (!paiSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paiSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paiSheet.getRange(2, 1, lastRow - 1, 7).getValues();
-      var headers = ['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue', 'Status', 'Resolution Note'];
+      var data = paiSheet.getRange(2, 1, lastRow - 1, 9).getValues();
+      var headers = ['Pallet ID', 'IMEI', 'Timestamp', 'Reported By', 'Issue', 'Status', 'Resolved By', 'Resolution Timestamp', 'Resolution Note'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });

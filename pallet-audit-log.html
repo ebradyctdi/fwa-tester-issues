@@ -158,6 +158,10 @@
             <option value="FAIL">FAIL (Hold for Action)</option>
           </select>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;font-weight:600;color:#666;">Pallet ID:</label>
+          <input type="text" id="filterPalletId" placeholder="Filter..." oninput="renderTable()" style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;width:120px;font-family:Consolas,monospace;">
+        </div>
         <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="clearFilters()">Clear Filters</button>
         <span id="recordCount" style="font-size:12px;color:#666;margin-left:8px;"></span>
       </div>
@@ -288,6 +292,10 @@ function renderTable() {
   if (filterResult) {
     filtered = filtered.filter(a => (a['Audit Result'] || '').toUpperCase() === filterResult);
   }
+  const filterPalletId = (document.getElementById('filterPalletId') ? document.getElementById('filterPalletId').value : '').trim().toLowerCase();
+  if (filterPalletId) {
+    filtered = filtered.filter(a => (a['Pallet ID'] || '').toLowerCase().includes(filterPalletId));
+  }
 
   if (filtered.length === 0) {
     document.getElementById('recordCount').textContent = '0 records';
@@ -326,6 +334,7 @@ function clearFilters() {
   document.getElementById('filterFrom').value = '';
   document.getElementById('filterTo').value = '';
   document.getElementById('filterResult').value = '';
+  document.getElementById('filterPalletId').value = '';
   renderTable();
 }
 function showDetail(idx) {
@@ -447,6 +456,10 @@ function exportOverviewCSV() {
   }
   if (filterResult) {
     filtered = filtered.filter(a => (a['Audit Result'] || '').toUpperCase() === filterResult);
+  }
+  const filterPalletId = (document.getElementById('filterPalletId') ? document.getElementById('filterPalletId').value : '').trim().toLowerCase();
+  if (filterPalletId) {
+    filtered = filtered.filter(a => (a['Pallet ID'] || '').toLowerCase().includes(filterPalletId));
   }
 
   if (!filtered.length) { showToast('No records to export', 'error'); return; }
