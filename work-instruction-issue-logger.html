@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Work Instruction — Issue Logger</title>
+<style>
+  @page { size: 8.5in 11in; margin: 1in; }
+  body { font-family: Arial, sans-serif; color: #333; max-width: 7.5in; margin: 0 auto; padding: 30px; line-height: 1.5; }
+  h1 { text-align: center; font-size: 24px; color: #1a3a5c; margin-bottom: 4px; }
+  .doc-sub { text-align: center; font-size: 12px; color: #666; margin-bottom: 24px; }
+  .logo { text-align: center; margin-bottom: 12px; }
+  .logo img { height: 36px; filter: invert(1); }
+  h2 { font-size: 16px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin-top: 24px; margin-bottom: 10px; }
+  h3 { font-size: 14px; color: #1a3a5c; margin-top: 16px; margin-bottom: 6px; }
+  ol, ul { margin-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; font-size: 13px; }
+  .step-section { margin-bottom: 16px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+  .step-section h3 { margin-top: 0; }
+  .note { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .note strong { color: #856404; }
+  .important { background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .important strong { color: #721c24; }
+  .tip { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .tip strong { color: #155724; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+  th { background: #1a3a5c; color: white; font-size: 11px; text-transform: uppercase; }
+  code { background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 12px; font-family: Consolas, monospace; }
+  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #888; text-align: center; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+
+<div class="logo"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI"></div>
+<h1>Work Instruction: Issue Logger</h1>
+<div class="doc-sub">FWA Operations — CTDI Coatesville</div>
+
+<h2>1. Purpose</h2>
+<p style="font-size:13px;">This work instruction describes how to use the Issue Logger to record device/product issues during receipt inspection. The tool supports both individual entry and high-speed batch scanning modes.</p>
+
+<h2>2. Before You Begin</h2>
+<ul>
+  <li>Navigate to <strong>Product/Device Issues → Issue Logger</strong></li>
+  <li>Ensure your barcode scanner is connected</li>
+  <li>Confirm the connection status indicator shows <strong>green (Connected)</strong></li>
+  <li>Verify the correct Cart is available in the dropdown</li>
+</ul>
+
+<h2>3. Individual Entry Mode</h2>
+
+<div class="step-section">
+<h3>Logging a Single Issue</h3>
+<ol>
+  <li>Fill in the <strong>IMEI</strong> field (15 characters, starts with '3')</li>
+  <li>Fill in the <strong>Serial Number</strong> field (11 characters, starts with 'A')</li>
+  <li>Select or scan the <strong>Cart</strong></li>
+  <li>Select the <strong>Device Model</strong> (Titan 3 or Titan 4)</li>
+  <li>Enter <strong>Reported By</strong> (your name)</li>
+  <li>Enter or select an <strong>Issue Note</strong> describing the problem</li>
+  <li>Click <strong>"Log Issue"</strong></li>
+</ol>
+<div class="tip"><strong>Tip:</strong> When you select a cart, the Issue Note auto-fills with the cart's standard note. You can edit it if needed.</div>
+</div>
+
+<h2>4. Batch Scan Mode</h2>
+<p style="font-size:13px;">Batch mode is designed for high-speed scanning of multiple units with the same Cart, Device Model, Reported By, and Note values.</p>
+
+<div class="step-section">
+<h3>Starting Batch Mode</h3>
+<ol>
+  <li>Fill in <strong>Cart</strong>, <strong>Device Model</strong>, <strong>Reported By</strong>, and <strong>Issue Note</strong> on the main form</li>
+  <li>Click <strong>"Start Batch Scan"</strong></li>
+  <li>These values are locked for the batch session</li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Scan Mode Toggle</h3>
+<p style="font-size:13px;margin-bottom:8px;">At the top of batch mode, choose your scan method:</p>
+<table>
+  <tr><th>Mode</th><th>How It Works</th><th>Best For</th></tr>
+  <tr><td><strong>Scan Values Individually</strong></td><td>Scan IMEI (15 chars) → auto-advances to Serial (11 chars) → auto-submits</td><td>Units with separate IMEI and Serial barcodes</td></tr>
+  <tr><td><strong>Scan QR Code</strong></td><td>Scan unit QR code → auto-parses IMEI, Serial, and Model → auto-submits on Enter</td><td>Units with QR codes containing all info</td></tr>
+</table>
+</div>
+
+<div class="step-section">
+<h3>Scanning Units (Individual Mode)</h3>
+<ol>
+  <li>Scan the <strong>IMEI barcode</strong> — cursor auto-advances to Serial field after 15 chars</li>
+  <li>Scan the <strong>Serial Number barcode</strong> — auto-submits after 11 chars</li>
+  <li>A success beep plays and the fields clear for the next unit</li>
+  <li>The "This Batch" counter increments</li>
+  <li>Repeat for each unit</li>
+</ol>
+</div>
+
+<div class="step-section">
+<h3>Scanning Units (QR Code Mode)</h3>
+<ol>
+  <li>Select <strong>"Scan QR Code"</strong> at the top</li>
+  <li>Scan the unit's QR code — press Enter or let the scanner send Enter</li>
+  <li>The system automatically extracts IMEI, Serial, and Device Model</li>
+  <li>A success beep plays and the field clears for the next unit</li>
+  <li>Device Model updates automatically based on the QR data</li>
+</ol>
+<div class="note"><strong>Note:</strong> You can switch the Device Model dropdown between scans in both modes.</div>
+</div>
+
+<div class="step-section">
+<h3>Deleting a Scanned Record</h3>
+<ol>
+  <li>In the batch log table, click <strong>"Delete"</strong> next to the record</li>
+  <li>Confirm the deletion</li>
+  <li>This removes the issue log entry <strong>and</strong> removes the unit from the cart</li>
+</ol>
+<div class="important"><strong>Important:</strong> Deleting a record removes it from both the Device Issues sheet and the Device Location (cart) sheet.</div>
+</div>
+
+<div class="step-section">
+<h3>Exiting Batch Mode</h3>
+<ol>
+  <li>Click the red <strong>"Exit Batch Mode"</strong> button</li>
+  <li>You return to the individual entry form</li>
+</ol>
+</div>
+
+<h2>5. Counters</h2>
+<table>
+  <tr><th>Counter</th><th>Meaning</th></tr>
+  <tr><td><strong>This Batch</strong></td><td>Number of units scanned in the current batch session</td></tr>
+  <tr><td><strong>Cart Total</strong></td><td>Total number of units currently on the selected cart</td></tr>
+</table>
+
+<h2>6. Validation Rules</h2>
+<table>
+  <tr><th>Field</th><th>Rule</th><th>Example</th></tr>
+  <tr><td>IMEI</td><td>15 numeric characters, must start with '3'</td><td><code>351010695593399</code></td></tr>
+  <tr><td>Serial Number</td><td>11 characters, must start with 'A'</td><td><code>ACR52500808</code></td></tr>
+  <tr><td>Cart</td><td>Must be selected from dropdown</td><td>FWA-0001</td></tr>
+  <tr><td>Device Model</td><td>Titan 3 or Titan 4</td><td>Titan 4</td></tr>
+  <tr><td>Reported By</td><td>Required — your name</td><td>Ed B</td></tr>
+  <tr><td>Issue Note</td><td>Required — description of issue</td><td>Cosmetic damage</td></tr>
+</table>
+
+<h2>7. Audio Feedback</h2>
+<table>
+  <tr><th>Sound</th><th>Meaning</th></tr>
+  <tr><td>High beep (short)</td><td>Scan successful — unit logged</td></tr>
+  <tr><td>Low buzz (long)</td><td>Error — check the feedback message</td></tr>
+</table>
+
+<h2>8. Where to Find Records</h2>
+<table>
+  <tr><th>What</th><th>Where</th></tr>
+  <tr><td>Recent issues</td><td>Table at bottom of Issue Logger page</td></tr>
+  <tr><td>Full issue history</td><td>Product/Device Issues → Issue History</td></tr>
+  <tr><td>Cart contents</td><td>Product/Device Issues → Carts</td></tr>
+</table>
+
+<div class="footer">
+  CTDI — FWA Operations | Issue Logger Work Instruction | Rev 1.0
+</div>
+
+</body>
+</html>
