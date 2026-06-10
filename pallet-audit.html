@@ -322,7 +322,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbz4AqJACaab13YKDdRidXbXpyu4yG8YjznjbXWFFj2t1HSbuoMuFPePIY7y3zxLZkvimw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbynQMHeAE07u6lnd15urEAaldRxhVF9Zv-LtRb5MLF-oTIii3MNUAc1WXsVd7D2qsfSlA/exec'; } catch(e) {}
 
 let palletID = '';
 let partNumber = '';
@@ -560,9 +560,9 @@ async function submitAudit(result) {
       notes: notes
     };
 
-    // Add up to 15 matched IMEIs
+    // Add up to 120 matched IMEIs
     const matchedArr = Array.from(matchedIMEIs);
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 120; i++) {
       params['imei' + (i + 1)] = matchedArr[i] || '';
     }
 

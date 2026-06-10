@@ -136,7 +136,10 @@
     <div class="table-section">
       <div class="table-header">
         <h2>Audit History</h2>
-        <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="background:#28a745;" onclick="exportOverviewCSV()">📥 Export CSV</button>
+          <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+        </div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:6px;">
@@ -151,11 +154,12 @@
           <label style="font-size:11px;font-weight:600;color:#666;">Result:</label>
           <select id="filterResult" onchange="renderTable()" style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
             <option value="">All</option>
-            <option value="PASS">PASS</option>
-            <option value="FAIL">FAIL</option>
+            <option value="PASS">PASS (OK To Ship)</option>
+            <option value="FAIL">FAIL (Hold for Action)</option>
           </select>
         </div>
         <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="clearFilters()">Clear Filters</button>
+        <span id="recordCount" style="font-size:12px;color:#666;margin-left:8px;"></span>
       </div>
       <div style="overflow-x:auto;">
         <table class="audit-table">
@@ -196,7 +200,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbz4AqJACaab13YKDdRidXbXpyu4yG8YjznjbXWFFj2t1HSbuoMuFPePIY7y3zxLZkvimw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbynQMHeAE07u6lnd15urEAaldRxhVF9Zv-LtRb5MLF-oTIii3MNUAc1WXsVd7D2qsfSlA/exec'; } catch(e) {}
 
 let allAudits = [];
 let allIssues = [];
@@ -286,9 +290,12 @@ function renderTable() {
   }
 
   if (filtered.length === 0) {
+    document.getElementById('recordCount').textContent = '0 records';
     tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No records match filters</td></tr>';
     return;
   }
+
+  document.getElementById('recordCount').textContent = filtered.length + ' record' + (filtered.length !== 1 ? 's' : '');
 
   // Show newest first
   const sorted = [...filtered].reverse();
@@ -397,7 +404,7 @@ function exportAuditCSV() {
   rows.push([]);
   rows.push(['Validated IMEIs']);
 
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 120; i++) {
     const val = (audit['IMEI Scan #' + i] || '').trim();
     if (val) rows.push([val]);
   }
@@ -421,6 +428,47 @@ function exportAuditCSV() {
   a.download = 'Audit_' + palletId + '_' + (audit['Audit Result'] || '') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportOverviewCSV() {
+  const filterFrom = document.getElementById('filterFrom').value;
+  const filterTo = document.getElementById('filterTo').value;
+  const filterResult = document.getElementById('filterResult').value;
+
+  let filtered = [...allAudits];
+  if (filterFrom) {
+    const fromDate = new Date(filterFrom);
+    filtered = filtered.filter(a => { const d = new Date(a['Audit Start Timestamp']); return !isNaN(d.getTime()) && d >= fromDate; });
+  }
+  if (filterTo) {
+    const toDate = new Date(filterTo);
+    toDate.setHours(23, 59, 59, 999);
+    filtered = filtered.filter(a => { const d = new Date(a['Audit Start Timestamp']); return !isNaN(d.getTime()) && d <= toDate; });
+  }
+  if (filterResult) {
+    filtered = filtered.filter(a => (a['Audit Result'] || '').toUpperCase() === filterResult);
+  }
+
+  if (!filtered.length) { showToast('No records to export', 'error'); return; }
+
+  let csv = 'Pallet ID,Part Number,Timestamp,IMEIs on Pallet,IMEIs Validated,Result,Issues,Auditor,Notes\n';
+  filtered.reverse().forEach(audit => {
+    const palletId = (audit['Pallet ID'] || '').trim();
+    const issueCount = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId).length;
+    csv += '"' + (audit['Pallet ID']||'') + '","' + (audit['Part Number']||'') + '","' + fmtDate(audit['Audit Start Timestamp']) + '",'
+      + (audit['# of IMEIs on Pallet']||'') + ',' + (audit['# of IMEIs Scanned During Audit']||'') + ',"'
+      + (audit['Audit Result']||'') + '",' + issueCount + ',"' + (audit['Audit Performed By']||'') + '","'
+      + (audit['Notes']||'').replace(/"/g,'""') + '"\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Audit_Log_Overview.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported (' + filtered.length + ' records)', 'success');
 }
 
 function reprintLabel(idx) {
