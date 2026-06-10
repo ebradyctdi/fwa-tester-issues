@@ -209,7 +209,7 @@
 const URL_KEY = 'fwa_script_url';
 const SCHEDULES_KEY = 'fwa_email_schedules';
 let scriptUrl = '', schedules = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbynQMHeAE07u6lnd15urEAaldRxhVF9Zv-LtRb5MLF-oTIii3MNUAc1WXsVd7D2qsfSlA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxFAg4MO2auRXXVenMvhxow4F9UIu44SDlAd9nJKYCqIHFpfxOaH8mCmgCOM9dTY6J_iA/exec'; } catch(e) {}
 try { schedules = JSON.parse(localStorage.getItem(SCHEDULES_KEY)) || []; } catch(e) { schedules = []; }
 
 function jsonpRequest(url, params) {
