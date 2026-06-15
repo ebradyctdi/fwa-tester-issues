@@ -36,7 +36,7 @@
   .scan-input { width: 100%; padding: 12px 16px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-family: Consolas, monospace; transition: border-color 0.2s; }
   .scan-input:focus { outline: none; border-color: #1a3a5c; }
   .scan-input:disabled { background: #f5f5f5; color: #999; }
-  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
   .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   .kpi-val { font-size: 32px; font-weight: 700; }
   .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
@@ -58,6 +58,8 @@
   .imei-chip { padding: 6px 10px; border-radius: 6px; font-family: Consolas, monospace; font-size: 12px; text-align: center; background: #f0f2f5; border: 1px solid #dee2e6; transition: all 0.15s; }
   .imei-chip.matched { background: #d4edda; border-color: #28a745; color: #155724; }
   .imei-chip.matched::before { content: '✅ '; }
+  .imei-chip.matched-imei-only { background: #d6eaf8; border-color: #5dade2; color: #1a5276; }
+  .imei-chip.matched-imei-only::before { content: '☑️ '; }
   .imei-chip .issue-btn { display: none; margin-left: 6px; background: #fd7e14; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 2px 6px; cursor: pointer; font-weight: 600; }
   .imei-chip.audit-mode .issue-btn { display: inline-block; }
   .imei-chip.has-issue { border-color: #fd7e14; }
@@ -156,7 +158,8 @@
     <!-- KPIs -->
     <div class="kpi-row">
       <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">0</div><div class="kpi-label">IMEIs on Pallet</div></div>
-      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiMatched">0</div><div class="kpi-label">Matched During Audit</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiQuality">0</div><div class="kpi-label">Quality Checked During Audit</div></div>
+      <div class="kpi" style="border-top:4px solid #5dade2;"><div class="kpi-val" id="kpiMatched">0</div><div class="kpi-label">Matched During Audit</div></div>
       <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiRemaining">0</div><div class="kpi-label">Remaining</div></div>
       <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiIssues">0</div><div class="kpi-label">Issues Logged</div></div>
     </div>
@@ -189,6 +192,14 @@
     <div id="auditSection" style="display:none;">
       <div class="scan-section">
         <h2>Scan Unit IMEIs</h2>
+        <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:600;color:#555;">Scan Mode:</span>
+          <div style="display:flex;border-radius:6px;overflow:hidden;border:2px solid #28a745;">
+            <button type="button" id="btnModeQuality" onclick="setAuditScanMode('quality')" style="padding:8px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#28a745;color:white;">Quality Check & IMEI Record</button>
+            <button type="button" id="btnModeImei" onclick="setAuditScanMode('imei')" style="padding:8px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:white;color:#333;">Just IMEI Record</button>
+          </div>
+        </div>
+        <input type="hidden" id="auditScanTypeValue" value="quality">
         <input type="text" class="scan-input" id="auditScanInput" placeholder="Scan IMEI barcode or unit QR code...">
         <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
           <span id="auditPalletLabel" style="font-size:13px;font-weight:600;color:#1a3a5c;"></span>
@@ -211,8 +222,8 @@
           <div style="width:100%;border-top:2px solid #000;"></div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;text-align:center;">Pallet Audit</div>
           <div id="prevPalletID" style="font-size:36px;font-weight:900;font-family:'Arial Black',Consolas,monospace;text-align:center;"></div>
-          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#000;font-weight:600;"></div>
           <div style="text-align:center;"><svg id="prevBarcode"></svg></div>
+          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#000;font-weight:600;"></div>
           <div style="width:100%;border-top:2px solid #000;"></div>
           <div id="prevResult" style="font-size:32px;font-weight:900;text-align:center;letter-spacing:2px;color:#000;"></div>
           <div id="prevMetrics" style="font-size:13px;text-align:center;color:#000;line-height:1.6;"></div>
@@ -263,7 +274,7 @@
     <div class="modal-header" id="alertHeader" style="background:#dc3545;"><h3 id="alertTitle">Alert</h3></div>
     <div class="modal-body"><p id="alertMessage"></p></div>
     <div class="modal-footer">
-      <button class="btn btn-reset" onclick="closeAlert()">OK</button>
+      <button class="btn btn-reset" onclick="closeAlert()">Ignore - Do Not Record Unit</button>
       <button class="btn btn-danger" id="alertRecordIssueBtn" style="display:none;" onclick="recordUnexpectedIssue()">Record as Issue</button>
     </div>
   </div>
@@ -338,6 +349,7 @@ let palletID = '';
 let partNumber = '';
 let palletIMEIs = []; // all IMEIs loaded from barcode scans
 let matchedIMEIs = new Set(); // IMEIs matched during audit
+let qualityIMEIs = new Set(); // IMEIs scanned with Quality Check mode
 let unmatchedIMEIs = []; // IMEIs scanned that were NOT on the pallet
 let issuedIMEIs = new Set(); // IMEIs that have reported issues
 let issueCount = 0; // total issues logged during audit
@@ -514,6 +526,9 @@ document.getElementById('auditScanInput').addEventListener('keydown', function(e
     // Check if on pallet list
     if (palletIMEIs.includes(val)) {
       matchedIMEIs.add(val);
+      // Track if quality check mode
+      const scanType = document.getElementById('auditScanTypeValue').value;
+      if (scanType === 'quality') qualityIMEIs.add(val);
       updateKPIs();
       renderTable();
       showToast('Match: ' + val, 'success');
@@ -600,6 +615,12 @@ async function submitAudit(result) {
       params['imei' + (i + 1)] = matchedArr[i] || '';
     }
 
+    // Add up to 20 quality IMEIs
+    const qualityArr = Array.from(qualityIMEIs);
+    for (let i = 0; i < 20; i++) {
+      params['qimei' + (i + 1)] = qualityArr[i] || '';
+    }
+
     const json = await jsonpRequest(scriptUrl, params);
     if (json.success) {
       showToast('Audit saved — ' + result, 'success');
@@ -625,6 +646,7 @@ async function submitAudit(result) {
 // --- Helpers ---
 function updateKPIs() {
   document.getElementById('kpiTotal').textContent = palletIMEIs.length;
+  document.getElementById('kpiQuality').textContent = qualityIMEIs.size;
   document.getElementById('kpiMatched').textContent = matchedIMEIs.size;
   document.getElementById('kpiRemaining').textContent = palletIMEIs.length - matchedIMEIs.size;
   document.getElementById('kpiIssues').textContent = issueCount;
@@ -640,9 +662,11 @@ function renderTable() {
   let html = '';
   palletIMEIs.forEach((imei) => {
     const isMatched = matchedIMEIs.has(imei);
+    const isQuality = qualityIMEIs.has(imei);
     const hasIssue = issuedIMEIs.has(imei);
     let cls = '';
-    if (isMatched) cls += ' matched';
+    if (isMatched && isQuality) cls += ' matched';
+    else if (isMatched) cls += ' matched-imei-only';
     if (auditMode) cls += ' audit-mode';
     if (hasIssue) cls += ' has-issue';
     html += '<div class="imei-chip' + cls + '">' + imei
@@ -656,6 +680,24 @@ function showWorkInstruction() {
   document.getElementById('workInstructionFrame').src = 'work-instruction-pallet-audit.html';
   document.getElementById('workInstructionModal').style.display = 'flex';
 }
+
+function setAuditScanMode(mode) {
+  document.getElementById('auditScanTypeValue').value = mode;
+  const btnImei = document.getElementById('btnModeImei');
+  const btnQuality = document.getElementById('btnModeQuality');
+  if (mode === 'quality') {
+    btnQuality.style.background = '#28a745';
+    btnQuality.style.color = 'white';
+    btnImei.style.background = 'white';
+    btnImei.style.color = '#333';
+  } else {
+    btnImei.style.background = '#5dade2';
+    btnImei.style.color = 'white';
+    btnQuality.style.background = 'white';
+    btnQuality.style.color = '#333';
+  }
+  document.getElementById('auditScanInput').focus();
+}
 function closeWorkInstruction() {
   document.getElementById('workInstructionModal').style.display = 'none';
   document.getElementById('workInstructionFrame').src = '';
@@ -666,6 +708,7 @@ function resetAll() {
   partNumber = '';
   palletIMEIs = [];
   matchedIMEIs = new Set();
+  qualityIMEIs = new Set();
   unmatchedIMEIs = [];
   issuedIMEIs = new Set();
   issueCount = 0;
@@ -868,7 +911,7 @@ function updateLabelPreview() {
     document.getElementById('prevResult').style.border = 'none';
     document.getElementById('prevResult').style.padding = '0';
   }
-  document.getElementById('prevMetrics').textContent = matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs verified';
+  document.getElementById('prevMetrics').innerHTML = (qualityIMEIs.size > 0 ? 'Quality Audit: ' + qualityIMEIs.size + ' Units Inspected<br>' : '') + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs Verified on Pallet';
   document.getElementById('prevIssues').textContent = issueCount > 0 ? 'Issues Recorded: ' + issueCount : '';
   document.getElementById('prevAuditor').textContent = 'Auditor: ' + lastAuditor;
   document.getElementById('prevTimestamp').textContent = ts;
@@ -920,11 +963,12 @@ function printAuditLabel() {
     + '<div class="divider"></div>'
     + '<div class="pallet-header">Pallet Audit</div>'
     + '<div class="pallet-id">' + palletID + '</div>'
-    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
     + '<div class="bc">' + barcodeHtml + '</div>'
+    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
     + '<div class="divider"></div>'
     + '<div class="result">' + resultText + '</div>'
-    + '<div class="metrics">' + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs verified</div>'
+    + (qualityIMEIs.size > 0 ? '<div class="metrics">Quality Audit: ' + qualityIMEIs.size + ' Units Inspected</div>' : '')
+    + '<div class="metrics">' + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs Verified on Pallet</div>'
     + (issueCount > 0 ? '<div class="issues-recorded">Issues Recorded: ' + issueCount + '</div>' : '')
     + '<div class="auditor">Auditor: ' + lastAuditor + '</div>'
     + '<div class="timestamp">' + ts + '</div>'

@@ -20,6 +20,8 @@
   .note strong { color: #856404; }
   .important { background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
   .important strong { color: #721c24; }
+  .tip { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin: 12px 0; }
+  .tip strong { color: #155724; }
   table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
   th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
   th { background: #1a3a5c; color: white; font-size: 11px; text-transform: uppercase; }
@@ -86,29 +88,44 @@
 <h3>Step 4: Perform the Audit (Scan Physical Units)</h3>
 <ol>
   <li>The system enters Audit Mode — you will now scan the <strong>actual units on the pallet</strong></li>
+  <li><strong>Select your Scan Mode</strong> using the toggle buttons:
+    <ul>
+      <li><strong style="color:#28a745;">Quality Check & IMEI Record</strong> (green, default) — IMEI is recorded AND marked as quality inspected. Unit turns <strong>green</strong> in the table.</li>
+      <li><strong style="color:#5dade2;">Just IMEI Record</strong> (light blue) — IMEI is recorded only. Unit turns <strong>light blue</strong> in the table.</li>
+    </ul>
+  </li>
   <li>Scan each unit's IMEI barcode <strong>or</strong> QR code (both are supported)</li>
+  <li>You can switch between scan modes at any time during the audit</li>
   <li>For each scan:
     <ul>
-      <li><strong>Match found:</strong> The unit is marked green in the table ✓</li>
-      <li><strong>Not on manifest:</strong> An alert appears — you can record this as an issue</li>
-      <li><strong>Already scanned:</strong> A duplicate warning appears (not counted again)</li>
+      <li><strong>Match found (Quality):</strong> Unit marked green ✅</li>
+      <li><strong>Match found (IMEI only):</strong> Unit marked light blue ☑️</li>
+      <li><strong>Not on manifest:</strong> Alert appears — you can "Record as Issue" or "Ignore - Do Not Record Unit"</li>
+      <li><strong>Already scanned:</strong> Duplicate warning (not counted again)</li>
     </ul>
   </li>
   <li>Monitor the KPI cards at the top:
     <ul>
       <li><strong>IMEIs on Pallet</strong> — total expected</li>
-      <li><strong>Matched</strong> — successfully verified</li>
+      <li><strong style="color:#28a745;">Quality Checked During Audit</strong> — units quality inspected</li>
+      <li><strong style="color:#5dade2;">Matched During Audit</strong> — total units verified (quality + IMEI only)</li>
       <li><strong>Remaining</strong> — still to scan</li>
       <li><strong>Issues Logged</strong> — problems recorded</li>
     </ul>
   </li>
 </ol>
+<div class="tip"><strong>Tip:</strong> Use "Quality Check & IMEI Record" for the units you physically inspect. Use "Just IMEI Record" for units you verify by barcode/QR only without opening the box.</div>
 </div>
 
 <div class="step-section">
 <h3>Step 5: Report Issues (If Needed)</h3>
 <ol>
-  <li>If an unexpected IMEI is scanned, click <strong>"Record as Issue"</strong> on the alert popup</li>
+  <li>If an unexpected IMEI is scanned, you have two options:
+    <ul>
+      <li><strong>"Record as Issue"</strong> — logs the unexpected IMEI as an issue</li>
+      <li><strong>"Ignore - Do Not Record Unit"</strong> — dismisses without recording</li>
+    </ul>
+  </li>
   <li>To report a standalone issue, click the red <strong>"Report Issue"</strong> button</li>
   <li>Enter the IMEI and describe the issue in the popup</li>
   <li>Issues are logged to the Pallet Audit Issues sheet</li>

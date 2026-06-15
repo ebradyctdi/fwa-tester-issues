@@ -233,8 +233,12 @@ function setStatus(state, label) {
 
 function fmtDate(str) {
   if (!str) return '—';
+  // If already formatted with EST/EDT from Apps Script, display as-is without seconds
+  if (str.includes('EST') || str.includes('EDT')) {
+    return str.replace(/ EST| EDT/, '').replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/:\d{2}$/, '');
+  }
   const d = new Date(str);
-  if (isNaN(d.getTime())) return str;
+  if (isNaN(d.getTime())) return str.replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/(\d{1,2}:\d{2}):\d{2}/, '$1');
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 async function loadData() {
@@ -356,9 +360,21 @@ function showDetail(idx) {
   html += '<div class="detail-row"><span class="detail-label">Auditor</span><span class="detail-value">' + (audit['Audit Performed By'] || '—') + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">Notes</span><span style="font-size:13px;">' + (audit['Notes'] || '—') + '</span></div>';
 
+  // Show quality validated IMEIs
+  const qualityImeis = [];
+  for (let i = 1; i <= 20; i++) {
+    const val = (audit['Quality IMEI #' + i] || '').trim();
+    if (val) qualityImeis.push(val);
+  }
+  if (qualityImeis.length > 0) {
+    html += '<div class="imei-list"><div class="imei-list-title" style="color:#28a745;">Quality Validated (' + qualityImeis.length + ')</div>';
+    qualityImeis.forEach(imei => { html += '<span class="imei-chip" style="background:#d4edda;color:#155724;">' + imei + '</span>'; });
+    html += '</div>';
+  }
+
   // Show scanned IMEIs
   const imeis = [];
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 120; i++) {
     const val = (audit['IMEI Scan #' + i] || '').trim();
     if (val) imeis.push(val);
   }
@@ -411,6 +427,19 @@ function exportAuditCSV() {
   rows.push(['Auditor', audit['Audit Performed By'] || '']);
   rows.push(['Notes', audit['Notes'] || '']);
   rows.push([]);
+
+  // Quality Validated IMEIs
+  const qualityImeis = [];
+  for (let i = 1; i <= 20; i++) {
+    const val = (audit['Quality IMEI #' + i] || '').trim();
+    if (val) qualityImeis.push(val);
+  }
+  if (qualityImeis.length > 0) {
+    rows.push(['Quality Validated IMEIs (' + qualityImeis.length + ')']);
+    qualityImeis.forEach(imei => { rows.push([imei]); });
+    rows.push([]);
+  }
+
   rows.push(['Validated IMEIs']);
 
   for (let i = 1; i <= 120; i++) {
@@ -499,6 +528,12 @@ function reprintLabel(idx) {
   const notes = audit['Notes'] || '';
   const palletIssues = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId);
   const issueCount = palletIssues.length;
+
+  // Count quality IMEIs from stored data
+  let qualityCount = 0;
+  for (let i = 1; i <= 20; i++) {
+    if ((audit['Quality IMEI #' + i] || '').trim()) qualityCount++;
+  }
   const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
 
   // Generate barcode
@@ -535,11 +570,12 @@ function reprintLabel(idx) {
     + '<div class="divider"></div>'
     + '<div class="pallet-header">Pallet Audit</div>'
     + '<div class="pallet-id">' + palletId + '</div>'
-    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
     + '<div class="bc">' + barcodeHtml + '</div>'
+    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
     + '<div class="divider"></div>'
     + '<div class="result">' + resultText + '</div>'
-    + '<div class="metrics">' + matched + ' / ' + total + ' IMEIs verified</div>'
+    + (qualityCount > 0 ? '<div class="metrics">Quality Audit: ' + qualityCount + ' Units Inspected</div>' : '')
+    + '<div class="metrics">' + matched + ' / ' + total + ' IMEIs Verified on Pallet</div>'
     + (issueCount > 0 ? '<div class="issues-recorded">Issues Recorded: ' + issueCount + '</div>' : '')
     + '<div class="auditor">Auditor: ' + auditor + '</div>'
     + '<div class="timestamp">' + ts + '</div>'
