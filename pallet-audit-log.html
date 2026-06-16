@@ -34,7 +34,7 @@
   .status-dot.disconnected { background: #dc3545; }
   .status-dot.pending { background: #fd7e14; }
   .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; }
 </style>
 <style>
   .table-section { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
@@ -174,8 +174,9 @@
               <th>Timestamp</th>
               <th>IMEIs on Pallet</th>
               <th>IMEIs Validated</th>
+              <th>Quality Audited</th>
               <th>Result</th>
-              <th>Issues</th>
+              <th>Open Issues</th>
               <th>Auditor</th>
               <th>Notes</th>
               <th></th>
@@ -183,7 +184,7 @@
             </tr>
           </thead>
           <tbody id="auditTableBody">
-            <tr><td colspan="11" class="empty-state">Loading...</td></tr>
+            <tr><td colspan="12" class="empty-state">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -261,14 +262,14 @@ async function loadData() {
     renderTable();
   } catch(err) {
     setStatus('disconnected', 'Connection failed');
-    document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="11" class="empty-state">Failed to load data</td></tr>';
+    document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="12" class="empty-state">Failed to load data</td></tr>';
   }
 }
 
 function renderTable() {
   const tbody = document.getElementById('auditTableBody');
   if (allAudits.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No audit records found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-state">No audit records found</td></tr>';
     return;
   }
 
@@ -303,7 +304,7 @@ function renderTable() {
 
   if (filtered.length === 0) {
     document.getElementById('recordCount').textContent = '0 records';
-    tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No records match filters</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-state">No records match filters</td></tr>';
     return;
   }
 
@@ -316,13 +317,16 @@ function renderTable() {
     const realIdx = allAudits.indexOf(audit);
     const resultClass = (audit['Audit Result'] || '').toUpperCase() === 'PASS' ? 'result-pass' : 'result-fail';
     const palletId = (audit['Pallet ID'] || '').trim();
-    const issueCountForPallet = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId).length;
+    const issueCountForPallet = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId && (i['Status'] || '').toUpperCase() !== 'RESOLVED').length;
+    let qualityCount = 0;
+    for (let qi = 1; qi <= 20; qi++) { if ((audit['Quality IMEI #' + qi] || '').trim()) qualityCount++; }
     html += '<tr>'
       + '<td class="mono" style="font-weight:600;">' + (audit['Pallet ID'] || '—') + '</td>'
       + '<td>' + (audit['Part Number'] || '—') + '</td>'
       + '<td>' + fmtDate(audit['Audit Start Timestamp']) + '</td>'
       + '<td style="text-align:center;">' + (audit['# of IMEIs on Pallet'] || '—') + '</td>'
       + '<td style="text-align:center;">' + (audit['# of IMEIs Scanned During Audit'] || '—') + '</td>'
+      + '<td style="text-align:center;">' + (qualityCount > 0 ? qualityCount : '—') + '</td>'
       + '<td><span class="' + resultClass + '">' + (audit['Audit Result'] || '—') + '</span></td>'
       + '<td style="text-align:center;' + (issueCountForPallet > 0 ? 'color:#fd7e14;font-weight:700;' : '') + '">' + issueCountForPallet + '</td>'
       + '<td>' + (audit['Audit Performed By'] || '—') + '</td>'
@@ -354,6 +358,11 @@ function showDetail(idx) {
   html += '<div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value">' + fmtDate(audit['Audit Start Timestamp']) + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">IMEIs on Pallet</span><span class="detail-value">' + (audit['# of IMEIs on Pallet'] || '—') + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">IMEIs Scanned</span><span class="detail-value">' + (audit['# of IMEIs Scanned During Audit'] || '—') + '</span></div>';
+
+  // Count quality audited units
+  let detailQualityCount = 0;
+  for (let i = 1; i <= 20; i++) { if ((audit['Quality IMEI #' + i] || '').trim()) detailQualityCount++; }
+  html += '<div class="detail-row"><span class="detail-label">Units Quality Audited</span><span class="detail-value">' + (detailQualityCount > 0 ? detailQualityCount : '—') + '</span></div>';
 
   const resultClass = (audit['Audit Result'] || '').toUpperCase() === 'PASS' ? 'result-pass' : 'result-fail';
   html += '<div class="detail-row"><span class="detail-label">Result</span><span class="' + resultClass + '">' + (audit['Audit Result'] || '—') + '</span></div>';
@@ -387,10 +396,13 @@ function showDetail(idx) {
   // Show issues for this pallet
   const palletId = (audit['Pallet ID'] || '').trim();
   const palletIssues = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId);
-  if (palletIssues.length > 0) {
+  const openIssues = palletIssues.filter(i => (i['Status'] || '').toUpperCase() !== 'RESOLVED');
+  const resolvedIssues = palletIssues.filter(i => (i['Status'] || '').toUpperCase() === 'RESOLVED');
+
+  if (openIssues.length > 0) {
     html += '<div style="margin-top:16px;padding-top:12px;border-top:2px solid #fd7e14;">';
-    html += '<div style="font-size:12px;font-weight:600;color:#fd7e14;text-transform:uppercase;margin-bottom:10px;">Unit Issues (' + palletIssues.length + ')</div>';
-    palletIssues.forEach(issue => {
+    html += '<div style="font-size:12px;font-weight:600;color:#fd7e14;text-transform:uppercase;margin-bottom:10px;">Open Issues (' + openIssues.length + ')</div>';
+    openIssues.forEach(issue => {
       html += '<div style="padding:10px 12px;background:#fff8f0;border-left:3px solid #fd7e14;border-radius:4px;margin-bottom:8px;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;">'
         + '<span style="font-family:Consolas,monospace;font-size:12px;font-weight:600;">' + (issue['IMEI'] || '—') + '</span>'
@@ -398,6 +410,23 @@ function showDetail(idx) {
         + '</div>'
         + '<div style="font-size:13px;margin-top:4px;">' + (issue['Issue'] || '—') + '</div>'
         + '<div style="font-size:11px;color:#888;margin-top:2px;">Reported by: ' + (issue['Reported By'] || '—') + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (resolvedIssues.length > 0) {
+    html += '<div style="margin-top:16px;padding-top:12px;border-top:2px solid #28a745;">';
+    html += '<div style="font-size:12px;font-weight:600;color:#28a745;text-transform:uppercase;margin-bottom:10px;">Resolved Issues (' + resolvedIssues.length + ')</div>';
+    resolvedIssues.forEach(issue => {
+      html += '<div style="padding:10px 12px;background:#f0fdf4;border-left:3px solid #28a745;border-radius:4px;margin-bottom:8px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<span style="font-family:Consolas,monospace;font-size:12px;font-weight:600;">' + (issue['IMEI'] || '—') + '</span>'
+        + '<span style="font-size:10px;color:#888;">' + (issue['Timestamp'] || '') + '</span>'
+        + '</div>'
+        + '<div style="font-size:13px;margin-top:4px;">' + (issue['Issue'] || '—') + '</div>'
+        + '<div style="font-size:11px;color:#28a745;margin-top:4px;">✓ Resolved by: ' + (issue['Resolved By'] || '—') + (issue['Resolution Timestamp'] ? ' — ' + issue['Resolution Timestamp'] : '') + '</div>'
+        + (issue['Resolution Note'] ? '<div style="font-size:11px;color:#666;margin-top:2px;font-style:italic;">Note: ' + issue['Resolution Note'] + '</div>' : '')
         + '</div>';
     });
     html += '</div>';
@@ -452,9 +481,9 @@ function exportAuditCSV() {
   if (palletIssues.length > 0) {
     rows.push([]);
     rows.push(['Issues']);
-    rows.push(['IMEI', 'Issue', 'Reported By', 'Timestamp', 'Status']);
+    rows.push(['IMEI', 'Issue', 'Reported By', 'Timestamp', 'Status', 'Resolved By', 'Resolution Timestamp', 'Resolution Note']);
     palletIssues.forEach(issue => {
-      rows.push([issue['IMEI'] || '', issue['Issue'] || '', issue['Reported By'] || '', issue['Timestamp'] || '', issue['Status'] || '']);
+      rows.push([issue['IMEI'] || '', issue['Issue'] || '', issue['Reported By'] || '', issue['Timestamp'] || '', issue['Status'] || '', issue['Resolved By'] || '', issue['Resolution Timestamp'] || '', issue['Resolution Note'] || '']);
     });
   }
 
