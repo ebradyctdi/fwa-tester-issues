@@ -143,25 +143,28 @@
     <div class="card">
       <h2>Label Settings</h2>
       <label class="form-label">Label Type</label>
-      <select class="form-input" id="labelType" onchange="updatePreview()" style="font-size:14px;padding:10px 14px;margin-bottom:12px;">
-        <option value="4x6">6" × 4" Label</option>
-        <option value="letter">8.5" × 11" Sheet (Landscape)</option>
+      <select class="form-input" id="labelType" onchange="onLabelTypeChange()" style="font-size:14px;padding:10px 14px;margin-bottom:12px;">
+        <option value="4x6">Cart ID - 6" × 4" Label</option>
+        <option value="letter">Cart ID - 8.5" × 11" Sheet (Landscape)</option>
+        <option value="status">Cart Status - 6" × 4" Label</option>
       </select>
       <label class="form-label">Cart ID</label>
       <select class="form-input" id="cartInput" onchange="updatePreview()" style="font-size:18px;padding:12px 14px;">
         <option value="">— Select Cart —</option>
       </select>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-        <label style="font-size:11px;color:#888;">Font size:</label>
-        <input type="range" id="cartIdSize" min="24" max="72" value="48" oninput="updatePreview()" style="flex:1;">
-        <span id="cartIdSizeVal" style="font-size:12px;font-family:Consolas;color:#666;min-width:36px;">48px</span>
-      </div>
-      <label class="form-label" style="margin-top:12px;">Description (optional)</label>
-      <input type="text" class="form-input" id="cartDesc" placeholder="e.g. Titan 3 - Receiving" oninput="updatePreview()" style="font-size:14px;font-family:'Segoe UI',Arial,sans-serif;text-align:left;">
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-        <label style="font-size:11px;color:#888;">Font size:</label>
-        <input type="range" id="descSize" min="12" max="36" value="22" oninput="updatePreview()" style="flex:1;">
-        <span id="descSizeVal" style="font-size:12px;font-family:Consolas;color:#666;min-width:36px;">22px</span>
+      <div id="standardLabelOptions">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <label style="font-size:11px;color:#888;">Font size:</label>
+          <input type="range" id="cartIdSize" min="24" max="72" value="48" oninput="updatePreview()" style="flex:1;">
+          <span id="cartIdSizeVal" style="font-size:12px;font-family:Consolas;color:#666;min-width:36px;">48px</span>
+        </div>
+        <label class="form-label" style="margin-top:12px;">Description (optional)</label>
+        <input type="text" class="form-input" id="cartDesc" placeholder="e.g. Titan 3 - Receiving" oninput="updatePreview()" style="font-size:14px;font-family:'Segoe UI',Arial,sans-serif;text-align:left;">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <label style="font-size:11px;color:#888;">Font size:</label>
+          <input type="range" id="descSize" min="12" max="36" value="22" oninput="updatePreview()" style="flex:1;">
+          <span id="descSizeVal" style="font-size:12px;font-family:Consolas;color:#666;min-width:36px;">22px</span>
+        </div>
       </div>
     </div>
 
@@ -170,7 +173,7 @@
       <div style="text-align:center;margin-bottom:16px;">
         <button class="print-btn" onclick="printLabel()">🖨️ Print Label</button>
       </div>
-      <div class="label-preview-wrap">
+      <div class="label-preview-wrap" id="standardPreviewWrap">
         <div class="label-preview" id="labelPreview">
           <div class="lbl-logo"><img src="https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp"></div>
           <div style="width:100%;border-top:2px solid #000;"></div>
@@ -185,13 +188,45 @@
           <div class="lbl-desc" id="lblDesc"></div>
         </div>
       </div>
+      <div class="label-preview-wrap" id="statusPreviewWrap" style="display:none;">
+        <div class="label-preview" id="statusLabelPreview" style="width:4in;height:6in;padding:0.25in 0.25in;gap:0;justify-content:space-between;">
+          <div class="lbl-logo"><img src="https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp" style="width:180px;"></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:2px;text-align:center;">Cart Status</div>
+          <div id="statusLblCartId" style="font-size:42px;font-weight:900;font-family:'Arial Black',Consolas,monospace;text-align:center;">___</div>
+          <div id="statusLblBarcode" style="text-align:center;"><svg id="statusBarcodeSvg"></svg></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div id="statusLblInfo" style="width:100%;text-align:center;padding:8px 0;">
+            <div style="font-size:28px;font-weight:900;"><span id="statusTotalUnits">—</span> Units</div>
+            <div id="statusModelBreakdown" style="font-size:18px;margin-top:6px;line-height:1.6;"></div>
+          </div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div id="statusLblNote" style="font-size:14px;text-align:center;color:#333;font-style:italic;padding:4px 0;"></div>
+          <div id="statusLblTimestamp" style="font-size:28px;text-align:center;color:#000;font-weight:700;padding:4px 0;"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
-</body>
-</html>
 
 <script>
+function onLabelTypeChange() {
+  const labelType = document.getElementById('labelType').value;
+  const standardOpts = document.getElementById('standardLabelOptions');
+  const standardPreview = document.getElementById('standardPreviewWrap');
+  const statusPreview = document.getElementById('statusPreviewWrap');
+  if (labelType === 'status') {
+    standardOpts.style.display = 'none';
+    standardPreview.style.display = 'none';
+    statusPreview.style.display = 'flex';
+  } else {
+    standardOpts.style.display = 'block';
+    standardPreview.style.display = 'flex';
+    statusPreview.style.display = 'none';
+  }
+  updatePreview();
+}
+
 function updatePreview() {
   const cartId = document.getElementById('cartInput').value.trim();
   const desc = document.getElementById('cartDesc').value.trim();
@@ -200,12 +235,14 @@ function updatePreview() {
   const labelType = document.getElementById('labelType').value;
   document.getElementById('cartIdSizeVal').textContent = cartIdSize + 'px';
   document.getElementById('descSizeVal').textContent = descSize + 'px';
+
+  if (labelType === 'status') { updateStatusPreview(cartId); return; }
+
   document.getElementById('lblCartID').textContent = cartId || '___';
   document.getElementById('lblCartID').style.fontSize = cartIdSize + 'px';
   document.getElementById('lblDesc').textContent = desc;
   document.getElementById('lblDesc').style.fontSize = descSize + 'px';
 
-  // Update model type from cart data
   let modelType = '';
   if (cartId && window._cartData) {
     const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
@@ -214,42 +251,58 @@ function updatePreview() {
   document.getElementById('lblModelType').textContent = modelType;
   document.getElementById('lblModelType').style.fontSize = (labelType === 'letter' ? '40px' : '28px');
 
-  // Update preview size based on label type
   const preview = document.getElementById('labelPreview');
   if (labelType === 'letter') {
-    preview.style.width = '11in';
-    preview.style.height = '8.5in';
-    preview.style.transform = 'scale(0.55)';
+    preview.style.width = '11in'; preview.style.height = '8.5in'; preview.style.transform = 'scale(0.55)';
   } else {
-    preview.style.width = '4in';
-    preview.style.height = '6in';
-    preview.style.transform = 'scale(0.75)';
+    preview.style.width = '4in'; preview.style.height = '6in'; preview.style.transform = 'scale(0.75)';
   }
 
   if (cartId) {
-    try {
-      JsBarcode('#lblBarcode', cartId, {
-        format: 'CODE128',
-        width: labelType === 'letter' ? 4 : 3,
-        height: labelType === 'letter' ? 120 : 90,
-        displayValue: true,
-        fontSize: labelType === 'letter' ? 24 : 18,
-        font: 'Consolas',
-        margin: 4
-      });
-    } catch(e) {}
-  } else {
-    document.getElementById('lblBarcode').innerHTML = '';
+    try { JsBarcode('#lblBarcode', cartId, { format:'CODE128', width: labelType==='letter'?4:3, height: labelType==='letter'?120:90, displayValue:true, fontSize: labelType==='letter'?24:18, font:'Consolas', margin:4 }); } catch(e) {}
+  } else { document.getElementById('lblBarcode').innerHTML = ''; }
+}
+
+function updateStatusPreview(cartId) {
+  document.getElementById('statusLblCartId').textContent = cartId || '___';
+  if (cartId) {
+    try { JsBarcode('#statusBarcodeSvg', cartId, { format:'CODE128', width:3, height:70, displayValue:true, fontSize:16, font:'Consolas', margin:4 }); } catch(e) {}
+  } else { document.getElementById('statusBarcodeSvg').innerHTML = ''; }
+
+  let totalUnits = 0;
+  const modelCounts = {};
+  if (cartId && window._deviceLocationData) {
+    const cartUnits = window._deviceLocationData.filter(d => (d['Cart ID']||'').trim() === cartId && !(d['Date Removed']||'').trim());
+    totalUnits = cartUnits.length;
+    cartUnits.forEach(u => {
+      const model = (u['Device Model']||'Unknown').trim() || 'Unknown';
+      modelCounts[model] = (modelCounts[model] || 0) + 1;
+    });
   }
+  document.getElementById('statusTotalUnits').textContent = totalUnits;
+  const breakdownEl = document.getElementById('statusModelBreakdown');
+  breakdownEl.innerHTML = Object.entries(modelCounts).map(([model, count]) => '<div>' + model + ': ' + count + '</div>').join('');
+
+  let note = '';
+  if (cartId && window._cartData) {
+    const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
+    if (cart && cart['Note']) note = cart['Note'];
+  }
+  document.getElementById('statusLblNote').textContent = note || '';
+  const now = new Date().toLocaleString('en-US', { timeZone:'America/New_York', month:'numeric', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+  document.getElementById('statusLblTimestamp').innerHTML = '<div style="font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Printed:</div><div>' + now + '</div>';
 }
 
 function printLabel() {
   const cartId = document.getElementById('cartInput').value.trim();
+  const labelType = document.getElementById('labelType').value;
+  if (!cartId) { alert('Select a Cart ID first'); return; }
+
+  if (labelType === 'status') { printStatusLabel(cartId); return; }
+
   const desc = document.getElementById('cartDesc').value.trim();
   const cartIdSize = document.getElementById('cartIdSize').value;
   const descSize = document.getElementById('descSize').value;
-  const labelType = document.getElementById('labelType').value;
-  if (!cartId) { alert('Enter a Cart ID first'); return; }
 
   let modelType = '';
   if (window._cartData) {
@@ -301,6 +354,62 @@ function printLabel() {
   setTimeout(() => { win.print(); win.close(); }, 500);
 }
 
+function printStatusLabel(cartId) {
+  const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
+  let totalUnits = 0;
+  const modelCounts = {};
+  if (window._deviceLocationData) {
+    const cartUnits = window._deviceLocationData.filter(d => (d['Cart ID']||'').trim() === cartId && !(d['Date Removed']||'').trim());
+    totalUnits = cartUnits.length;
+    cartUnits.forEach(u => {
+      const model = (u['Device Model']||'Unknown').trim() || 'Unknown';
+      modelCounts[model] = (modelCounts[model] || 0) + 1;
+    });
+  }
+  let note = '';
+  if (window._cartData) {
+    const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
+    if (cart && cart['Note']) note = cart['Note'];
+  }
+  const now = new Date().toLocaleString('en-US', { timeZone:'America/New_York', month:'numeric', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  document.body.appendChild(svg);
+  try { JsBarcode(svg, cartId, { format:'CODE128', width:2, height:50, displayValue:true, fontSize:14, font:'Consolas', margin:4 }); } catch(e) {}
+  const barcodeHtml = svg.outerHTML;
+  document.body.removeChild(svg);
+  let modelHtml = Object.entries(modelCounts).map(([model, count]) => '<div style="font-size:20px;margin:4px 0;">' + model + ': ' + count + '</div>').join('');
+  const win = window.open('', '_blank', 'width=400,height=600');
+  win.document.write('<!DOCTYPE html><html><head><style>'
+    + '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'html, body { width:4in; height:6in; margin:0; padding:0; overflow:hidden; }'
+    + '@page { size:4in 6in; margin:0; }'
+    + '.label { width:4in; height:6in; display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:0; padding:0.2in 0.25in; font-family:Segoe UI,Arial,sans-serif; overflow:hidden; }'
+    + '.logo img { width:180px; display:block; margin:0 auto; }'
+    + '.divider { width:100%; border-top:2px solid #000; }'
+    + '.header { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:2px; text-align:center; }'
+    + '.cart-id { font-size:42px; font-weight:900; font-family:Arial Black,Consolas,monospace; text-align:center; }'
+    + '.bc { text-align:center; } .bc svg { display:block; margin:0 auto; max-width:3.5in; }'
+    + '.info { text-align:center; padding:8px 0; }'
+    + '.total { font-size:28px; font-weight:900; }'
+    + '.breakdown { font-size:20px; margin-top:6px; line-height:1.6; }'
+    + '.note { font-size:14px; font-style:italic; text-align:center; padding:4px 0; }'
+    + '.timestamp { font-size:28px; text-align:center; font-weight:700; color:#000; padding:4px 0; }'
+    + '</style></head><body><div class="label">'
+    + '<div class="logo"><img src="' + logoUrl + '"></div>'
+    + '<div class="divider"></div>'
+    + '<div class="header">Cart Status</div>'
+    + '<div class="cart-id">' + cartId + '</div>'
+    + '<div class="bc">' + barcodeHtml + '</div>'
+    + '<div class="divider"></div>'
+    + '<div class="info"><div class="total">' + totalUnits + ' Units</div><div class="breakdown">' + modelHtml + '</div></div>'
+    + '<div class="divider"></div>'
+    + (note ? '<div class="note">' + note + '</div>' : '')
+    + '<div class="timestamp"><div style="font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Printed:</div><div>' + now + '</div></div>'
+    + '</div></body></html>');
+  win.document.close();
+  setTimeout(() => { win.print(); win.close(); }, 500);
+}
+
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 
@@ -341,7 +450,10 @@ function jsonpRequest(url, params) {
 async function loadCarts() {
   if (!scriptUrl) return;
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'readcarts' });
+    const [json, deviceLocJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readcarts' }),
+      jsonpRequest(scriptUrl, { action: 'readcartinfo' })
+    ]);
     if (json.success && json.data) {
       document.getElementById('statusDot').className = 'status-dot connected';
       document.getElementById('statusLabel').textContent = 'Connected';
@@ -350,7 +462,13 @@ async function loadCarts() {
       const sel = document.getElementById('cartInput');
       sel.innerHTML = '<option value="">— Select Cart —</option>' + activeCarts.map(c => '<option value="' + (c['Cart ID']||'') + '">' + (c['Cart ID']||'') + '</option>').join('');
     }
-  } catch(e) {}
+    if (deviceLocJson.success && deviceLocJson.data) {
+      window._deviceLocationData = deviceLocJson.data;
+    }
+  } catch(e) {
+    document.getElementById('statusDot').className = 'status-dot disconnected';
+    document.getElementById('statusLabel').textContent = 'Connection failed';
+  }
 }
 
 document.getElementById('cartInput').addEventListener('change', function() {
@@ -359,9 +477,9 @@ document.getElementById('cartInput').addEventListener('change', function() {
     const cart = window._cartData.find(c => (c['Cart ID']||'') === cartId);
     if (cart && cart['Note']) {
       document.getElementById('cartDesc').value = cart['Note'];
-      updatePreview();
     }
   }
+  updatePreview();
 });
 
 loadCarts();
