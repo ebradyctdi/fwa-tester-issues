@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FWA - Carts</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -388,8 +389,12 @@ function showCartDetail(cartId) {
 
   let html = '';
 
-  // Export CSV button
-  html += '<div style="margin-bottom:14px;"><button onclick="exportCartCSV(\'' + cartId.replace(/'/g, "\\'") + '\')" style="padding:8px 18px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button></div>';
+  // Export CSV button + Print Label buttons
+  html += '<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">';
+  html += '<button onclick="exportCartCSV(\'' + cartId.replace(/'/g, "\\'") + '\')" style="padding:8px 18px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">📥 Export CSV</button>';
+  html += '<button onclick="printCartIdLabel(\'' + cartId.replace(/'/g, "\\'") + '\')" style="padding:8px 18px;background:#1a3a5c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🖨️ Print Cart ID Label</button>';
+  html += '<button onclick="printCartStatusLabel(\'' + cartId.replace(/'/g, "\\'") + '\')" style="padding:8px 18px;background:#1a3a5c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">🖨️ Print Status Label</button>';
+  html += '</div>';
 
   if (units.length) {
     html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
@@ -755,6 +760,109 @@ async function submitCreateCart() {
     } else { alert(json.error || 'Failed'); }
   } catch(err) { alert('Error: ' + err.message); }
   btn.disabled = false; btn.textContent = 'Create';
+}
+
+function printCartIdLabel(cartId) {
+  const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
+  let modelType = '';
+  let note = '';
+  const cartInfo = allCarts.find(c => (c['Cart ID']||'').trim() === cartId);
+  if (cartInfo) {
+    modelType = cartInfo['Model Type'] || '';
+    note = cartInfo['Note'] || '';
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  document.body.appendChild(svg);
+  try { JsBarcode(svg, cartId, { format:'CODE128', width:3, height:90, displayValue:true, fontSize:18, font:'Consolas', margin:4 }); } catch(e) {}
+  const barcodeHtml = svg.outerHTML;
+  document.body.removeChild(svg);
+
+  const win = window.open('', '_blank', 'width=400,height=600');
+  win.document.write('<!DOCTYPE html><html><head><style>'
+    + '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'html, body { width:4in; height:6in; margin:0; padding:0; overflow:hidden; }'
+    + '@page { size:4in 6in; margin:0; }'
+    + '.label { width:4in; height:6in; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0.3in; font-family:Segoe UI,Arial,sans-serif; overflow:hidden; }'
+    + '.logo img { width:200px; display:block; margin:0 auto; }'
+    + '.divider { width:100%; border-top:2px solid #000; }'
+    + '.fwa { font-size:48px; font-weight:900; letter-spacing:8px; text-align:center; }'
+    + '.cartid-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; text-align:center; }'
+    + '.cartid { font-size:42px; font-weight:900; font-family:Arial Black,Consolas,monospace; text-align:center; }'
+    + '.bc { text-align:center; } .bc svg { display:block; margin:0 auto; max-width:3.5in; }'
+    + '.model-type { font-size:28px; font-weight:900; text-align:center; text-transform:uppercase; letter-spacing:2px; }'
+    + '.desc { font-size:20px; text-align:center; font-weight:500; }'
+    + '</style></head><body><div class="label">'
+    + '<div class="logo"><img src="' + logoUrl + '"></div>'
+    + '<div class="divider"></div>'
+    + '<div class="fwa">FWA</div>'
+    + '<div class="divider"></div>'
+    + '<div class="cartid-header">Cart ID</div>'
+    + '<div class="cartid">' + cartId + '</div>'
+    + '<div class="bc">' + barcodeHtml + '</div>'
+    + '<div class="divider"></div>'
+    + (modelType ? '<div class="model-type">' + modelType + '</div><div class="divider"></div>' : '')
+    + (note ? '<div class="desc">' + note + '</div>' : '')
+    + '</div></body></html>');
+  win.document.close();
+  setTimeout(() => { win.print(); win.close(); }, 500);
+}
+
+function printCartStatusLabel(cartId) {
+  const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
+  let totalUnits = 0;
+  const modelCounts = {};
+  if (cartSummary[cartId]) {
+    const units = cartSummary[cartId].units;
+    totalUnits = units.length;
+    units.forEach(u => {
+      const model = (u['Device Model']||'Unknown').trim() || 'Unknown';
+      modelCounts[model] = (modelCounts[model] || 0) + 1;
+    });
+  }
+  let note = '';
+  const cartInfo = allCarts.find(c => (c['Cart ID']||'').trim() === cartId);
+  if (cartInfo && cartInfo['Note']) note = cartInfo['Note'];
+
+  const now = new Date().toLocaleString('en-US', { timeZone:'America/New_York', month:'numeric', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  document.body.appendChild(svg);
+  try { JsBarcode(svg, cartId, { format:'CODE128', width:3, height:70, displayValue:true, fontSize:16, font:'Consolas', margin:4 }); } catch(e) {}
+  const barcodeHtml = svg.outerHTML;
+  document.body.removeChild(svg);
+
+  let modelHtml = Object.entries(modelCounts).map(([model, count]) => '<div style="font-size:20px;margin:4px 0;">' + model + ': ' + count + '</div>').join('');
+
+  const win = window.open('', '_blank', 'width=400,height=600');
+  win.document.write('<!DOCTYPE html><html><head><style>'
+    + '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'html, body { width:4in; height:6in; margin:0; padding:0; overflow:hidden; }'
+    + '@page { size:4in 6in; margin:0; }'
+    + '.label { width:4in; height:6in; display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:0; padding:0.2in 0.25in; font-family:Segoe UI,Arial,sans-serif; overflow:hidden; }'
+    + '.logo img { width:180px; display:block; margin:0 auto; }'
+    + '.divider { width:100%; border-top:2px solid #000; }'
+    + '.header { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:2px; text-align:center; }'
+    + '.cart-id { font-size:42px; font-weight:900; font-family:Arial Black,Consolas,monospace; text-align:center; }'
+    + '.bc { text-align:center; } .bc svg { display:block; margin:0 auto; max-width:3.5in; }'
+    + '.info { text-align:center; padding:8px 0; }'
+    + '.total { font-size:28px; font-weight:900; }'
+    + '.breakdown { font-size:20px; margin-top:6px; line-height:1.6; }'
+    + '.note { font-size:14px; font-style:italic; text-align:center; padding:4px 0; }'
+    + '.timestamp { font-size:28px; text-align:center; font-weight:700; color:#000; padding:4px 0; }'
+    + '</style></head><body><div class="label">'
+    + '<div class="logo"><img src="' + logoUrl + '"></div>'
+    + '<div class="divider"></div>'
+    + '<div class="header">Cart Status</div>'
+    + '<div class="cart-id">' + cartId + '</div>'
+    + '<div class="bc">' + barcodeHtml + '</div>'
+    + '<div class="divider"></div>'
+    + '<div class="info"><div class="total">' + totalUnits + ' Units</div><div class="breakdown">' + modelHtml + '</div></div>'
+    + '<div class="divider"></div>'
+    + (note ? '<div class="note">' + note + '</div>' : '')
+    + '<div class="timestamp"><div style="font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Printed:</div><div>' + now + '</div></div>'
+    + '</div></body></html>');
+  win.document.close();
+  setTimeout(() => { win.print(); win.close(); }, 500);
 }
 
 function closeModal() { document.getElementById('cartModal').classList.remove('show'); }
