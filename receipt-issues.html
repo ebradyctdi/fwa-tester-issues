@@ -493,15 +493,31 @@ function playBeep(success) {
 }
 
 let cartTotalCount = 0;
+let cartDeviceLocationData = [];
+let batchSessionIMEIs = []; // Track IMEIs added this session (for fire-and-forget queue)
 
 async function updateCartTotal(cartId) {
   try {
     const json = await jsonpRequest(scriptUrl, { action: 'readcartinfo' });
     if (json.success && json.data) {
-      cartTotalCount = json.data.filter(d => (d['Cart ID'] || '').trim() === cartId && (d['Status'] || '').trim() === 'On Cart').length;
+      cartDeviceLocationData = json.data;
+      cartTotalCount = json.data.filter(d => (d['Cart ID'] || '').trim() === cartId && !(d['Date Removed'] || '').trim()).length;
       document.getElementById('cartTotal').textContent = cartTotalCount;
     }
   } catch(e) {}
+}
+
+function isUnitAlreadyOnCart(imei, serial, cartId) {
+  // Check if already on cart in the sheet data
+  const onCart = cartDeviceLocationData.some(d =>
+    (d['Cart ID'] || '').trim() === cartId &&
+    !(d['Date Removed'] || '').trim() &&
+    ((imei && (d['IMEI'] || '').trim() === imei) || (serial && (d['Serial Number'] || '').trim() === serial))
+  );
+  if (onCart) return true;
+  // Also check units queued this session (not yet saved to sheet)
+  const inQueue = batchSessionIMEIs.some(entry => entry.cartId === cartId && (entry.imei === imei || entry.serial === serial));
+  return inQueue;
 }
 
 function startBatchMode() {
@@ -521,6 +537,7 @@ function startBatchMode() {
   batchMode = true;
   batchSessionCount = 0;
   batchLog = [];
+  batchSessionIMEIs = [];
   renderBatchLog();
 
   batchMode = true;
@@ -671,6 +688,16 @@ async function submitQRBatch(raw) {
   const reportedBy = document.getElementById('fReportedBy').value.trim();
   const note = document.getElementById('fNote').value.trim();
 
+  // Duplicate check — prevent adding unit already on this cart
+  if (isUnitAlreadyOnCart(imei, serial, cart)) {
+    showBatchFeedback('⚠️ Unit is already on this cart (' + imei + ')', 'error');
+    playBeep(false);
+    document.getElementById('bQR').value = '';
+    document.getElementById('bQR').focus();
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
@@ -679,6 +706,7 @@ async function submitQRBatch(raw) {
   renderBatchLog();
   showBatchFeedback('✓ QR Scanned — ' + imei + ' | ' + serial + (deviceModel ? ' | ' + deviceModel : ''), 'success');
   playBeep(true);
+  batchSessionIMEIs.push({ imei, serial, cartId: cart });
   document.getElementById('bQR').value = '';
   document.getElementById('bQR').focus();
   batchSubmitting = false;
@@ -703,6 +731,17 @@ async function submitBatch() {
   if (!serial || serial.length !== 11) { showBatchFeedback('Serial must be 11 characters', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
   if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
 
+  // Duplicate check — prevent adding unit already on this cart
+  if (isUnitAlreadyOnCart(imei, serial, cart)) {
+    showBatchFeedback('⚠️ Unit is already on this cart (' + imei + ')', 'error');
+    playBeep(false);
+    document.getElementById('bIMEI').value = '';
+    document.getElementById('bSerial').value = '';
+    setTimeout(() => document.getElementById('bIMEI').focus(), 50);
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI and clear fields for next scan
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
@@ -711,6 +750,7 @@ async function submitBatch() {
   renderBatchLog();
   showBatchFeedback('✓ Queued — ' + imei, 'success');
   playBeep(true);
+  batchSessionIMEIs.push({ imei, serial, cartId: cart });
   document.getElementById('bIMEI').value = '';
   document.getElementById('bSerial').value = '';
   setTimeout(() => document.getElementById('bIMEI').focus(), 50);
@@ -808,6 +848,11 @@ async function deleteBatchRecord(rowIdx, logIdx) {
       batchLog.splice(logIdx, 1);
       batchSessionCount--;
       document.getElementById('batchCount').textContent = batchSessionCount;
+      // Allow re-scanning by removing from session tracker
+      if (entry && entry.imei) {
+        const sIdx = batchSessionIMEIs.findIndex(e => e.imei === entry.imei);
+        if (sIdx >= 0) batchSessionIMEIs.splice(sIdx, 1);
+      }
       renderBatchLog();
       showBatchFeedback('Record deleted & removed from cart', 'success');
     } else { showBatchFeedback(json.error || 'Failed', 'error'); }
