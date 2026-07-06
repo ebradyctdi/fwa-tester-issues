@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Audit Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+</style>
+<style>
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+</style>
+<style>
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; }
+</style>
+<style>
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 32px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .controls-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .view-toggle { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid #1a3a5c; }
+  .view-toggle button { padding: 8px 18px; border: none; background: white; color: #1a3a5c; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .view-toggle button.active { background: #1a3a5c; color: white; }
+  .view-toggle button:hover:not(.active) { background: #e9ecef; }
+
+  .table-section { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .table-header h2 { font-size: 16px; color: #1a3a5c; }
+
+  .dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dash-table th { background: #1a3a5c; color: white; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .dash-table td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; }
+  .dash-table td:first-child { text-align: left; font-weight: 600; font-family: Consolas, monospace; }
+  .dash-table tr:hover { background: #f8f9fa; }
+  .dash-table th { text-align: center; }
+  .dash-table th:first-child { text-align: left; }
+
+  .pass-pct { font-weight: 700; }
+  .pass-pct.high { color: #28a745; }
+  .pass-pct.mid { color: #fd7e14; }
+  .pass-pct.low { color: #dc3545; }
+
+  .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: #1a3a5c; color: white; }
+  .btn-primary:hover { background: #2c5f8a; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; }
+  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .detail-table th { background: #1a3a5c; color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .detail-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+  .detail-table tr:hover { background: #f8f9fa; }
+  .result-pass { background: #d4edda; color: #155724; font-weight: 700; padding: 3px 10px; border-radius: 10px; font-size: 11px; display: inline-block; }
+  .result-fail { background: #f8d7da; color: #721c24; font-weight: 700; padding: 3px 10px; border-radius: 10px; font-size: 11px; display: inline-block; }
+
+  .dash-table tr { cursor: pointer; }
+  .dash-table tr:hover { background: #e9ecef; }
+</style>
+<style>
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .dash-table { font-size: 11px; }
+    .dash-table th, .dash-table td { padding: 6px 8px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html" class="active"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Audit Dashboard</h1><div class="header-sub">CTDI — FWA Audit Statistics</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- KPI Summary -->
+    <div class="kpi-row">
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-label">Total Audits</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiPass">—</div><div class="kpi-label">Passed</div></div>
+      <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiFail">—</div><div class="kpi-label">Failed</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiPassPct">—</div><div class="kpi-label">Pass Rate</div></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="table-section">
+      <div class="table-header">
+        <h2>Audit Statistics</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="background:#28a745;" onclick="exportCSV()">📥 Export CSV</button>
+          <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="view-toggle">
+          <button id="btnDaily" class="active" onclick="setView('daily')">Daily</button>
+          <button id="btnWeekly" onclick="setView('weekly')">Weekly</button>
+          <button id="btnMonthly" onclick="setView('monthly')">Monthly</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;font-weight:600;color:#666;">From:</label>
+          <input type="date" id="filterFrom" onchange="renderTable()" style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;font-weight:600;color:#666;">To:</label>
+          <input type="date" id="filterTo" onchange="renderTable()" style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;font-weight:600;color:#666;">Pass Target %:</label>
+          <input type="number" id="passCutoff" min="0" max="100" value="95" onchange="savePassCutoff();renderTable()" style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;width:65px;">
+        </div>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="clearFilters()">Clear Filters</button>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th id="periodHeader">Date</th>
+              <th>Total Audits</th>
+              <th># Passed</th>
+              <th># Failed</th>
+              <th>Pass %</th>
+            </tr>
+          </thead>
+          <tbody id="dashTableBody">
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-header" style="background:#1a3a5c;"><h3 id="detailTitle">Audit Details</h3></div>
+    <div class="modal-body" id="detailBody" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-footer"><button onclick="closeDetail()">Close</button></div>
+  </div>
+</div>
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '';
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbw0BCMPINCYsiGcN6SE8TUPdcHpLlwv1_nUSX-OpazbXoBLc-vCY2bsKXL2Yoy7o9FDZw/exec'; } catch(e) {}
+
+let allAudits = [];
+let currentView = 'daily';
+let _jsonpCounter = 0;
+let passCutoff = 95;
+try { passCutoff = parseFloat(localStorage.getItem('fwa_pass_cutoff')) || 95; } catch(e) {}
+document.addEventListener('DOMContentLoaded', function() { document.getElementById('passCutoff').value = passCutoff; });
+
+function savePassCutoff() {
+  passCutoff = parseFloat(document.getElementById('passCutoff').value) || 95;
+  localStorage.setItem('fwa_pass_cutoff', passCutoff);
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('btnDaily').classList.toggle('active', view === 'daily');
+  document.getElementById('btnWeekly').classList.toggle('active', view === 'weekly');
+  document.getElementById('btnMonthly').classList.toggle('active', view === 'monthly');
+  const headers = { daily: 'Date', weekly: 'Week Starting', monthly: 'Month' };
+  document.getElementById('periodHeader').textContent = headers[view];
+  renderTable();
+}
+
+function clearFilters() {
+  document.getElementById('filterFrom').value = '';
+  document.getElementById('filterTo').value = '';
+  renderTable();
+}
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readpalletaudits' });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      allAudits = json.data || [];
+    } else {
+      throw new Error(json.error);
+    }
+    renderTable();
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    document.getElementById('dashTableBody').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load data</td></tr>';
+  }
+}
+
+function getFilteredAudits() {
+  const filterFrom = document.getElementById('filterFrom').value;
+  const filterTo = document.getElementById('filterTo').value;
+  let filtered = [...allAudits];
+
+  if (filterFrom) {
+    const fromDate = new Date(filterFrom);
+    filtered = filtered.filter(a => {
+      const d = new Date(a['Audit Start Timestamp']);
+      return !isNaN(d.getTime()) && d >= fromDate;
+    });
+  }
+  if (filterTo) {
+    const toDate = new Date(filterTo);
+    toDate.setHours(23, 59, 59, 999);
+    filtered = filtered.filter(a => {
+      const d = new Date(a['Audit Start Timestamp']);
+      return !isNaN(d.getTime()) && d <= toDate;
+    });
+  }
+  return filtered;
+}
+
+function getDateKey(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+
+  if (currentView === 'daily') {
+    return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
+  } else if (currentView === 'weekly') {
+    // Get Monday of the week
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    return (monday.getMonth()+1) + '/' + monday.getDate() + '/' + monday.getFullYear();
+  } else {
+    // Monthly
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+}
+
+function getSortKey(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 0;
+
+  if (currentView === 'weekly') {
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    return monday.getTime();
+  }
+  return d.getTime();
+}
+function renderTable() {
+  const filtered = getFilteredAudits();
+  const tbody = document.getElementById('dashTableBody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No audit records found</td></tr>';
+    updateKPIs(0, 0, 0);
+    return;
+  }
+
+  // Group by period
+  const groups = {};
+  const groupedAudits = {};
+  const sortKeys = {};
+  filtered.forEach(a => {
+    const key = getDateKey(a['Audit Start Timestamp']);
+    if (!key) return;
+    if (!groups[key]) { groups[key] = { total: 0, pass: 0, fail: 0 }; groupedAudits[key] = []; }
+    groups[key].total++;
+    groupedAudits[key].push(a);
+    const result = (a['Audit Result'] || '').toUpperCase();
+    if (result === 'PASS') groups[key].pass++;
+    else groups[key].fail++;
+    if (!sortKeys[key]) sortKeys[key] = getSortKey(a['Audit Start Timestamp']);
+  });
+
+  // Store for detail popup
+  window._groupedAudits = groupedAudits;
+
+  // Sort by date descending (newest first)
+  const sortedKeys = Object.keys(groups).sort((a, b) => (sortKeys[b] || 0) - (sortKeys[a] || 0));
+
+  // Calculate totals for KPIs
+  let totalAll = 0, totalPass = 0, totalFail = 0;
+  sortedKeys.forEach(k => {
+    totalAll += groups[k].total;
+    totalPass += groups[k].pass;
+    totalFail += groups[k].fail;
+  });
+  updateKPIs(totalAll, totalPass, totalFail);
+
+  // Build table rows
+  let html = '';
+  sortedKeys.forEach(key => {
+    const g = groups[key];
+    const pct = g.total > 0 ? ((g.pass / g.total) * 100).toFixed(1) : '0.0';
+    const pctNum = parseFloat(pct);
+    let pctClass = 'high';
+    if (pctNum < passCutoff) pctClass = 'low';
+
+    const safeKey = key.replace(/'/g, "\\'");
+    html += '<tr onclick="showDetail(\'' + safeKey + '\')">'
+      + '<td>' + key + '</td>'
+      + '<td>' + g.total + '</td>'
+      + '<td style="color:#28a745;font-weight:600;">' + g.pass + '</td>'
+      + '<td style="color:#dc3545;font-weight:600;">' + g.fail + '</td>'
+      + '<td><span class="pass-pct ' + pctClass + '">' + pct + '%</span></td>'
+      + '</tr>';
+  });
+
+  tbody.innerHTML = html;
+}
+
+function updateKPIs(total, pass, fail) {
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiPass').textContent = pass;
+  document.getElementById('kpiFail').textContent = fail;
+  const pct = total > 0 ? ((pass / total) * 100).toFixed(1) + '%' : '—';
+  document.getElementById('kpiPassPct').textContent = pct;
+}
+function showDetail(periodKey) {
+  const audits = window._groupedAudits[periodKey];
+  if (!audits || !audits.length) return;
+
+  document.getElementById('detailTitle').textContent = 'Audits — ' + periodKey + ' (' + audits.length + ')';
+
+  let html = '<table class="detail-table"><thead><tr>'
+    + '<th>Pallet ID</th><th>Part Number</th><th>Timestamp</th>'
+    + '<th>IMEIs on Pallet</th><th>IMEIs Validated</th><th>Result</th><th>Auditor</th><th>Notes</th>'
+    + '</tr></thead><tbody>';
+
+  audits.forEach(a => {
+    const resultClass = (a['Audit Result'] || '').toUpperCase() === 'PASS' ? 'result-pass' : 'result-fail';
+    html += '<tr>'
+      + '<td style="font-family:Consolas,monospace;font-weight:600;">' + (a['Pallet ID'] || '—') + '</td>'
+      + '<td>' + (a['Part Number'] || '—') + '</td>'
+      + '<td>' + fmtDate(a['Audit Start Timestamp']) + '</td>'
+      + '<td style="text-align:center;">' + (a['# of IMEIs on Pallet'] || '—') + '</td>'
+      + '<td style="text-align:center;">' + (a['# of IMEIs Scanned During Audit'] || '—') + '</td>'
+      + '<td><span class="' + resultClass + '">' + (a['Audit Result'] || '—') + '</span></td>'
+      + '<td>' + (a['Audit Performed By'] || '—') + '</td>'
+      + '<td>' + (a['Notes'] || '—') + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeDetail() { document.getElementById('detailModal').classList.remove('show'); }
+
+function fmtDate(str) {
+  if (!str) return '—';
+  if (str.includes('EST') || str.includes('EDT')) {
+    return str.replace(/ EST| EDT/, '').replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/:\d{2}$/, '');
+  }
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str.replace(/:\d{2}(\s*(AM|PM))/i, '$1').replace(/(\d{1,2}:\d{2}):\d{2}/, '$1');
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function exportCSV() {
+  const filtered = getFilteredAudits();
+  if (!filtered.length) { showToast('No records to export', 'error'); return; }
+
+  const groups = {};
+  const sortKeys = {};
+  filtered.forEach(a => {
+    const key = getDateKey(a['Audit Start Timestamp']);
+    if (!key) return;
+    if (!groups[key]) { groups[key] = { total: 0, pass: 0, fail: 0 }; }
+    groups[key].total++;
+    const result = (a['Audit Result'] || '').toUpperCase();
+    if (result === 'PASS') groups[key].pass++;
+    else groups[key].fail++;
+    if (!sortKeys[key]) sortKeys[key] = getSortKey(a['Audit Start Timestamp']);
+  });
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => (sortKeys[b] || 0) - (sortKeys[a] || 0));
+
+  const headerLabel = currentView === 'daily' ? 'Date' : currentView === 'weekly' ? 'Week Starting' : 'Month';
+  let csv = headerLabel + ',Total Audits,# Passed,# Failed,Pass %\n';
+  sortedKeys.forEach(key => {
+    const g = groups[key];
+    const pct = g.total > 0 ? ((g.pass / g.total) * 100).toFixed(1) : '0.0';
+    csv += '"' + key + '",' + g.total + ',' + g.pass + ',' + g.fail + ',' + pct + '%\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Audit_Dashboard_' + currentView + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported', 'success');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>

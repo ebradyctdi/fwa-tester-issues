@@ -120,6 +120,7 @@
     </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
     <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
     <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
     <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
     <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
@@ -199,7 +200,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], openIssues = [], selectedRow = -1, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzRM1y5ZBZFK_f4q5XvwBc9v7TUCbuXRv3DJQ-NntH8QkKFD1Q_-cmEz3WZVVjpKG5WtQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbw0BCMPINCYsiGcN6SE8TUPdcHpLlwv1_nUSX-OpazbXoBLc-vCY2bsKXL2Yoy7o9FDZw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
