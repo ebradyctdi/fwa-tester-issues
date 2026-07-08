@@ -586,6 +586,12 @@ async function submitAudit(result) {
     return;
   }
 
+  if (result === 'FAIL' && !notes) {
+    showToast('Audit Notes are required when holding for action', 'error');
+    document.getElementById('auditNotes').focus();
+    return;
+  }
+
   _submitting = true;
   document.getElementById('passBtn').disabled = true;
   document.getElementById('failBtn').disabled = true;
