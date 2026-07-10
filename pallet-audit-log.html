@@ -206,7 +206,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbw0BCMPINCYsiGcN6SE8TUPdcHpLlwv1_nUSX-OpazbXoBLc-vCY2bsKXL2Yoy7o9FDZw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbx3xevLjjmYH7D2w5pVuH3OUrOihtD1NOvz-lGNsEet6EIZaKYgighhFW5ubmizwhFqVA/exec'; } catch(e) {}
 
 let allAudits = [];
 let allIssues = [];
@@ -320,7 +320,7 @@ function renderTable() {
     const palletId = (audit['Pallet ID'] || '').trim();
     const issueCountForPallet = allIssues.filter(i => (i['Pallet ID'] || '').trim() === palletId && (i['Status'] || '').toUpperCase() !== 'RESOLVED').length;
     let qualityCount = 0;
-    for (let qi = 1; qi <= 20; qi++) { if ((audit['Quality IMEI #' + qi] || '').trim()) qualityCount++; }
+    for (let qi = 1; qi <= 120; qi++) { if ((audit['Quality IMEI #' + qi] || '').trim()) qualityCount++; }
     html += '<tr>'
       + '<td class="mono" style="font-weight:600;">' + (audit['Pallet ID'] || '—') + '</td>'
       + '<td>' + (audit['Part Number'] || '—') + '</td>'
@@ -362,7 +362,7 @@ function showDetail(idx) {
 
   // Count quality audited units
   let detailQualityCount = 0;
-  for (let i = 1; i <= 20; i++) { if ((audit['Quality IMEI #' + i] || '').trim()) detailQualityCount++; }
+  for (let i = 1; i <= 120; i++) { if ((audit['Quality IMEI #' + i] || '').trim()) detailQualityCount++; }
   html += '<div class="detail-row"><span class="detail-label">Units Quality Audited</span><span class="detail-value">' + (detailQualityCount > 0 ? detailQualityCount : '—') + '</span></div>';
 
   const resultClass = (audit['Audit Result'] || '').toUpperCase() === 'PASS' ? 'result-pass' : 'result-fail';
@@ -372,7 +372,7 @@ function showDetail(idx) {
 
   // Show quality validated IMEIs
   const qualityImeis = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 120; i++) {
     const val = (audit['Quality IMEI #' + i] || '').trim();
     if (val) qualityImeis.push(val);
   }
@@ -460,7 +460,7 @@ function exportAuditCSV() {
 
   // Quality Validated IMEIs
   const qualityImeis = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 120; i++) {
     const val = (audit['Quality IMEI #' + i] || '').trim();
     if (val) qualityImeis.push(val);
   }
@@ -561,7 +561,7 @@ function reprintLabel(idx) {
 
   // Count quality IMEIs from stored data
   let qualityCount = 0;
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 120; i++) {
     if ((audit['Quality IMEI #' + i] || '').trim()) qualityCount++;
   }
   const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
