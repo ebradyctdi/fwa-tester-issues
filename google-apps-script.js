@@ -266,7 +266,9 @@ function doGet(e) {
       if (cart) {
         var dlSheet = ss.getSheetByName('Device Location');
         if (dlSheet) {
-          dlSheet.appendRow([cart, imei, serial, deviceModel, ts, '', 'On Cart']);
+          var bin = (e.parameter.bin || '-').toString().trim();
+          if (!bin) bin = '-';
+          dlSheet.appendRow([cart, imei, serial, deviceModel, ts, '', 'On Cart', bin]);
           var dlLastRow = dlSheet.getLastRow();
           dlSheet.getRange(dlLastRow, 1).setNumberFormat('@');
           dlSheet.getRange(dlLastRow, 1).setValue(cart);
@@ -304,8 +306,8 @@ function doGet(e) {
       if (!ciSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = ciSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = ciSheet.getRange(2, 1, lastRow - 1, 7).getValues();
-      var headers = ['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status'];
+      var data = ciSheet.getRange(2, 1, lastRow - 1, 8).getValues();
+      var headers = ['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status', 'Bin'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -410,16 +412,18 @@ function doGet(e) {
       var ciSheet = ss.getSheetByName('Device Location');
       if (!ciSheet) {
         ciSheet = ss.insertSheet('Device Location');
-        ciSheet.getRange(1, 1, 1, 7).setValues([['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status']]);
+        ciSheet.getRange(1, 1, 1, 8).setValues([['Cart ID', 'IMEI', 'Serial Number', 'Device Model', 'Date Added', 'Date Removed', 'Status', 'Bin']]);
       }
       var cartId = (e.parameter.cartid || '').toString().trim();
       var imei = (e.parameter.imei || '').toString().trim();
       var serial = (e.parameter.serial || '').toString().trim();
       var deviceModel = (e.parameter.devicemodel || '').toString().trim();
+      var bin = (e.parameter.bin || '-').toString().trim();
+      if (!bin) bin = '-';
       if (!cartId || (!imei && !serial)) return _respond({ success: false, error: 'Cart ID and IMEI or Serial required' }, callback);
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss');
-      ciSheet.appendRow([cartId, imei, serial, deviceModel, ts, '', 'On Cart']);
+      ciSheet.appendRow([cartId, imei, serial, deviceModel, ts, '', 'On Cart', bin]);
       // Force Cart ID column to text
       var lastRow = ciSheet.getLastRow();
       ciSheet.getRange(lastRow, 1).setNumberFormat('@');

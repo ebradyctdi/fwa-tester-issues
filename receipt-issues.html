@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FWA - Receipt Issue Logger</title>
+<title>FWA - Issue Logger</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -117,7 +117,7 @@
 <div class="main-wrap">
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
-    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Receipt Issue Logger</h1><div class="header-sub">Log issues found during receipt inspection</div></div>
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Issue Logger</h1><div class="header-sub">Log issues found during receipt inspection</div></div>
     <div class="header-right">
       <span class="status-dot disconnected" id="statusDot"></span>
       <span class="status-label" id="statusLabel">Not connected</span>
@@ -141,14 +141,14 @@
       <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:12px;font-weight:600;color:#555;">Scan Mode:</span>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
-          <input type="radio" name="batchScanMode" value="individual" checked onchange="toggleScanMode()"> Scan Values Individually
+          <input type="radio" name="batchScanMode" value="individual" onchange="toggleScanMode()"> Scan Values Individually
         </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
-          <input type="radio" name="batchScanMode" value="qr" onchange="toggleScanMode()"> Scan QR Code
+          <input type="radio" name="batchScanMode" value="qr" checked onchange="toggleScanMode()"> Scan QR Code
         </label>
       </div>
       <!-- Individual scan fields -->
-      <div id="batchIndividualFields" style="display:flex;gap:16px;align-items:flex-end;">
+      <div id="batchIndividualFields" style="display:none;gap:16px;align-items:flex-end;">
         <div style="flex:1;">
           <label class="form-label">IMEI (15 chars)</label>
           <input type="text" class="form-input" id="bIMEI" placeholder="Scan IMEI..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="15">
@@ -159,16 +159,61 @@
         </div>
       </div>
       <!-- QR scan field -->
-      <div id="batchQRField" style="display:none;">
+      <div id="batchQRField" style="display:block;">
         <label class="form-label">Scan QR Code</label>
         <input type="text" class="form-input" id="bQR" placeholder="Scan unit QR code..." autocomplete="off" style="font-size:18px;padding:14px;">
+      </div>
+      <!-- Bin field (prominent, same size as scan fields) -->
+      <div style="margin-top:12px;">
+        <label class="form-label">Bin / Sub-Location (optional — persists between scans)</label>
+        <input type="text" class="form-input" id="batchBin" placeholder="-" value="-" autocomplete="off" style="font-size:18px;padding:14px;">
       </div>
       <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
       <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
       </div>
-      <div id="batchHintText" style="margin-top:12px;font-size:11px;color:#888;">Scan IMEI → auto-advances to Serial → auto-submits. You can change Device Model between scans.</div>
+      <div id="batchHintText" style="margin-top:12px;font-size:11px;color:#888;">Scan unit QR code → auto-parses IMEI, Serial, and Model → auto-submits. You can change Device Model and Bin between scans.</div>
       <div id="batchLog" style="margin-top:14px;"></div>
       <div id="batchLog" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- QUICK BATCH START -->
+    <div class="card" id="quickBatchCard">
+      <h2 style="color:#28a745;">Start Batch Scan</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="form-label">Cart</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="qbCartScan" placeholder="Scan cart..." style="width:100px;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:13px;font-family:Consolas,monospace;" autocomplete="off">
+            <select class="form-input" id="qbCart" style="flex:1;">
+              <option value="">— Select Cart —</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Device Model</label>
+          <select class="form-input" id="qbDeviceModel">
+            <option value="">— Select —</option>
+            <option value="Titan 3">Titan 3</option>
+            <option value="Titan 4">Titan 4</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Reported By</label>
+          <input type="text" class="form-input" id="qbReportedBy" placeholder="Your name" autocomplete="off">
+        </div>
+        <div>
+          <label class="form-label">Issue Note</label>
+          <div style="display:flex;gap:8px;">
+            <select id="qbNoteSelect" onchange="if(this.value){document.getElementById('qbNote').value=this.value;}" style="padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:13px;flex:1;">
+              <option value="">— Standard Note —</option>
+            </select>
+            <input type="text" class="form-input" id="qbNote" placeholder="Or type note..." style="flex:1;">
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <button onclick="startBatchFromQuick()" style="padding:12px 32px;background:#28a745;color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">▶ Start Batch Scan</button>
+      </div>
     </div>
 
     <!-- LOG FORM -->
@@ -224,7 +269,6 @@
           </div>
           <div style="display:flex;gap:10px;">
             <button class="submit-btn" id="submitBtn" onclick="submitIssue()">Log Issue</button>
-            <button onclick="startBatchMode()" style="padding:12px 32px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;">Start Batch Scan</button>
           </div>
         </div>
       </div>
@@ -233,7 +277,7 @@
     <!-- RECENT ISSUES -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;border:none;padding:0;">Recent Receipt Issues <span id="issueCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <h2 style="margin:0;border:none;padding:0;">Recent Issues <span id="issueCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
         <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
       </div>
       <table class="issues-table">
@@ -256,6 +300,20 @@
 </div>
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
 
+<!-- Unit On Other Cart Modal -->
+<div class="modal-overlay" id="otherCartModal" onclick="if(event.target===this)closeOtherCartModal()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:480px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#fd7e14;color:white;"><h3 style="font-size:16px;margin:0;">⚠️ Unit Already on Another Cart</h3></div>
+    <div style="padding:20px 24px;">
+      <p id="otherCartMessage" style="font-size:14px;line-height:1.6;margin-bottom:16px;"></p>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button onclick="closeOtherCartModal()" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Do Not Add to Active Cart</button>
+      <button onclick="confirmMoveToActiveCart()" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Add to Active Cart & Remove from Other</button>
+    </div>
+  </div>
+</div>
+
 <!-- Work Instruction Modal -->
 <div id="workInstructionModal" onclick="if(event.target===this)closeWorkInstruction()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:12px;max-width:800px;width:95%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
@@ -269,7 +327,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allIssues = [], _jsonpCounter = 0, cartData = [];
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbx3xevLjjmYH7D2w5pVuH3OUrOihtD1NOvz-lGNsEet6EIZaKYgighhFW5ubmizwhFqVA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxw2n3gCiyOysmGGzFLtyREtogLcze2nau5S43YGjZjASv9kDE2pYcBbeDtFrUSzl8upQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -314,6 +372,9 @@ async function loadData() {
         if (json.success && json.data) {
           const sel = document.getElementById('fNoteSelect');
           sel.innerHTML = '<option value="">— Standard Note —</option>' + json.data.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('');
+          // Also populate quick batch note dropdown
+          const qbNoteSel = document.getElementById('qbNoteSelect');
+          qbNoteSel.innerHTML = '<option value="">— Standard Note —</option>' + json.data.map(n => '<option value="' + n.replace(/"/g, '&quot;') + '">' + n + '</option>').join('');
         }
       }).catch(() => {})
     ]);
@@ -329,6 +390,11 @@ async function loadData() {
       const current = sel.value;
       sel.innerHTML = '<option value="">— Select Cart —</option>' + activeCarts.map(c => '<option value="' + (c['Cart ID']||'') + '">' + (c['Cart ID']||'') + (c['Location'] ? ' — ' + c['Location'] : '') + '</option>').join('');
       if (current) sel.value = current;
+      // Also populate quick batch cart dropdown
+      const qbSel = document.getElementById('qbCart');
+      const qbCurrent = qbSel.value;
+      qbSel.innerHTML = '<option value="">— Select Cart —</option>' + activeCarts.map(c => '<option value="' + (c['Cart ID']||'') + '">' + (c['Cart ID']||'') + (c['Location'] ? ' — ' + c['Location'] : '') + '</option>').join('');
+      if (qbCurrent) qbSel.value = qbCurrent;
     }
   } catch(err) { setStatus('disconnected', 'Connection failed'); }
 }
@@ -521,6 +587,90 @@ function isUnitAlreadyOnCart(imei, serial, cartId) {
   return inQueue;
 }
 
+function findUnitOnOtherCart(imei, serial, currentCartId) {
+  // Check if unit is active on a different cart
+  const match = cartDeviceLocationData.find(d =>
+    (d['Cart ID'] || '').trim() !== currentCartId &&
+    !(d['Date Removed'] || '').trim() &&
+    ((imei && (d['IMEI'] || '').trim() === imei) || (serial && (d['Serial Number'] || '').trim() === serial))
+  );
+  return match || null;
+}
+
+let pendingOtherCartAction = null; // stores {imei, serial, cart, deviceModel, reportedBy, note, bin, otherCartRow}
+
+function showOtherCartModal(imei, serial, otherCartId, otherCartRow, actionData) {
+  pendingOtherCartAction = { ...actionData, otherCartRow };
+  document.getElementById('otherCartMessage').innerHTML = 'IMEI <strong style="font-family:Consolas,monospace;">' + imei + '</strong> is currently active on cart <strong style="font-family:Consolas,monospace;">' + otherCartId + '</strong>.<br><br>Would you like to remove it from <strong>' + otherCartId + '</strong> and add it to <strong>' + actionData.cart + '</strong>?';
+  document.getElementById('otherCartModal').style.display = 'flex';
+}
+
+function closeOtherCartModal() {
+  document.getElementById('otherCartModal').style.display = 'none';
+  pendingOtherCartAction = null;
+  // Re-focus scan field
+  const mode = document.querySelector('input[name="batchScanMode"]:checked').value;
+  if (mode === 'qr') { document.getElementById('bQR').focus(); }
+  else { document.getElementById('bIMEI').focus(); }
+}
+
+async function confirmMoveToActiveCart() {
+  if (!pendingOtherCartAction) return;
+  const data = pendingOtherCartAction;
+  document.getElementById('otherCartModal').style.display = 'none';
+
+  // Remove from other cart first
+  try {
+    await jsonpRequest(scriptUrl, { action: 'removefromcart', row: data.otherCartRow });
+  } catch(e) {
+    showBatchFeedback('Failed to remove from other cart: ' + e.message, 'error');
+    playBeep(false);
+    pendingOtherCartAction = null;
+    return;
+  }
+
+  // Now proceed with the normal add flow
+  batchSessionCount++;
+  document.getElementById('batchCount').textContent = batchSessionCount;
+  batchLog.unshift({ imei: data.imei, serial: data.serial, bin: data.bin, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
+  if (batchLog.length > 10) batchLog.pop();
+  renderBatchLog();
+  showBatchFeedback('✓ Moved from other cart & queued — ' + data.imei, 'success');
+  playBeep(true);
+  batchSessionIMEIs.push({ imei: data.imei, serial: data.serial, cartId: data.cart });
+
+  // Queue for background save
+  batchQueue.push({ imei: data.imei, serial: data.serial, cart: data.cart, deviceModel: data.deviceModel, reportedBy: data.reportedBy, note: data.note, bin: data.bin });
+  processBatchQueue();
+
+  pendingOtherCartAction = null;
+  // Re-focus scan field
+  const mode = document.querySelector('input[name="batchScanMode"]:checked').value;
+  if (mode === 'qr') { document.getElementById('bQR').value = ''; document.getElementById('bQR').focus(); }
+  else { document.getElementById('bIMEI').value = ''; document.getElementById('bSerial').value = ''; document.getElementById('bIMEI').focus(); }
+}
+
+function startBatchFromQuick() {
+  const cart = document.getElementById('qbCart').value.trim();
+  const model = document.getElementById('qbDeviceModel').value;
+  const reporter = document.getElementById('qbReportedBy').value.trim();
+  const noteSelect = document.getElementById('qbNoteSelect').value;
+  const note = document.getElementById('qbNote').value.trim() || noteSelect;
+
+  if (!cart) { showToast('Select a Cart to start batch mode', 'error'); return; }
+  if (!model) { showToast('Select a Device Model', 'error'); return; }
+  if (!reporter) { showToast('Enter your name (Reported By)', 'error'); return; }
+  if (!note) { showToast('Enter or select an Issue Note', 'error'); return; }
+
+  // Copy values to the original form fields so batch mode can use them
+  document.getElementById('fCart').value = cart;
+  document.getElementById('fDeviceModel').value = model;
+  document.getElementById('fReportedBy').value = reporter;
+  document.getElementById('fNote').value = note;
+
+  startBatchMode();
+}
+
 function startBatchMode() {
   const cart = document.getElementById('fCart').value.trim();
   const model = document.getElementById('fDeviceModel').value;
@@ -546,6 +696,7 @@ function startBatchMode() {
   batchLog = [];
   document.getElementById('batchCard').style.display = 'block';
   document.getElementById('normalFormCard').style.display = 'none';
+  document.getElementById('quickBatchCard').style.display = 'none';
   document.getElementById('batchCount').textContent = '0';
   document.getElementById('bIMEI').value = '';
   document.getElementById('bSerial').value = '';
@@ -554,7 +705,8 @@ function startBatchMode() {
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Device Model</span><div><select id="batchDeviceModel" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;font-weight:600;background:white;"><option value="Titan 3"' + (model === 'Titan 3' ? ' selected' : '') + '>Titan 3</option><option value="Titan 4"' + (model === 'Titan 4' ? ' selected' : '') + '>Titan 4</option></select></div></div>'
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Reported By</span><div style="font-size:13px;font-weight:600;">' + reporter + '</div></div>'
     + '<div><span style="font-size:10px;color:#888;text-transform:uppercase;">Note</span><div style="font-size:13px;font-weight:600;">' + note + '</div></div>';
-  document.getElementById('bIMEI').focus();
+  document.getElementById('bQR').value = '';
+  document.getElementById('bQR').focus();
   // Load cart total
   updateCartTotal(cart);
 }
@@ -563,6 +715,7 @@ function toggleBatchMode() {
   batchMode = false;
   document.getElementById('batchCard').style.display = 'none';
   document.getElementById('normalFormCard').style.display = 'block';
+  document.getElementById('quickBatchCard').style.display = 'block';
 }
 
 function showBatchFeedback(msg, type) {
@@ -699,10 +852,21 @@ async function submitQRBatch(raw) {
     return;
   }
 
+  // Check if unit is on a different cart
+  const otherCartMatch = findUnitOnOtherCart(imei, serial, cart);
+  if (otherCartMatch) {
+    const otherCartRow = cartDeviceLocationData.indexOf(otherCartMatch);
+    showOtherCartModal(imei, serial, (otherCartMatch['Cart ID']||'').trim(), otherCartRow, { imei, serial, cart, deviceModel: model, reportedBy, note, bin });
+    document.getElementById('bQR').value = '';
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
-  batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
+  const qrBin = (document.getElementById('batchBin') ? document.getElementById('batchBin').value.trim() : '') || '-';
+  batchLog.unshift({ imei, serial, bin: qrBin, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
   if (batchLog.length > 10) batchLog.pop();
   renderBatchLog();
   showBatchFeedback('✓ QR Scanned — ' + imei + ' | ' + serial + (deviceModel ? ' | ' + deviceModel : ''), 'success');
@@ -713,7 +877,8 @@ async function submitQRBatch(raw) {
   batchSubmitting = false;
 
   // Queue for background save
-  batchQueue.push({ imei, serial, cart, deviceModel: model, reportedBy, note });
+  const bin = qrBin;
+  batchQueue.push({ imei, serial, cart, deviceModel: model, reportedBy, note, bin });
   processBatchQueue();
 }
 
@@ -743,10 +908,23 @@ async function submitBatch() {
     return;
   }
 
+  // Check if unit is on a different cart
+  const otherCartMatch = findUnitOnOtherCart(imei, serial, cart);
+  if (otherCartMatch) {
+    const bin = (document.getElementById('batchBin') ? document.getElementById('batchBin').value.trim() : '') || '-';
+    const otherCartRow = cartDeviceLocationData.indexOf(otherCartMatch);
+    showOtherCartModal(imei, serial, (otherCartMatch['Cart ID']||'').trim(), otherCartRow, { imei, serial, cart, deviceModel, reportedBy, note, bin });
+    document.getElementById('bIMEI').value = '';
+    document.getElementById('bSerial').value = '';
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI and clear fields for next scan
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
-  batchLog.unshift({ imei, serial, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
+  const indBin = (document.getElementById('batchBin') ? document.getElementById('batchBin').value.trim() : '') || '-';
+  batchLog.unshift({ imei, serial, bin: indBin, time: new Date(), rowIdx: allIssues.length, status: 'pending' });
   if (batchLog.length > 10) batchLog.pop();
   renderBatchLog();
   showBatchFeedback('✓ Queued — ' + imei, 'success');
@@ -758,7 +936,8 @@ async function submitBatch() {
   batchSubmitting = false;
 
   // Add to background queue
-  batchQueue.push({ imei, serial, cart, deviceModel, reportedBy, note });
+  const bin = (document.getElementById('batchBin') ? document.getElementById('batchBin').value.trim() : '') || '-';
+  batchQueue.push({ imei, serial, cart, deviceModel, reportedBy, note, bin });
   processBatchQueue();
 }
 
@@ -776,7 +955,8 @@ async function processBatchQueue() {
         cart: item.cart,
         devicemodel: item.deviceModel,
         reportedby: item.reportedBy,
-        note: item.note
+        note: item.note,
+        bin: item.bin || '-'
       });
       if (json.success) {
         // Mark as saved in log
@@ -805,7 +985,7 @@ function renderBatchLog() {
   const el = document.getElementById('batchLog');
   if (!batchLog.length) { el.innerHTML = ''; return; }
   let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Status</th><th></th></tr>';
+  html += '<tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Bin</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Status</th><th></th></tr>';
   batchLog.forEach((entry, i) => {
     const num = batchSessionCount - i;
     const t = entry.time;
@@ -817,6 +997,7 @@ function renderBatchLog() {
       + '<td style="padding:6px 10px;color:#888;">' + num + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td>'
+      + '<td style="padding:6px 10px;">' + (entry.bin || '-') + '</td>'
       + '<td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + timeStr + '</td>'
       + '<td style="padding:6px 10px;">' + statusIcon + '</td>'
       + '<td style="padding:6px 10px;">' + delBtn + '</td>'
@@ -895,6 +1076,60 @@ document.querySelectorAll('.nav-group').forEach(function(g) {
     g.classList.add('open');
     var hdr = g.previousElementSibling;
     if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+// Quick Batch cart scan field
+document.getElementById('qbCartScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (!val) return;
+    const sel = document.getElementById('qbCart');
+    let matched = false;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === val || sel.options[i].value.toLowerCase() === val.toLowerCase()) {
+        sel.value = sel.options[i].value;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) { showToast('Cart "' + val + '" not found', 'error'); }
+    this.value = '';
+    // Auto-fill note from cart
+    if (matched && cartData.length) {
+      const cart = cartData.find(c => (c['Cart ID'] || '') === sel.value);
+      if (cart && cart['Note']) document.getElementById('qbNote').value = cart['Note'];
+    }
+    document.getElementById('qbDeviceModel').focus();
+  }
+});
+document.getElementById('qbCartScan').addEventListener('input', function() {
+  const val = this.value.trim();
+  if (!val) return;
+  const sel = document.getElementById('qbCart');
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === val) {
+      sel.value = sel.options[i].value;
+      this.value = '';
+      // Auto-fill note from cart
+      if (cartData.length) {
+        const cart = cartData.find(c => (c['Cart ID'] || '') === sel.value);
+        if (cart && cart['Note']) document.getElementById('qbNote').value = cart['Note'];
+      }
+      document.getElementById('qbDeviceModel').focus();
+      break;
+    }
+  }
+});
+// Auto-fill note from cart selection in quick batch
+document.getElementById('qbCart').addEventListener('change', function() {
+  const cartId = this.value;
+  if (cartId && cartData.length) {
+    const cart = cartData.find(c => (c['Cart ID'] || '') === cartId);
+    if (cart && cart['Note']) {
+      document.getElementById('qbNote').value = cart['Note'];
+    }
   }
 });
 

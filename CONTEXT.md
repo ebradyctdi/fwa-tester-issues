@@ -10,7 +10,7 @@ Web-based tool for CTDI's FWA (Fixed Wireless Access) operation to track tester 
 
 ## Current Apps Script URL
 ```
-https://script.google.com/macros/s/AKfycbzRM1y5ZBZFK_f4q5XvwBc9v7TUCbuXRv3DJQ-NntH8QkKFD1Q_-cmEz3WZVVjpKG5WtQ/exec
+https://script.google.com/macros/s/AKfycbxw2n3gCiyOysmGGzFLtyREtogLcze2nau5S43YGjZjASv9kDE2pYcBbeDtFrUSzl8upQ/exec
 ```
 
 ## Google Sheet
