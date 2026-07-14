@@ -147,6 +147,11 @@
           <input type="radio" name="batchScanMode" value="qr" checked onchange="toggleScanMode()"> Scan QR Code
         </label>
       </div>
+      <!-- Bin field (prominent, same size as scan fields) -->
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin / Sub-Location (optional — persists between scans)</label>
+        <input type="text" class="form-input" id="batchBin" placeholder="-" value="-" autocomplete="off" style="font-size:18px;padding:14px;">
+      </div>
       <!-- Individual scan fields -->
       <div id="batchIndividualFields" style="display:none;gap:16px;align-items:flex-end;">
         <div style="flex:1;">
@@ -162,11 +167,6 @@
       <div id="batchQRField" style="display:block;">
         <label class="form-label">Scan QR Code</label>
         <input type="text" class="form-input" id="bQR" placeholder="Scan unit QR code..." autocomplete="off" style="font-size:18px;padding:14px;">
-      </div>
-      <!-- Bin field (prominent, same size as scan fields) -->
-      <div style="margin-top:12px;">
-        <label class="form-label">Bin / Sub-Location (optional — persists between scans)</label>
-        <input type="text" class="form-input" id="batchBin" placeholder="-" value="-" autocomplete="off" style="font-size:18px;padding:14px;">
       </div>
       <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
       <div id="batchSteadyValues" style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
@@ -777,13 +777,22 @@ function toggleScanMode() {
   }
 }
 
-// QR field - only submit on Enter (scanner sends Enter after full scan)
+// QR field - submit on Enter OR auto-submit after scanner pause
+let qrInputTimer = null;
 document.getElementById('bQR').addEventListener('input', function() {
-  // Don't auto-submit on input - wait for Enter key or a clear end signal
+  // Auto-submit after a short pause (scanner fires rapid input then stops)
+  clearTimeout(qrInputTimer);
+  const val = this.value.trim();
+  if (val.length > 20) {
+    qrInputTimer = setTimeout(() => {
+      if (this.value.trim().length > 20) submitQRBatch(this.value.trim());
+    }, 300);
+  }
 });
 document.getElementById('bQR').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     e.preventDefault();
+    clearTimeout(qrInputTimer);
     const val = this.value.trim();
     if (val.length > 20) submitQRBatch(val);
   }
@@ -855,8 +864,9 @@ async function submitQRBatch(raw) {
   // Check if unit is on a different cart
   const otherCartMatch = findUnitOnOtherCart(imei, serial, cart);
   if (otherCartMatch) {
+    const otherBin = (document.getElementById('batchBin') ? document.getElementById('batchBin').value.trim() : '') || '-';
     const otherCartRow = cartDeviceLocationData.indexOf(otherCartMatch);
-    showOtherCartModal(imei, serial, (otherCartMatch['Cart ID']||'').trim(), otherCartRow, { imei, serial, cart, deviceModel: model, reportedBy, note, bin });
+    showOtherCartModal(imei, serial, (otherCartMatch['Cart ID']||'').trim(), otherCartRow, { imei, serial, cart, deviceModel: model, reportedBy, note, bin: otherBin });
     document.getElementById('bQR').value = '';
     batchSubmitting = false;
     return;
