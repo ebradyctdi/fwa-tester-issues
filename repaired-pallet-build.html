@@ -126,7 +126,10 @@
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin:0;border:none;padding:0;">Open Pallets</h2>
-        <button onclick="openCreatePallet()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create Pallet</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="openLocationsModal()" style="padding:8px 20px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">📍 Locations</button>
+          <button onclick="openCreatePallet()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">+ Create Pallet</button>
+        </div>
       </div>
       <div style="margin-bottom:12px;">
         <input type="text" id="openPalletFilter" placeholder="Filter by Pallet ID..." oninput="renderTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
@@ -139,9 +142,10 @@
           <th style="cursor:pointer;" onclick="sortTable('SKU')">SKU <span id="sort_SKU"></span></th>
           <th style="cursor:pointer;text-align:center;" onclick="sortTable('Units')">Units <span id="sort_Units"></span></th>
           <th style="cursor:pointer;" onclick="sortTable('Pallet Open Date')">Open Date <span id="sort_Pallet Open Date"></span></th>
+          <th style="cursor:pointer;" onclick="sortTable('Ship To')">Ship To <span id="sort_Ship To"></span></th>
           <th></th>
         </tr></thead>
-        <tbody id="palletTableBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="palletTableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
       </table>
       </div>
     </div>
@@ -160,9 +164,10 @@
           <th style="cursor:pointer;" onclick="sortClosedTable('SKU')">SKU <span id="csort_SKU"></span></th>
           <th style="cursor:pointer;text-align:center;" onclick="sortClosedTable('Units')">Units <span id="csort_Units"></span></th>
           <th style="cursor:pointer;" onclick="sortClosedTable('Pallet Close Date')">Close Date <span id="csort_Pallet Close Date"></span></th>
+          <th style="cursor:pointer;" onclick="sortClosedTable('Ship To')">Ship To <span id="csort_Ship To"></span></th>
           <th></th>
         </tr></thead>
-        <tbody id="closedPalletTableBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="closedPalletTableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
       </table>
       </div>
     </div>
@@ -182,6 +187,10 @@
       <input type="text" id="newPalletPO" placeholder="e.g. PO-12345" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">SKU</label>
       <input type="text" id="newPalletSKU" value="WNC-CR200A-CLR" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Ship To</label>
+      <select id="newPalletShipTo" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;margin-bottom:12px;">
+        <option value="">— Select Ship To —</option>
+      </select>
     </div>
     <div class="modal-footer">
       <button onclick="closeCreatePallet()" style="background:#e9ecef;color:#333;">Cancel</button>
@@ -191,6 +200,40 @@
 </div>
 
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- LOCATIONS MODAL -->
+<div class="modal-overlay" id="locationsModal" onclick="if(event.target===this)closeLocationsModal()">
+  <div class="modal" style="max-width:550px;">
+    <div class="modal-header" style="background:#6c757d;">
+      <h3>Ship To Locations</h3>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+      <div id="locationsTable"></div>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;">
+        <div style="font-size:12px;font-weight:600;color:#28a745;text-transform:uppercase;margin-bottom:8px;">Add New Location</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="newLocName" placeholder="Location Name (internal, e.g. Sagent - IN)" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="newLocCompany" placeholder="Company / Recipient Name (e.g. DHL Supply Chain)" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="newLocStreet" placeholder="Street Address" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" id="newLocCity" placeholder="City" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+          <input type="text" id="newLocState" placeholder="State" style="width:80px;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+          <input type="text" id="newLocZip" placeholder="ZIP" style="width:100px;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+        </div>
+        <button onclick="addShipToLocation()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">+ Add Location</button>
+        <div id="locAddFeedback" style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeLocationsModal()" style="background:#e9ecef;color:#333;">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- ADD UNITS MODAL -->
 <div class="modal-overlay" id="addUnitsModal" onclick="if(event.target===this)closeAddUnits()">
@@ -275,7 +318,7 @@ let tableSortCol = 'Pallet ID';
 let tableSortAsc = true;
 let closedSortCol = 'Pallet Close Date';
 let closedSortAsc = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxw2n3gCiyOysmGGzFLtyREtogLcze2nau5S43YGjZjASv9kDE2pYcBbeDtFrUSzl8upQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxJVRDJ-ERKG9UL5GijGbtUJcyOrOC61AfoZih6jw6mR-g605WL76mDjA2BnZdgZ4AhqQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -313,19 +356,102 @@ function fmtDate(str) {
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+function openLocationsModal() {
+  renderLocationsTable();
+  document.getElementById('locationsModal').classList.add('show');
+}
+function closeLocationsModal() {
+  document.getElementById('locationsModal').classList.remove('show');
+}
+function renderLocationsTable() {
+  const el = document.getElementById('locationsTable');
+  if (!window._shipToAddresses || !window._shipToAddresses.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">No locations saved yet.</div>';
+    return;
+  }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html += '<tr style="background:#e9ecef;"><th style="padding:8px 10px;text-align:left;">Name</th><th style="padding:8px 10px;text-align:left;">Address</th><th></th></tr>';
+  window._shipToAddresses.forEach((loc, i) => {
+    html += '<tr style="border-bottom:1px solid #f0f0f0;">'
+      + '<td style="padding:8px 10px;font-weight:600;">' + loc.name + '</td>'
+      + '<td style="padding:8px 10px;font-size:12px;color:#555;">' + (loc.address||'—') + '</td>'
+      + '<td style="padding:8px 10px;text-align:right;"><button onclick="deleteShipToLocation(' + i + ')" style="padding:4px 10px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;">Delete</button></td>'
+      + '</tr>';
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
+async function addShipToLocation() {
+  const name = document.getElementById('newLocName').value.trim();
+  const company = document.getElementById('newLocCompany').value.trim();
+  const street = document.getElementById('newLocStreet').value.trim();
+  const city = document.getElementById('newLocCity').value.trim();
+  const state = document.getElementById('newLocState').value.trim();
+  const zip = document.getElementById('newLocZip').value.trim();
+  const fb = document.getElementById('locAddFeedback');
+  if (!name) { fb.innerHTML = '<span style="color:#dc3545;">Location Name is required</span>'; return; }
+  if (!street) { fb.innerHTML = '<span style="color:#dc3545;">Street Address is required</span>'; return; }
+  if (!city) { fb.innerHTML = '<span style="color:#dc3545;">City is required</span>'; return; }
+  if (!state) { fb.innerHTML = '<span style="color:#dc3545;">State is required</span>'; return; }
+  if (!zip) { fb.innerHTML = '<span style="color:#dc3545;">ZIP is required</span>'; return; }
+
+  const address = (company ? company + ', ' : '') + street + ', ' + city + ', ' + state + ' ' + zip;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'addshiptoaddress', name: name, address: address });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Added</span>';
+      document.getElementById('newLocName').value = '';
+      document.getElementById('newLocCompany').value = '';
+      document.getElementById('newLocStreet').value = '';
+      document.getElementById('newLocCity').value = '';
+      document.getElementById('newLocState').value = '';
+      document.getElementById('newLocZip').value = '';
+      // Refresh locations
+      const refreshJson = await jsonpRequest(scriptUrl, { action: 'readshiptoaddresses' });
+      if (refreshJson.success) {
+        window._shipToAddresses = refreshJson.data || [];
+        renderLocationsTable();
+        const sel = document.getElementById('newPalletShipTo');
+        sel.innerHTML = '<option value="">— Select Ship To —</option>' + window._shipToAddresses.map(s => '<option value="' + s.name.replace(/"/g,'&quot;') + '">' + s.name + ' — ' + s.address + '</option>').join('');
+      }
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error: ' + err.message + '</span>'; }
+}
+async function deleteShipToLocation(idx) {
+  if (!confirm('Delete this location?')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'deleteshiptoaddress', row: idx });
+    if (json.success) {
+      const refreshJson = await jsonpRequest(scriptUrl, { action: 'readshiptoaddresses' });
+      if (refreshJson.success) {
+        window._shipToAddresses = refreshJson.data || [];
+        renderLocationsTable();
+        const sel = document.getElementById('newPalletShipTo');
+        sel.innerHTML = '<option value="">— Select Ship To —</option>' + window._shipToAddresses.map(s => '<option value="' + s.name.replace(/"/g,'&quot;') + '">' + s.name + ' — ' + s.address + '</option>').join('');
+      }
+    } else { showToast('Failed to delete', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
 async function loadData() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
   setStatus('pending', 'Loading...');
   try {
-    const [palletsJson, buildJson] = await Promise.all([
+    const [palletsJson, buildJson, shipToJson] = await Promise.all([
       jsonpRequest(scriptUrl, { action: 'readrepairpallets' }),
-      jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' })
+      jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' }),
+      jsonpRequest(scriptUrl, { action: 'readshiptoaddresses' }).catch(() => ({ success: false }))
     ]);
     if (palletsJson.success) {
       allPallets = palletsJson.data || [];
     } else { throw new Error(palletsJson.error); }
     if (buildJson.success) {
       allPalletBuildUnits = buildJson.data || [];
+    }
+    if (shipToJson.success && shipToJson.data) {
+      window._shipToAddresses = shipToJson.data;
+      const sel = document.getElementById('newPalletShipTo');
+      sel.innerHTML = '<option value="">— Select Ship To —</option>' + shipToJson.data.map(s => '<option value="' + s.name.replace(/"/g,'&quot;') + '">' + s.name + (s.address ? ' — ' + s.address : '') + '</option>').join('');
     }
     setStatus('connected', 'Connected');
     renderTable();
@@ -406,7 +532,7 @@ function renderTable() {
 
   // Render open pallets
   if (!sortedOpen.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">' + (openFilter ? 'No open pallets match the filter.' : 'No open pallets.') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (openFilter ? 'No open pallets match the filter.' : 'No open pallets.') + '</td></tr>';
   } else {
     tbody.innerHTML = sortedOpen.map(p => {
       const palletId = (p['Pallet ID']||'').trim();
@@ -419,6 +545,7 @@ function renderTable() {
         + '<td>' + (p['SKU']||'—') + '</td>'
         + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
         + '<td>' + fmtDate(p['Pallet Open Date']) + '</td>'
+        + '<td>' + (p['Ship To']||'—') + '</td>'
         + '<td style="text-align:right;white-space:nowrap;">' + addBtn + editBtn + '</td>'
         + '</tr>';
     }).join('');
@@ -426,7 +553,7 @@ function renderTable() {
 
   // Render closed pallets
   if (!closedPalletsList.length) {
-    closedTbody.innerHTML = '<tr><td colspan="6" class="empty-state">' + (closedFilter ? 'No closed pallets match the filter.' : 'No closed pallets.') + '</td></tr>';
+    closedTbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (closedFilter ? 'No closed pallets match the filter.' : 'No closed pallets.') + '</td></tr>';
   } else {
     const sortedClosed = closedPalletsList.slice().sort((a, b) => {
       let valA, valB;
@@ -448,13 +575,15 @@ function renderTable() {
       const unitCount = unitCounts[palletId] || 0;
       const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Review / Reopen Pallet</button>';
       const printBtn = ' <button onclick="openPrintLabelModal(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print Label</button>';
+      const printImeiBtn = ' <button onclick="printImeiLabel(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#6f42c1;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print IMEI Label</button>';
       return '<tr>'
         + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + palletId + '</td>'
         + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
         + '<td>' + (p['SKU']||'—') + '</td>'
         + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
         + '<td>' + fmtDate(p['Pallet Close Date']) + '</td>'
-        + '<td style="text-align:right;white-space:nowrap;">' + editBtn + printBtn + '</td>'
+        + '<td>' + (p['Ship To']||'—') + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;">' + editBtn + printBtn + printImeiBtn + '</td>'
         + '</tr>';
     }).join('');
   }
@@ -491,10 +620,10 @@ async function submitCreatePallet() {
   const palletId = document.getElementById('newPalletId').value.trim();
   const palletPO = document.getElementById('newPalletPO').value.trim();
   const sku = document.getElementById('newPalletSKU').value.trim();
+  const shipTo = document.getElementById('newPalletShipTo').value.trim();
 
   if (!palletId) { showToast('Pallet ID is required', 'error'); return; }
   if (palletId.length !== 11) { showToast('Pallet ID must be exactly 11 characters', 'error'); return; }
-  if (!palletPO) { showToast('Pallet PO # is required', 'error'); return; }
   if (!sku) { showToast('SKU is required', 'error'); return; }
 
   // Check for duplicate
@@ -505,7 +634,7 @@ async function submitCreatePallet() {
   btn.disabled = true; btn.textContent = 'Creating...';
 
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createrepairpallet', palletid: palletId, palletpo: palletPO, sku: sku });
+    const json = await jsonpRequest(scriptUrl, { action: 'createrepairpallet', palletid: palletId, palletpo: palletPO, sku: sku, shipto: shipTo });
     if (json.success) {
       showToast('Pallet created: ' + palletId, 'success');
       closeCreatePallet();
@@ -539,7 +668,25 @@ function openEditPallet(palletId) {
   // Build units table
   const units = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet');
 
-  let html = '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Units on Pallet (' + units.length + ')</div>';
+  // Ship To editable field
+  const currentShipTo = pallet ? (pallet['Ship To']||'').trim() : '';
+  let html = '<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #eee;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Ship To</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;">';
+  html += '<select id="editPalletShipTo" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;background:white;">';
+  html += '<option value="">— None —</option>';
+  if (window._shipToAddresses) {
+    window._shipToAddresses.forEach(s => {
+      html += '<option value="' + s.name.replace(/"/g,'&quot;') + '"' + (s.name === currentShipTo ? ' selected' : '') + '>' + s.name + (s.address ? ' — ' + s.address : '') + '</option>';
+    });
+  }
+  html += '</select>';
+  html += '<button onclick="saveEditPalletShipTo()" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
+  html += '</div>';
+  html += '<div id="shipToFeedback" style="margin-top:4px;font-size:11px;"></div>';
+  html += '</div>';
+
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Units on Pallet (' + units.length + ')</div>';
   html += '<div style="margin-bottom:10px;"><input type="text" id="editPalletImeiFilter" placeholder="Filter by IMEI..." oninput="filterEditPalletTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;font-family:Consolas,monospace;"></div>';
 
   if (units.length) {
@@ -619,7 +766,17 @@ function openPrintLabelModal(palletId) {
   const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
   const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
   const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const shipToName = pallet ? (pallet['Ship To']||'').trim() : '';
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+
+  // Look up full address from ship-to data
+  let shipToAddress = shipToName || '—';
+  if (shipToName && window._shipToAddresses) {
+    const match = window._shipToAddresses.find(s => s.name === shipToName);
+    if (match && match.address) shipToAddress = match.address;
+  }
+  // Format address with line breaks (stored as "Company, Street, City, State ZIP")
+  const shipToHtml = shipToAddress.split(',').map(s => s.trim()).join('<br>');
 
   document.getElementById('printLabelTitle').textContent = 'Print Label: ' + palletId;
 
@@ -632,7 +789,7 @@ function openPrintLabelModal(palletId) {
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;">' + po + '</div></div></div>';
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>';
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>';
-  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-size:12px;font-weight:700;">1 of 1 (pallets in shipment)</div></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;font-weight:700;line-height:1.4;">' + shipToHtml + '</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-size:12px;font-weight:700;">1 of 1 (pallets in shipment)</div></div>';
   html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px;"><canvas id="plbl-bc2" style="max-width:80%;"></canvas></div>';
 
   document.getElementById('printLabelPreview').innerHTML = html;
@@ -661,7 +818,17 @@ function printClosedPalletLabel(palletId) {
   const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
   const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
   const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const shipToName = pallet ? (pallet['Ship To']||'').trim() : '';
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
+
+  // Look up full address from ship-to data
+  let shipToAddress = shipToName || '—';
+  if (shipToName && window._shipToAddresses) {
+    const match = window._shipToAddresses.find(s => s.name === shipToName);
+    if (match && match.address) shipToAddress = match.address;
+  }
+  // Format for print: line breaks as <br>
+  const shipToHtmlPrint = shipToAddress.split(',').map(s => s.trim()).join('<br>');
 
   // Build print window with "Current" style label
   const printWin = window.open('', '_blank', 'width=500,height=700');
@@ -677,7 +844,7 @@ function printClosedPalletLabel(palletId) {
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;margin-top:auto;">' + po + '</div></div></div>');
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>');
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>');
-  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">8620 Congdon Hill Rd Alburtis, Pennsylvania 18011</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-weight:700;">1 of 1 (pallets in shipment)</div></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;font-weight:700;line-height:1.4;">' + shipToHtmlPrint + '</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-weight:700;">1 of 1 (pallets in shipment)</div></div>');
   printWin.document.write('<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;"><canvas id="bc2"></canvas></div>');
   printWin.document.write('<script>');
   printWin.document.write('window.onload=function(){');
@@ -688,6 +855,21 @@ function printClosedPalletLabel(palletId) {
   printWin.document.write('<\/script>');
   printWin.document.write('</body></html>');
   printWin.document.close();
+}
+
+async function saveEditPalletShipTo() {
+  const shipTo = document.getElementById('editPalletShipTo').value;
+  const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === editPalletId);
+  if (idx < 0) return;
+  const fb = document.getElementById('shipToFeedback');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updaterepairpalletshipto', row: idx, shipto: shipTo });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Ship To saved</span>';
+      allPallets[idx]['Ship To'] = shipTo;
+      renderTable();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
 }
 
 async function reopenPalletAction() {
@@ -704,6 +886,72 @@ async function reopenPalletAction() {
     } else { showToast(json.error || 'Failed', 'error'); }
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
 }
+
+function printImeiLabel(palletId) {
+  const units = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet');
+  const unitCount = units.length;
+  const imeis = units.map(u => (u['IMEI']||'').trim()).filter(i => i);
+
+  // Split IMEIs into groups of 24 for PDF417 barcodes
+  const imeisPerBarcode = 24;
+  const barcodeGroups = [];
+  for (let i = 0; i < imeis.length; i += imeisPerBarcode) {
+    barcodeGroups.push(imeis.slice(i, i + imeisPerBarcode));
+  }
+
+  // Generate PDF417 barcodes — each encodes up to 24 comma-separated IMEIs
+  const barcodeCanvases = [];
+  barcodeGroups.forEach(group => {
+    const dataStr = group.join(',');
+    const canvas = document.createElement('canvas');
+    try {
+      bwipjs.toCanvas(canvas, {
+        bcid: 'pdf417',
+        text: dataStr,
+        scale: 2,
+        columns: 8,
+        rowheight: 2,
+        eclevel: 2
+      });
+      barcodeCanvases.push(canvas.toDataURL('image/png'));
+    } catch(e) {
+      console.error('PDF417 generation error:', e);
+    }
+  });
+
+  // All barcodes on one label
+  const perPage = 99;
+  const totalPages = Math.ceil(barcodeCanvases.length / perPage);
+
+  const win = window.open('', '_blank', 'width=500,height=700');
+  win.document.write('<!DOCTYPE html><html><head><style>'
+    + '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'html, body { margin:0; padding:0; }'
+    + '@page { size:4in 6in; margin:0; }'
+    + '@media print { .no-print { display:none !important; } }'
+    + '.label-page { width:4in; height:6in; padding:0.15in 0.2in; font-family:Arial,sans-serif; overflow:hidden; page-break-after:always; display:flex; flex-direction:column; }'
+    + '.label-header { font-size:16px; font-weight:900; margin-bottom:2px; }'
+    + '.label-qty { font-size:14px; font-weight:700; margin-bottom:8px; }'
+    + '.barcode-list { flex:1; display:flex; flex-direction:column; justify-content:flex-start; gap:6px; }'
+    + '.barcode-item img { display:block; width:3.5in; height:auto; }'
+    + '</style></head><body>');
+
+  for (let p = 0; p < totalPages; p++) {
+    const pageBarcodes = barcodeCanvases.slice(p * perPage, (p + 1) * perPage);
+    win.document.write('<div class="label-page">'
+      + '<div class="label-header">PALLET ID: ' + palletId + '</div>'
+      + '<div class="label-qty">QTY: ' + unitCount + ' units' + (totalPages > 1 ? ' (Page ' + (p+1) + '/' + totalPages + ')' : '') + '</div>'
+      + '<div class="barcode-list">'
+      + pageBarcodes.map(src => '<div class="barcode-item"><img src="' + src + '"></div>').join('')
+      + '</div>'
+      + '</div>');
+  }
+
+  win.document.write('<div class="no-print" style="text-align:center;padding:20px;"><button onclick="window.print()" style="padding:12px 32px;background:#0d6efd;color:white;border:none;border-radius:6px;font-size:16px;font-weight:600;cursor:pointer;">🖨️ Print</button></div>');
+  win.document.write('</body></html>');
+  win.document.close();
+}
+
 
 // ---- ADD UNITS TO PALLET ----
 let addUnitsPalletId = '';

@@ -619,8 +619,8 @@ function doGet(e) {
       if (!rpSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = rpSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = rpSheet.getRange(2, 1, lastRow - 1, 6).getValues();
-      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date'];
+      var data = rpSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -634,18 +634,18 @@ function doGet(e) {
       var rpSheet = ss.getSheetByName('Repair - Pallets');
       if (!rpSheet) {
         rpSheet = ss.insertSheet('Repair - Pallets');
-        rpSheet.getRange(1, 1, 1, 6).setValues([['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date']]);
+        rpSheet.getRange(1, 1, 1, 7).setValues([['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To']]);
       }
       var palletId = (e.parameter.palletid || '').toString().trim();
       var palletPO = (e.parameter.palletpo || '').toString().trim();
       var sku = (e.parameter.sku || 'WNC-CR200A-CLR').toString().trim();
+      var shipTo = (e.parameter.shipto || '').toString().trim();
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
-      if (!palletPO) return _respond({ success: false, error: 'Pallet PO # required' }, callback);
 
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
 
-      rpSheet.appendRow([palletId, palletPO, sku, 'Open', ts, '']);
+      rpSheet.appendRow([palletId, palletPO, sku, 'Open', ts, '', shipTo]);
       return _respond({ success: true, message: 'Pallet created' }, callback);
     }
 
@@ -722,6 +722,56 @@ function doGet(e) {
       var sheetRow = row + 2;
       rpSheet.getRange(sheetRow, 4).setValue('Open');
       rpSheet.getRange(sheetRow, 6).setValue('');
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- UPDATE REPAIR PALLET SHIP TO ----
+    if (action === 'updaterepairpalletshipto') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var shipTo = (e.parameter.shipto || '').toString().trim();
+      var sheetRow = row + 2;
+      rpSheet.getRange(sheetRow, 7).setValue(shipTo);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- READ SHIP TO ADDRESSES ----
+    if (action === 'readshiptoaddresses') {
+      var stSheet = ss.getSheetByName('Repair - Ship To Addresses');
+      if (!stSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = stSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = stSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+      var rows = data.filter(function(row) { return row[0]; }).map(function(row) {
+        return { name: row[0].toString().trim(), address: row[1] ? row[1].toString().trim() : '' };
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    // ---- ADD SHIP TO ADDRESS ----
+    if (action === 'addshiptoaddress') {
+      var stSheet = ss.getSheetByName('Repair - Ship To Addresses');
+      if (!stSheet) {
+        stSheet = ss.insertSheet('Repair - Ship To Addresses');
+        stSheet.getRange(1, 1, 1, 2).setValues([['Name', 'Address']]);
+      }
+      var name = (e.parameter.name || '').toString().trim();
+      var address = (e.parameter.address || '').toString().trim();
+      if (!name) return _respond({ success: false, error: 'Name required' }, callback);
+      stSheet.appendRow([name, address]);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- DELETE SHIP TO ADDRESS ----
+    if (action === 'deleteshiptoaddress') {
+      var stSheet = ss.getSheetByName('Repair - Ship To Addresses');
+      if (!stSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      stSheet.deleteRow(sheetRow);
       return _respond({ success: true }, callback);
     }
 
