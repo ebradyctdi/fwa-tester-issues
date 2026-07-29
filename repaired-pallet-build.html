@@ -908,10 +908,10 @@ function printImeiLabel(palletId) {
       bwipjs.toCanvas(canvas, {
         bcid: 'pdf417',
         text: dataStr,
-        scale: 2,
-        columns: 8,
-        rowheight: 2,
-        eclevel: 2
+        scale: 1.5,
+        columns: 10,
+        rowheight: 1.5,
+        eclevel: 1
       });
       barcodeCanvases.push(canvas.toDataURL('image/png'));
     } catch(e) {

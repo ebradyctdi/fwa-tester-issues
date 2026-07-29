@@ -169,7 +169,7 @@
     <div id="loadSection">
       <div class="scan-section">
         <h2>Step 1: Scan Pallet ID</h2>
-        <input type="text" class="scan-input" id="palletInput" placeholder="Scan pallet barcode (PLBxxxxxxxx)..." autofocus>
+        <input type="text" class="scan-input" id="palletInput" placeholder="Scan pallet barcode (PLB or RPR)..." autofocus>
         <div id="palletStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
       </div>
 
@@ -381,8 +381,8 @@ function jsonpRequest(url, params) {
 document.getElementById('palletInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     const val = this.value.trim();
-    if (val.length !== 11 || !val.startsWith('PLB')) {
-      showAlert('Invalid Pallet ID', 'Pallet ID must be 11 characters and start with "PLB". You entered: ' + val);
+    if (val.length !== 11 || (!val.startsWith('PLB') && !val.startsWith('RPR'))) {
+      showAlert('Invalid Pallet ID', 'Pallet ID must be 11 characters and start with "PLB" or "RPR". You entered: ' + val);
       this.value = '';
       return;
     }
