@@ -575,9 +575,10 @@ function closeCompleteModal() {
 }
 
 let _submitting = false;
+let _auditSaved = false;
 
 async function submitAudit(result) {
-  if (_submitting) return;
+  if (_submitting || _auditSaved) return;
   const auditor = document.getElementById('auditorName').value.trim();
   const notes = document.getElementById('auditNotes').value.trim();
 
@@ -641,13 +642,19 @@ async function submitAudit(result) {
       lastAuditor = auditor;
       lastAuditNotes = notes;
       updateLabelPreview();
+      // Keep _submitting = true to prevent any further submissions
+      _auditSaved = true;
     } else {
       showToast(json.error || 'Failed to save', 'error');
+      _submitting = false;
+      document.getElementById('passBtn').disabled = false;
+      document.getElementById('failBtn').disabled = false;
     }
   } catch(err) {
     showToast('Error: ' + err.message, 'error');
-  } finally {
     _submitting = false;
+    document.getElementById('passBtn').disabled = false;
+    document.getElementById('failBtn').disabled = false;
   }
 }
 // --- Helpers ---
@@ -722,6 +729,8 @@ function resetAll() {
   barcodeScanCount = 0;
   auditStartTime = null;
   auditMode = false;
+  _submitting = false;
+  _auditSaved = false;
   document.getElementById('palletInput').value = '';
   document.getElementById('palletInput').disabled = false;
   document.getElementById('palletStatus').innerHTML = '';
