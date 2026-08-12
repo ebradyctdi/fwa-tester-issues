@@ -173,7 +173,10 @@
     <div class="card" id="resultsCard" style="display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin:0;border:none;padding:0;">Active Carts — WIP Breakdown</h2>
-        <button onclick="exportSummaryCSV()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="exportUnitCSV()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export Unit Detail</button>
+          <button onclick="exportSummaryCSV()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
+        </div>
       </div>
       <div style="margin-bottom:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="cartFilter" placeholder="Filter by Cart ID..." oninput="renderResults()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
@@ -646,6 +649,39 @@ function exportSummaryCSV() {
   a.href = url; a.download = 'wip-status-by-carts.csv'; a.click();
   URL.revokeObjectURL(url);
   showToast('CSV exported', 'success');
+}
+
+function exportUnitCSV() {
+  const entries = Object.entries(cartWipMap).filter(([id, d]) => d.totalUnits > 0).sort((a, b) => a[0].localeCompare(b[0]));
+  if (!entries.length) { showToast('No data to export', 'error'); return; }
+
+  const AWAITING_PROCESSES = ['DIS-PHOLD', 'DIS-RHOLD'];
+  let csv = 'Cart ID,IMEI,Serial Number,Device Model,WIP Process,Status\n';
+
+  entries.forEach(([cartId, data]) => {
+    // Units with WIP process
+    if (data.breakdown) {
+      Object.entries(data.breakdown).forEach(([process, units]) => {
+        const status = AWAITING_PROCESSES.includes(process.toUpperCase()) ? 'Awaiting Dis-Association' : 'Dis-Associated';
+        units.forEach(u => {
+          csv += '"' + cartId + '","' + u.imei + '","' + u.serial + '","' + u.model + '","' + process + '","' + status + '"\n';
+        });
+      });
+    }
+    // Units not in WIP
+    if (data.notInWipUnits) {
+      data.notInWipUnits.forEach(u => {
+        csv += '"' + cartId + '","' + u.imei + '","' + u.serial + '","' + u.model + '","","Not in WIP File"\n';
+      });
+    }
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'wip-unit-detail.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Unit detail CSV exported', 'success');
 }
 
 // ---- LOAD CART DATA ----
