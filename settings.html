@@ -105,6 +105,12 @@
       <div class="status-msg" id="statusMsg"></div>
     </div>
     <div class="card">
+      <h2>Latest Deployed URL (Reference)</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:8px;">Copy this URL if your browser cache gets cleared and the connection is lost.</p>
+      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpVOYFw-uv62quFS6tS0jRNL_uZZtCwQ/exec</div>
+      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: August 12, 2026</div>
+    </div>
+    <div class="card">
       <h2>Google Sheet</h2>
       <p style="font-size:13px;color:#666;margin-bottom:12px;">View and edit the raw data directly in Google Sheets.</p>
       <a href="https://docs.google.com/spreadsheets/d/1PPTCKPN3rqy5myeUny0lzy5bs4exb7KxyyU8nssQSNM/edit" target="_blank" style="display:inline-block;padding:10px 20px;background:#1a3a5c;color:white;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open Google Sheet ↗</a>
@@ -125,7 +131,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let _jsonpCounter = 0;
-const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxJVRDJ-ERKG9UL5GijGbtUJcyOrOC61AfoZih6jw6mR-g605WL76mDjA2BnZdgZ4AhqQ/exec';
+const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpVOYFw-uv62quFS6tS0jRNL_uZZtCwQ/exec';
 document.getElementById('scriptUrl').value = saved;
 
 function jsonpRequest(url, params) {
