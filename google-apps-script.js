@@ -561,8 +561,8 @@ function doGet(e) {
       if (!paSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paSheet.getRange(2, 1, lastRow - 1, 248).getValues();
-      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes'];
+      var data = paSheet.getRange(2, 1, lastRow - 1, 249).getValues();
+      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location'];
       for (var i = 1; i <= 120; i++) { headers.push('IMEI Scan #' + i); }
       for (var i = 1; i <= 120; i++) { headers.push('Quality IMEI #' + i); }
       var rows = data.map(function(row) {
@@ -578,7 +578,7 @@ function doGet(e) {
       var paSheet = ss.getSheetByName('Pallet Audits');
       if (!paSheet) {
         paSheet = ss.insertSheet('Pallet Audits');
-        var auditHeaders = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes'];
+        var auditHeaders = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location'];
         for (var i = 1; i <= 120; i++) { auditHeaders.push('IMEI Scan #' + i); }
         for (var i = 1; i <= 120; i++) { auditHeaders.push('Quality IMEI #' + i); }
         paSheet.getRange(1, 1, 1, auditHeaders.length).setValues([auditHeaders]);
@@ -591,11 +591,12 @@ function doGet(e) {
       var result = (e.parameter.result || '').toString().trim();
       var auditor = (e.parameter.auditor || '').toString().trim();
       var notes = (e.parameter.notes || '').toString().trim();
+      var location = (e.parameter.location || '').toString().trim();
 
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!auditor) return _respond({ success: false, error: 'Auditor name required' }, callback);
 
-      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes];
+      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes, location];
 
       // Add up to 120 IMEI scans (columns I onward)
       for (var i = 1; i <= 120; i++) {
@@ -773,6 +774,17 @@ function doGet(e) {
       var sheetRow = row + 2;
       stSheet.deleteRow(sheetRow);
       return _respond({ success: true }, callback);
+    }
+
+    // ---- READ AUDIT LOCATIONS ----
+    if (action === 'readauditlocations') {
+      var alSheet = ss.getSheetByName('Audit Locations');
+      if (!alSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = alSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = alSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      var locations = data.map(function(row) { return row[0] ? row[0].toString().trim() : ''; }).filter(function(l) { return l; });
+      return _respond({ success: true, data: locations }, callback);
     }
 
     // ---- DEFAULT ----
