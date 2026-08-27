@@ -446,7 +446,7 @@ function showDetail(periodKey) {
 
   let html = '<table class="detail-table"><thead><tr>'
     + '<th>Pallet ID</th><th>Part Number</th><th>Timestamp</th>'
-    + '<th>IMEIs on Pallet</th><th>IMEIs Validated</th><th>Result</th><th>Auditor</th><th>Location</th><th>Notes</th>'
+    + '<th>IMEIs on Pallet</th><th>IMEIs Validated</th><th>Result</th><th>Auditor</th><th>Location</th><th>Disposition</th><th>Notes</th>'
     + '</tr></thead><tbody>';
 
   audits.forEach(a => {
@@ -460,6 +460,7 @@ function showDetail(periodKey) {
       + '<td><span class="' + resultClass + '">' + (a['Audit Result'] || '—') + '</span></td>'
       + '<td>' + (a['Audit Performed By'] || '—') + '</td>'
       + '<td>' + (a['Location'] || '—') + '</td>'
+      + '<td>' + (a['Disposition'] || '—') + '</td>'
       + '<td>' + (a['Notes'] || '—') + '</td>'
       + '</tr>';
   });

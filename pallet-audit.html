@@ -173,6 +173,19 @@
       </select>
     </div>
 
+    <!-- Pallet Disposition -->
+    <div class="scan-section" id="dispositionSection">
+      <h2>Pallet Disposition</h2>
+      <select id="palletDispositionSelect" class="scan-input" style="cursor:pointer;">
+        <option value="">-- Select Disposition --</option>
+        <option value="CLR">CLR</option>
+        <option value="ICE">ICE</option>
+        <option value="IFF">IFF</option>
+        <option value="RNR">RNR</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    </div>
+
     <!-- PHASE 1: Load Pallet -->
     <div id="loadSection">
       <div class="scan-section">
@@ -352,9 +365,10 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzykzcvNPRuj6A-O8h52nlxQRVznX8iyac1061eI83tLTU3mSpJb7Tm6EnS6-ZdEBvmwg/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxSw8fGoxNn9q-iiKPLxrIXMndo0zz9192rBVE70oe2DLU1wuD1QV2lBl4ojF4C0N1uzA/exec'; } catch(e) {}
 
 let auditLocation = '';
+let palletDisposition = '';
 let palletID = '';
 let partNumber = '';
 let palletIMEIs = []; // all IMEIs loaded from barcode scans
@@ -392,7 +406,7 @@ async function loadAuditLocations() {
   const select = document.getElementById('auditLocationSelect');
   const palletInput = document.getElementById('palletInput');
   palletInput.disabled = true;
-  palletInput.placeholder = 'Select audit location first...';
+  palletInput.placeholder = 'Select audit location and disposition first...';
   try {
     const res = await jsonpRequest(scriptUrl, { action: 'readauditlocations' });
     select.innerHTML = '<option value="">-- Select Location --</option>';
@@ -412,18 +426,26 @@ async function loadAuditLocations() {
 }
 
 document.getElementById('auditLocationSelect').addEventListener('change', function() {
+  auditLocation = this.value;
+  checkReadyForPallet();
+});
+
+document.getElementById('palletDispositionSelect').addEventListener('change', function() {
+  palletDisposition = this.value;
+  checkReadyForPallet();
+});
+
+function checkReadyForPallet() {
   const palletInput = document.getElementById('palletInput');
-  if (this.value) {
-    auditLocation = this.value;
+  if (auditLocation && palletDisposition) {
     palletInput.disabled = false;
     palletInput.placeholder = 'Scan pallet barcode (PLB or RPR)...';
     palletInput.focus();
   } else {
-    auditLocation = '';
     palletInput.disabled = true;
-    palletInput.placeholder = 'Select audit location first...';
+    palletInput.placeholder = 'Select audit location and disposition first...';
   }
-});
+}
 
 loadAuditLocations();
 // --- Pallet ID Scan ---
@@ -664,7 +686,8 @@ async function submitAudit(result) {
       result: result,
       auditor: auditor,
       notes: notes,
-      location: auditLocation
+      location: auditLocation,
+      disposition: palletDisposition
     };
 
     // Add up to 120 matched IMEIs
