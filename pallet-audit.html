@@ -365,7 +365,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '';
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxSw8fGoxNn9q-iiKPLxrIXMndo0zz9192rBVE70oe2DLU1wuD1QV2lBl4ojF4C0N1uzA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbygBFnvRh8cXp-Fi90RbVbUmMlWYz9Eo56CdSrVZHRgZJ3HiAHyFWw7UxkTrUJnx_Bb0w/exec'; } catch(e) {}
 
 let auditLocation = '';
 let palletDisposition = '';
@@ -687,7 +687,8 @@ async function submitAudit(result) {
       auditor: auditor,
       notes: notes,
       location: auditLocation,
-      disposition: palletDisposition
+      disposition: palletDisposition,
+      issuecount: issueCount.toString()
     };
 
     // Add up to 120 matched IMEIs
