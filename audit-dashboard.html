@@ -448,15 +448,7 @@ function renderTable() {
     const result = (a['Audit Result'] || '').toUpperCase();
     if (result === 'PASS') groups[key].pass++;
     else groups[key].fail++;
-    // Count unique IMEIs from scan + quality columns
-    const imeis = new Set();
-    for (let i = 1; i <= 120; i++) {
-      const scan = (a['IMEI Scan #' + i] || '').trim();
-      const qual = (a['Quality IMEI #' + i] || '').trim();
-      if (scan) imeis.add(scan);
-      if (qual) imeis.add(qual);
-    }
-    groups[key].units += imeis.size;
+    groups[key].units += parseInt(a['# Units Audited'] || '0') || 0;
     groups[key].issues += parseInt(a['# Issues Found'] || '0') || 0;
     if (!sortKeys[key]) sortKeys[key] = getSortKey(a['Audit Start Timestamp']);
   });
@@ -523,7 +515,7 @@ function showDetail(periodKey) {
 
   let html = '<table class="detail-table"><thead><tr>'
     + '<th>Pallet ID</th><th>Part Number</th><th>Timestamp</th>'
-    + '<th>IMEIs on Pallet</th><th>IMEIs Validated</th><th>Result</th><th>Auditor</th><th>Location</th><th>Disposition</th><th>Notes</th>'
+    + '<th>IMEIs on Pallet</th><th># Units Audited</th><th>Result</th><th>Auditor</th><th>Location</th><th>Disposition</th><th>Notes</th>'
     + '</tr></thead><tbody>';
 
   audits.forEach(a => {
@@ -533,7 +525,7 @@ function showDetail(periodKey) {
       + '<td>' + (a['Part Number'] || '—') + '</td>'
       + '<td>' + fmtDate(a['Audit Start Timestamp']) + '</td>'
       + '<td style="text-align:center;">' + (a['# of IMEIs on Pallet'] || '—') + '</td>'
-      + '<td style="text-align:center;">' + (function(){ const s = new Set(); for(let i=1;i<=120;i++){const v=(a['IMEI Scan #'+i]||'').trim();const q=(a['Quality IMEI #'+i]||'').trim();if(v)s.add(v);if(q)s.add(q);} return s.size||'—'; })() + '</td>'
+      + '<td style="text-align:center;">' + (a['# Units Audited'] || '—') + '</td>'
       + '<td><span class="' + resultClass + '">' + (a['Audit Result'] || '—') + '</span></td>'
       + '<td>' + (a['Audit Performed By'] || '—') + '</td>'
       + '<td>' + (a['Location'] || '—') + '</td>'
@@ -573,15 +565,7 @@ function exportCSV() {
     const result = (a['Audit Result'] || '').toUpperCase();
     if (result === 'PASS') groups[key].pass++;
     else groups[key].fail++;
-    // Count unique IMEIs from scan + quality columns
-    const imeis = new Set();
-    for (let i = 1; i <= 120; i++) {
-      const scan = (a['IMEI Scan #' + i] || '').trim();
-      const qual = (a['Quality IMEI #' + i] || '').trim();
-      if (scan) imeis.add(scan);
-      if (qual) imeis.add(qual);
-    }
-    groups[key].units += imeis.size;
+    groups[key].units += parseInt(a['# Units Audited'] || '0') || 0;
     groups[key].issues += parseInt(a['# Issues Found'] || '0') || 0;
     if (!sortKeys[key]) sortKeys[key] = getSortKey(a['Audit Start Timestamp']);
   });

@@ -688,7 +688,8 @@ async function submitAudit(result) {
       notes: notes,
       location: auditLocation,
       disposition: palletDisposition,
-      issuecount: issueCount.toString()
+      issuecount: issueCount.toString(),
+      unitsaudited: (new Set([...matchedIMEIs, ...qualityIMEIs, ...issuedIMEIs])).size.toString()
     };
 
     // Add up to 120 matched IMEIs

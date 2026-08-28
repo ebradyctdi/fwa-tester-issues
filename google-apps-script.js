@@ -561,8 +561,8 @@ function doGet(e) {
       if (!paSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paSheet.getRange(2, 1, lastRow - 1, 251).getValues();
-      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found'];
+      var data = paSheet.getRange(2, 1, lastRow - 1, 252).getValues();
+      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
       for (var i = 1; i <= 120; i++) { headers.push('IMEI Scan #' + i); }
       for (var i = 1; i <= 120; i++) { headers.push('Quality IMEI #' + i); }
       var rows = data.map(function(row) {
@@ -578,7 +578,7 @@ function doGet(e) {
       var paSheet = ss.getSheetByName('Pallet Audits');
       if (!paSheet) {
         paSheet = ss.insertSheet('Pallet Audits');
-        var auditHeaders = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found'];
+        var auditHeaders = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
         for (var i = 1; i <= 120; i++) { auditHeaders.push('IMEI Scan #' + i); }
         for (var i = 1; i <= 120; i++) { auditHeaders.push('Quality IMEI #' + i); }
         paSheet.getRange(1, 1, 1, auditHeaders.length).setValues([auditHeaders]);
@@ -594,11 +594,12 @@ function doGet(e) {
       var location = (e.parameter.location || '').toString().trim();
       var disposition = (e.parameter.disposition || '').toString().trim();
       var issuecount = (e.parameter.issuecount || '0').toString().trim();
+      var unitsaudited = (e.parameter.unitsaudited || '0').toString().trim();
 
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!auditor) return _respond({ success: false, error: 'Auditor name required' }, callback);
 
-      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes, location, disposition, parseInt(issuecount)];
+      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes, location, disposition, parseInt(issuecount), parseInt(unitsaudited)];
 
       // Add up to 120 IMEI scans (columns I onward)
       for (var i = 1; i <= 120; i++) {
@@ -795,4 +796,132 @@ function doGet(e) {
   } catch(err) {
     return _respond({ success: false, error: err.toString() }, callback);
   }
+}
+
+// ============================================================
+// ONE-TIME BACKFILL FUNCTIONS
+// Run manually from Apps Script editor: select function → ▶ Run
+// ============================================================
+
+/**
+ * Backfills "# of Issues" (col K) in "Pallet Audits"
+ * by counting matching Pallet IDs in "Pallet Audit Issues".
+ */
+function backfillIssueCount() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log('backfillIssueCount: Starting...');
+
+  var issuesSheet = ss.getSheetByName('Pallet Audit Issues');
+  if (!issuesSheet) { Logger.log('No "Pallet Audit Issues" sheet found.'); return; }
+  var issuesLastRow = issuesSheet.getLastRow();
+  Logger.log('Issues sheet last row: ' + issuesLastRow);
+  if (issuesLastRow < 2) { Logger.log('No issues data found.'); return; }
+
+  var issuesPalletIds = issuesSheet.getRange(2, 1, issuesLastRow - 1, 1).getDisplayValues();
+
+  var countMap = {};
+  for (var i = 0; i < issuesPalletIds.length; i++) {
+    var pid = issuesPalletIds[i][0].trim();
+    if (pid) { countMap[pid] = (countMap[pid] || 0) + 1; }
+  }
+  Logger.log('Unique pallets with issues: ' + Object.keys(countMap).length);
+
+  var auditsSheet = ss.getSheetByName('Pallet Audits');
+  if (!auditsSheet) { Logger.log('No "Pallet Audits" sheet found.'); return; }
+  var auditsLastRow = auditsSheet.getLastRow();
+  Logger.log('Audits sheet last row: ' + auditsLastRow);
+  if (auditsLastRow < 2) { Logger.log('No audit data found.'); return; }
+
+  var auditPalletIds = auditsSheet.getRange(2, 1, auditsLastRow - 1, 1).getDisplayValues();
+  var outputCol = [];
+
+  var updated = 0;
+  for (var j = 0; j < auditPalletIds.length; j++) {
+    var auditPid = auditPalletIds[j][0].trim();
+    var count = countMap[auditPid] || 0;
+    outputCol.push([count]);
+    if (count > 0) updated++;
+  }
+
+  auditsSheet.getRange(2, 11, outputCol.length, 1).setValues(outputCol);
+  Logger.log('backfillIssueCount complete. Rows with issues: ' + updated);
+}
+
+/**
+ * Backfills "# Units Audited" (col L) in "Pallet Audits"
+ * by counting unique IMEIs from scan columns + issue IMEIs from "Pallet Audit Issues".
+ */
+function backfillUnitsAudited() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log('backfillUnitsAudited: Starting...');
+
+  // Build map of Pallet ID → Set of unique issue IMEIs
+  var issuesSheet = ss.getSheetByName('Pallet Audit Issues');
+  var issueImeiMap = {};
+  if (issuesSheet) {
+    var issuesLastRow = issuesSheet.getLastRow();
+    Logger.log('Pallet Audit Issues last row: ' + issuesLastRow);
+    if (issuesLastRow >= 2) {
+      var issuesData = issuesSheet.getRange(2, 1, issuesLastRow - 1, 2).getDisplayValues();
+      for (var i = 0; i < issuesData.length; i++) {
+        var pid = issuesData[i][0].trim();
+        var imei = issuesData[i][1].trim();
+        if (pid && imei) {
+          if (!issueImeiMap[pid]) issueImeiMap[pid] = {};
+          issueImeiMap[pid][imei] = true;
+        }
+      }
+    }
+  } else {
+    Logger.log('Pallet Audit Issues sheet NOT found');
+  }
+
+  var auditsSheet = ss.getSheetByName('Pallet Audits');
+  if (!auditsSheet) { Logger.log('Pallet Audits sheet NOT found. Exiting.'); return; }
+  var auditsLastRow = auditsSheet.getLastRow();
+  Logger.log('Pallet Audits last row: ' + auditsLastRow);
+  if (auditsLastRow < 2) { Logger.log('No audit data. Exiting.'); return; }
+
+  var palletIds = auditsSheet.getRange(2, 1, auditsLastRow - 1, 1).getDisplayValues();
+  Logger.log('First pallet ID: ' + palletIds[0][0]);
+
+  // Check what is in column M (first IMEI scan) for debugging
+  var testScan = auditsSheet.getRange(2, 13, 1, 5).getDisplayValues();
+  Logger.log('First 5 scan cols row 2: ' + JSON.stringify(testScan[0]));
+
+  var scanData = auditsSheet.getRange(2, 13, auditsLastRow - 1, 120).getDisplayValues();
+  var qualityData = auditsSheet.getRange(2, 133, auditsLastRow - 1, 120).getDisplayValues();
+
+  var outputCol = [];
+  var updated = 0;
+  for (var j = 0; j < palletIds.length; j++) {
+    var palletId = palletIds[j][0].trim();
+    var uniqueIMEIs = {};
+
+    for (var k = 0; k < 120; k++) {
+      var imei = scanData[j][k].trim();
+      if (imei) uniqueIMEIs[imei] = true;
+    }
+
+    for (var k = 0; k < 120; k++) {
+      var imei = qualityData[j][k].trim();
+      if (imei) uniqueIMEIs[imei] = true;
+    }
+
+    if (issueImeiMap[palletId]) {
+      for (var imei in issueImeiMap[palletId]) {
+        uniqueIMEIs[imei] = true;
+      }
+    }
+
+    var count = Object.keys(uniqueIMEIs).length;
+    outputCol.push([count]);
+    if (count > 0) updated++;
+  }
+
+  Logger.log('First 5 counts: ' + JSON.stringify(outputCol.slice(0, 5)));
+  Logger.log('About to write ' + outputCol.length + ' rows to col L');
+
+  auditsSheet.getRange(2, 12, outputCol.length, 1).setValues(outputCol);
+  Logger.log('backfillUnitsAudited complete. Rows with data: ' + updated);
 }
