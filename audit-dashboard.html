@@ -262,10 +262,10 @@
             <tr>
               <th id="periodHeader">Date</th>
               <th>Total Audits</th>
-              <th># Passed</th>
-              <th># Failed</th>
+              <th># Audits Passed</th>
+              <th># Audits Failed</th>
               <th># Units Audited</th>
-              <th># Issues</th>
+              <th># Units with Issues</th>
               <th>Pass %</th>
             </tr>
           </thead>
@@ -353,6 +353,7 @@ async function loadData() {
     } else {
       throw new Error(json.error);
     }
+    document.getElementById('filterDisposition').value = 'CLR';
     renderTable();
   } catch(err) {
     setStatus('disconnected', 'Connection failed');
@@ -642,12 +643,15 @@ async function loadLocations() {
         opt.textContent = loc;
         select.appendChild(opt);
       });
+      select.value = 'Coatesville';
     }
   } catch(e) { /* silently fail */ }
 }
 
-loadLocations();
-loadData();
+(async function() {
+  await loadLocations();
+  loadData();
+})();
 </script>
 </body>
 </html>
