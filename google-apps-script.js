@@ -24,6 +24,25 @@ function _respond(obj, callback) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// Generate the next sequential Audit ID (AUD00000001) based on existing IDs in column A
+function _nextAuditId(paSheet) {
+  var lastRow = paSheet.getLastRow();
+  var maxNum = 0;
+  if (lastRow >= 2) {
+    var ids = paSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+    for (var i = 0; i < ids.length; i++) {
+      var val = (ids[i][0] || '').toString().trim();
+      var m = val.match(/^AUD(\d+)$/);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+  }
+  var next = maxNum + 1;
+  return 'AUD' + ('00000000' + next).slice(-8);
+}
+
 function doGet(e) {
   var callback = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : null;
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'read';
@@ -561,8 +580,8 @@ function doGet(e) {
       if (!paSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paSheet.getRange(2, 1, lastRow - 1, 252).getValues();
-      var headers = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
+      var data = paSheet.getRange(2, 1, lastRow - 1, 253).getValues();
+      var headers = ['Audit ID', 'Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
       for (var i = 1; i <= 120; i++) { headers.push('IMEI Scan #' + i); }
       for (var i = 1; i <= 120; i++) { headers.push('Quality IMEI #' + i); }
       var rows = data.map(function(row) {
@@ -578,11 +597,15 @@ function doGet(e) {
       var paSheet = ss.getSheetByName('Pallet Audits');
       if (!paSheet) {
         paSheet = ss.insertSheet('Pallet Audits');
-        var auditHeaders = ['Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
+        var auditHeaders = ['Audit ID', 'Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
         for (var i = 1; i <= 120; i++) { auditHeaders.push('IMEI Scan #' + i); }
         for (var i = 1; i <= 120; i++) { auditHeaders.push('Quality IMEI #' + i); }
         paSheet.getRange(1, 1, 1, auditHeaders.length).setValues([auditHeaders]);
       }
+
+      // Generate next sequential Audit ID (column A)
+      var auditId = _nextAuditId(paSheet);
+
       var palletId = (e.parameter.palletid || '').toString().trim();
       var partNumber = (e.parameter.partnumber || '').toString().trim();
       var timestamp = (e.parameter.timestamp || '').toString().trim();
@@ -599,9 +622,9 @@ function doGet(e) {
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!auditor) return _respond({ success: false, error: 'Auditor name required' }, callback);
 
-      var row = [palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes, location, disposition, parseInt(issuecount), parseInt(unitsaudited)];
+      var row = [auditId, palletId, partNumber, timestamp, parseInt(totalImeis), parseInt(scannedImeis), result, auditor, notes, location, disposition, parseInt(issuecount), parseInt(unitsaudited)];
 
-      // Add up to 120 IMEI scans (columns I onward)
+      // Add up to 120 IMEI scans
       for (var i = 1; i <= 120; i++) {
         var imeiVal = (e.parameter['imei' + i] || '').toString().trim();
         row.push(imeiVal);
@@ -614,7 +637,11 @@ function doGet(e) {
       }
 
       paSheet.appendRow(row);
-      return _respond({ success: true, message: 'Audit logged' }, callback);
+      // Force Audit ID column (A) to plain text so it displays as entered
+      var newRowNum = paSheet.getLastRow();
+      paSheet.getRange(newRowNum, 1).setNumberFormat('@');
+      paSheet.getRange(newRowNum, 1).setValue(auditId);
+      return _respond({ success: true, message: 'Audit logged', auditId: auditId }, callback);
     }
 
     // ---- READ REPAIR PALLETS ----
@@ -832,7 +859,8 @@ function backfillIssueCount() {
   Logger.log('Audits sheet last row: ' + auditsLastRow);
   if (auditsLastRow < 2) { Logger.log('No audit data found.'); return; }
 
-  var auditPalletIds = auditsSheet.getRange(2, 1, auditsLastRow - 1, 1).getDisplayValues();
+  // Pallet ID is now column B (2) after Audit ID was added as column A
+  var auditPalletIds = auditsSheet.getRange(2, 2, auditsLastRow - 1, 1).getDisplayValues();
   var outputCol = [];
 
   var updated = 0;
@@ -843,7 +871,8 @@ function backfillIssueCount() {
     if (count > 0) updated++;
   }
 
-  auditsSheet.getRange(2, 11, outputCol.length, 1).setValues(outputCol);
+  // # Issues Found is now column L (12)
+  auditsSheet.getRange(2, 12, outputCol.length, 1).setValues(outputCol);
   Logger.log('backfillIssueCount complete. Rows with issues: ' + updated);
 }
 
@@ -882,15 +911,17 @@ function backfillUnitsAudited() {
   Logger.log('Pallet Audits last row: ' + auditsLastRow);
   if (auditsLastRow < 2) { Logger.log('No audit data. Exiting.'); return; }
 
-  var palletIds = auditsSheet.getRange(2, 1, auditsLastRow - 1, 1).getDisplayValues();
+  // Pallet ID is now column B (2) after Audit ID was added as column A
+  var palletIds = auditsSheet.getRange(2, 2, auditsLastRow - 1, 1).getDisplayValues();
   Logger.log('First pallet ID: ' + palletIds[0][0]);
 
-  // Check what is in column M (first IMEI scan) for debugging
-  var testScan = auditsSheet.getRange(2, 13, 1, 5).getDisplayValues();
+  // Check what is in column N (first IMEI scan) for debugging
+  var testScan = auditsSheet.getRange(2, 14, 1, 5).getDisplayValues();
   Logger.log('First 5 scan cols row 2: ' + JSON.stringify(testScan[0]));
 
-  var scanData = auditsSheet.getRange(2, 13, auditsLastRow - 1, 120).getDisplayValues();
-  var qualityData = auditsSheet.getRange(2, 133, auditsLastRow - 1, 120).getDisplayValues();
+  // Scan cols now start at N (14), Quality cols at CN (134)
+  var scanData = auditsSheet.getRange(2, 14, auditsLastRow - 1, 120).getDisplayValues();
+  var qualityData = auditsSheet.getRange(2, 134, auditsLastRow - 1, 120).getDisplayValues();
 
   var outputCol = [];
   var updated = 0;
@@ -920,8 +951,61 @@ function backfillUnitsAudited() {
   }
 
   Logger.log('First 5 counts: ' + JSON.stringify(outputCol.slice(0, 5)));
-  Logger.log('About to write ' + outputCol.length + ' rows to col L');
+  Logger.log('About to write ' + outputCol.length + ' rows to col M');
 
-  auditsSheet.getRange(2, 12, outputCol.length, 1).setValues(outputCol);
+  // # Units Audited is now column M (13)
+  auditsSheet.getRange(2, 13, outputCol.length, 1).setValues(outputCol);
   Logger.log('backfillUnitsAudited complete. Rows with data: ' + updated);
+}
+
+/**
+ * ONE-TIME BACKFILL: Populates "Audit ID" (col A) in "Pallet Audits"
+ * with sequential IDs (AUD00000001, AUD00000002, ...) for rows missing one.
+ * Assumes column A has already been inserted with header "Audit ID".
+ *
+ * Run manually from Apps Script editor: select backfillAuditIds → ▶ Run
+ */
+function backfillAuditIds() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log('backfillAuditIds: Starting...');
+
+  var auditsSheet = ss.getSheetByName('Pallet Audits');
+  if (!auditsSheet) { Logger.log('Pallet Audits sheet NOT found. Exiting.'); return; }
+  var auditsLastRow = auditsSheet.getLastRow();
+  Logger.log('Pallet Audits last row: ' + auditsLastRow);
+  if (auditsLastRow < 2) { Logger.log('No audit data. Exiting.'); return; }
+
+  var idCol = auditsSheet.getRange(2, 1, auditsLastRow - 1, 1).getDisplayValues();
+
+  // Find the current max sequential number among existing IDs
+  var maxNum = 0;
+  for (var i = 0; i < idCol.length; i++) {
+    var val = (idCol[i][0] || '').toString().trim();
+    var m = val.match(/^AUD(\d+)$/);
+    if (m) {
+      var n = parseInt(m[1], 10);
+      if (n > maxNum) maxNum = n;
+    }
+  }
+  Logger.log('Starting from max existing ID number: ' + maxNum);
+
+  var next = maxNum + 1;
+  var outputCol = [];
+  var assigned = 0;
+  for (var j = 0; j < idCol.length; j++) {
+    var current = (idCol[j][0] || '').toString().trim();
+    if (current) {
+      outputCol.push([current]); // keep existing ID
+    } else {
+      var newId = 'AUD' + ('00000000' + next).slice(-8);
+      outputCol.push([newId]);
+      next++;
+      assigned++;
+    }
+  }
+
+  // Force column A to plain text, then write IDs
+  auditsSheet.getRange(2, 1, outputCol.length, 1).setNumberFormat('@');
+  auditsSheet.getRange(2, 1, outputCol.length, 1).setValues(outputCol);
+  Logger.log('backfillAuditIds complete. New IDs assigned: ' + assigned);
 }
