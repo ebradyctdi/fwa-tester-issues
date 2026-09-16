@@ -650,8 +650,8 @@ function doGet(e) {
       if (!rpSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = rpSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = rpSheet.getRange(2, 1, lastRow - 1, 7).getValues();
-      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To'];
+      var data = rpSheet.getRange(2, 1, lastRow - 1, 8).getValues();
+      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To', 'Firmware Version'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -665,18 +665,19 @@ function doGet(e) {
       var rpSheet = ss.getSheetByName('Repair - Pallets');
       if (!rpSheet) {
         rpSheet = ss.insertSheet('Repair - Pallets');
-        rpSheet.getRange(1, 1, 1, 7).setValues([['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To']]);
+        rpSheet.getRange(1, 1, 1, 8).setValues([['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To', 'Firmware Version']]);
       }
       var palletId = (e.parameter.palletid || '').toString().trim();
       var palletPO = (e.parameter.palletpo || '').toString().trim();
       var sku = (e.parameter.sku || 'WNC-CR200A-CLR').toString().trim();
       var shipTo = (e.parameter.shipto || '').toString().trim();
+      var firmware = (e.parameter.firmware || '3.4.0.4').toString().trim();
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
 
       var now = new Date();
       var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
 
-      rpSheet.appendRow([palletId, palletPO, sku, 'Open', ts, '', shipTo]);
+      rpSheet.appendRow([palletId, palletPO, sku, 'Open', ts, '', shipTo, firmware]);
       return _respond({ success: true, message: 'Pallet created' }, callback);
     }
 
@@ -765,6 +766,18 @@ function doGet(e) {
       var shipTo = (e.parameter.shipto || '').toString().trim();
       var sheetRow = row + 2;
       rpSheet.getRange(sheetRow, 7).setValue(shipTo);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- UPDATE REPAIR PALLET FIRMWARE ----
+    if (action === 'updaterepairpalletfirmware') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var firmware = (e.parameter.firmware || '').toString().trim();
+      var sheetRow = row + 2;
+      rpSheet.getRange(sheetRow, 8).setValue(firmware); // Column H
       return _respond({ success: true }, callback);
     }
 

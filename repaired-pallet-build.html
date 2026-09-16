@@ -188,6 +188,8 @@
       <input type="text" id="newPalletPO" placeholder="e.g. PO-12345" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">SKU</label>
       <input type="text" id="newPalletSKU" value="WNC-CR200A-CLR" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
+      <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Firmware</label>
+      <input type="text" id="newPalletFirmware" value="3.4.0.4" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;margin-bottom:12px;">
       <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Ship To</label>
       <select id="newPalletShipTo" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;background:white;margin-bottom:12px;">
         <option value="">— Select Ship To —</option>
@@ -319,7 +321,7 @@ let tableSortCol = 'Pallet ID';
 let tableSortAsc = true;
 let closedSortCol = 'Pallet Close Date';
 let closedSortAsc = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbygk0Xj14qRz6fF9_MMpfOm3B653xTDOlkRvRp7nWCRwNZYKR0WVd-novY8NBsBJ4MTCg/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqecP1th_jjq7ZzKcssh9R7cnghXLdlxtioOZ2UMTAp90s65E-mO_jWzQfkydfTf72qQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -609,6 +611,7 @@ function openCreatePallet() {
   document.getElementById('newPalletId').value = nextId;
   document.getElementById('newPalletPO').value = '-';
   document.getElementById('newPalletSKU').value = 'WNC-CR200A-CLR';
+  document.getElementById('newPalletFirmware').value = '3.4.0.4';
   document.getElementById('createPalletModal').classList.add('show');
   document.getElementById('newPalletId').focus();
 }
@@ -621,6 +624,7 @@ async function submitCreatePallet() {
   const palletId = document.getElementById('newPalletId').value.trim();
   const palletPO = document.getElementById('newPalletPO').value.trim();
   const sku = document.getElementById('newPalletSKU').value.trim();
+  const firmware = document.getElementById('newPalletFirmware').value.trim();
   const shipTo = document.getElementById('newPalletShipTo').value.trim();
 
   if (!palletId) { showToast('Pallet ID is required', 'error'); return; }
@@ -635,7 +639,7 @@ async function submitCreatePallet() {
   btn.disabled = true; btn.textContent = 'Creating...';
 
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createrepairpallet', palletid: palletId, palletpo: palletPO, sku: sku, shipto: shipTo });
+    const json = await jsonpRequest(scriptUrl, { action: 'createrepairpallet', palletid: palletId, palletpo: palletPO, sku: sku, firmware: firmware, shipto: shipTo });
     if (json.success) {
       showToast('Pallet created: ' + palletId, 'success');
       closeCreatePallet();
@@ -649,7 +653,8 @@ async function submitCreatePallet() {
 // Allow Enter key to submit in the modal
 document.getElementById('newPalletId').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPalletPO').focus(); } });
 document.getElementById('newPalletPO').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPalletSKU').focus(); } });
-document.getElementById('newPalletSKU').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); submitCreatePallet(); } });
+document.getElementById('newPalletSKU').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPalletFirmware').focus(); } });
+document.getElementById('newPalletFirmware').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); submitCreatePallet(); } });
 
 // ---- EDIT/CLOSE PALLET ----
 let editPalletId = '';
@@ -685,6 +690,17 @@ function openEditPallet(palletId) {
   html += '<button onclick="saveEditPalletShipTo()" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
   html += '</div>';
   html += '<div id="shipToFeedback" style="margin-top:4px;font-size:11px;"></div>';
+  html += '</div>';
+
+  // Firmware editable field
+  const currentFirmware = pallet ? (pallet['Firmware Version']||'').trim() : '';
+  html += '<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #eee;">';
+  html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:6px;">Firmware</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;">';
+  html += '<input type="text" id="editPalletFirmware" value="' + currentFirmware.replace(/"/g,'&quot;') + '" placeholder="e.g. 3.4.0.4" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;">';
+  html += '<button onclick="saveEditPalletFirmware()" style="padding:8px 14px;background:#1a3a5c;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>';
+  html += '</div>';
+  html += '<div id="firmwareFeedback" style="margin-top:4px;font-size:11px;"></div>';
   html += '</div>';
 
   html += '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Units on Pallet (' + units.length + ')</div>';
@@ -767,6 +783,7 @@ function openPrintLabelModal(palletId) {
   const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
   const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
   const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const firmware = pallet ? (pallet['Firmware Version']||'').trim() : '';
   const shipToName = pallet ? (pallet['Ship To']||'').trim() : '';
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
 
@@ -787,7 +804,7 @@ function openPrintLabelModal(palletId) {
   html += '<div style="text-align:center;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;padding-top:4px;">Pallet ID</div>';
   html += '<div style="text-align:center;font-size:22px;font-weight:700;padding:4px 0;">' + palletId + '</div>';
   html += '<div style="text-align:center;padding:4px 0 6px;border-bottom:2px solid black;"><canvas id="plbl-bc1" style="height:28px;"></canvas></div>';
-  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;">' + po + '</div></div></div>';
+  html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">FIRMWARE VERSION</div><div style="font-size:12px;font-weight:700;">' + firmware + '</div></div></div>';
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>';
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>';
   html += '<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;font-weight:700;line-height:1.4;">' + shipToHtml + '</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-size:12px;font-weight:700;">1 of 1 (pallets in shipment)</div></div>';
@@ -819,6 +836,7 @@ function printClosedPalletLabel(palletId) {
   const pallet = allPallets.find(p => (p['Pallet ID']||'').trim() === palletId);
   const po = pallet ? (pallet['Pallet PO #']||'').trim() : '';
   const sku = pallet ? (pallet['SKU']||'WNC-CR200A-CLR').trim() : 'WNC-CR200A-CLR';
+  const firmware = pallet ? (pallet['Firmware Version']||'').trim() : '';
   const shipToName = pallet ? (pallet['Ship To']||'').trim() : '';
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
 
@@ -842,7 +860,7 @@ function printClosedPalletLabel(palletId) {
   printWin.document.write('<div style="text-align:center;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;padding-top:4px;">Pallet ID</div>');
   printWin.document.write('<div style="text-align:center;font-size:22px;font-weight:700;padding:4px 0;">' + palletId + '</div>');
   printWin.document.write('<div style="text-align:center;padding:4px 0 6px;border-bottom:2px solid black;"><canvas id="bc1"></canvas></div>');
-  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">PO#</div><div style="font-size:12px;font-weight:700;margin-top:auto;">' + po + '</div></div></div>');
+  printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">WNC corporation</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">FIRMWARE VERSION</div><div style="font-size:12px;font-weight:700;margin-top:auto;">' + firmware + '</div></div></div>');
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">SKU</div><div style="font-size:12px;font-weight:700;">' + sku + '</div></div></div>');
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;display:flex;align-items:center;font-weight:700;">VERIZON WIRELESS</div><div style="flex:1;padding:6px 8px;"><div style="font-size:9px;color:#555;">Total # of pieces in shipment</div><div style="font-size:12px;font-weight:700;">' + unitCount + '</div></div></div>');
   printWin.document.write('<div style="display:flex;border-bottom:1px solid black;min-height:44px;"><div style="flex:1;padding:6px 8px;border-right:1px solid black;font-size:11px;font-weight:700;line-height:1.4;">' + shipToHtmlPrint + '</div><div style="flex:1;padding:6px 8px;display:flex;align-items:center;font-weight:700;">1 of 1 (pallets in shipment)</div></div>');
@@ -869,6 +887,20 @@ async function saveEditPalletShipTo() {
       fb.innerHTML = '<span style="color:#28a745;">✓ Ship To saved</span>';
       allPallets[idx]['Ship To'] = shipTo;
       renderTable();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
+}
+
+async function saveEditPalletFirmware() {
+  const firmware = document.getElementById('editPalletFirmware').value.trim();
+  const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === editPalletId);
+  if (idx < 0) return;
+  const fb = document.getElementById('firmwareFeedback');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updaterepairpalletfirmware', row: idx, firmware: firmware });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Firmware saved</span>';
+      allPallets[idx]['Firmware Version'] = firmware;
     } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error||'Failed') + '</span>'; }
   } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
 }

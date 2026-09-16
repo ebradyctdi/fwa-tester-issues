@@ -167,7 +167,7 @@
             </div>
             <div class="label-row">
               <div class="label-cell label-cell-left"><span class="cell-value">WNC corporation</span></div>
-              <div class="label-cell label-cell-right"><span class="cell-label">PO#</span><span class="cell-value" id="lbl-po">—</span></div>
+              <div class="label-cell label-cell-right"><span class="cell-label">FIRMWARE VERSION</span><span class="cell-value" id="lbl-firmware">—</span></div>
             </div>
             <div class="label-row">
               <div class="label-cell label-cell-left"><span class="cell-value">200 WEST STEWART HUSTON DR COATESVILLE, PA 19320, United States</span></div>
@@ -204,7 +204,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allPallets = [], allPalletBuildUnits = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbygk0Xj14qRz6fF9_MMpfOm3B653xTDOlkRvRp7nWCRwNZYKR0WVd-novY8NBsBJ4MTCg/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqecP1th_jjq7ZzKcssh9R7cnghXLdlxtioOZ2UMTAp90s65E-mO_jWzQfkydfTf72qQ/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -307,6 +307,7 @@ function updatePreview() {
 
   const po = (pallet['Pallet PO #']||'').trim();
   const sku = (pallet['SKU']||'WNC-CR200A-CLR').trim();
+  const firmware = (pallet['Firmware Version']||'').trim();
   const unitCount = allPalletBuildUnits.filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet').length;
 
   // Update label fields
@@ -334,7 +335,7 @@ function updatePreview() {
     try { JsBarcode('#lbl-barcode', palletId, { format: 'CODE128', width: 1.5, height: 28, displayValue: false, margin: 0 }); } catch(e) {}
   }
 
-  document.getElementById('lbl-po').textContent = po;
+  document.getElementById('lbl-firmware').textContent = firmware;
   document.getElementById('lbl-sku').textContent = sku;
   document.getElementById('lbl-qty').textContent = unitCount;
 
