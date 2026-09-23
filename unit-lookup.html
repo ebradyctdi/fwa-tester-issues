@@ -1,0 +1,298 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Unit Lookup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .form-input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; transition: border-color 0.2s; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+
+  .issues-table { width: 100%; border-collapse: collapse; }
+  .issues-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .issues-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .issues-table tr:hover td { background: #f8f9fa; }
+  .issues-table .meta { font-family: Consolas, monospace; font-size: 12px; color: #555; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+  .badge-atbin { background: #d4edda; color: #155724; }
+  .badge-missed { background: #f8d7da; color: #721c24; }
+  .badge-other { background: #e2e3e5; color: #383d41; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .issues-table { display: block; overflow-x: auto; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
+    <div class="nav-group">
+    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html" class="active"><span class="icon">🔎</span> Unit Lookup</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Unit Lookup</h1><div class="header-sub">Look up a unit's cycle count transaction history</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- SEARCH -->
+    <div class="card">
+      <h2>Look Up Unit</h2>
+      <div style="display:flex;gap:10px;align-items:flex-end;max-width:600px;">
+        <div style="flex:1;">
+          <label class="form-label">IMEI or Serial Number</label>
+          <input type="text" class="form-input" id="lookupInput" placeholder="Scan or enter IMEI / Serial..." autocomplete="off" style="font-size:16px;">
+        </div>
+        <button onclick="doLookup()" id="lookupBtn" style="padding:11px 24px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;">Search</button>
+      </div>
+    </div>
+
+    <!-- CURRENT STATUS -->
+    <div class="card" id="statusCard" style="display:none;">
+      <h2>Current Status</h2>
+      <div id="statusContent"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="card" id="historyCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Transaction History <span id="historyCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+      </div>
+      <table class="issues-table">
+        <thead><tr>
+          <th>Timestamp</th>
+          <th>Transaction Type</th>
+          <th>Bin ID</th>
+          <th>Device Model</th>
+          <th>User</th>
+        </tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function txnBadge(type) {
+  const t = (type||'').toLowerCase();
+  let cls = 'badge-other';
+  if (t === 'at bin') cls = 'badge-atbin';
+  else if (t === 'missed in cycle count') cls = 'badge-missed';
+  return '<span class="badge ' + cls + '">' + (type||'—') + '</span>';
+}
+
+async function doLookup() {
+  const query = document.getElementById('lookupInput').value.trim();
+  if (!query) { showToast('Enter an IMEI or Serial Number', 'error'); return; }
+  if (!scriptUrl) { showToast('Configure URL in Settings', 'error'); return; }
+
+  const btn = document.getElementById('lookupBtn');
+  btn.disabled = true; btn.textContent = 'Searching...';
+  setStatus('pending', 'Loading...');
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'lookupunittransactions', query: query });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      renderResults(query, json);
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Search';
+}
+
+function renderResults(query, json) {
+  const rows = json.data || [];
+  const current = json.current || null;
+  const statusCard = document.getElementById('statusCard');
+  const historyCard = document.getElementById('historyCard');
+
+  if (!rows.length) {
+    statusCard.style.display = 'block';
+    document.getElementById('statusContent').innerHTML = '<div class="empty-state">No cycle count transactions found for "' + query + '".</div>';
+    historyCard.style.display = 'none';
+    return;
+  }
+
+  // Current status card
+  statusCard.style.display = 'block';
+  const atBin = (current.type||'').toLowerCase() === 'at bin';
+  document.getElementById('statusContent').innerHTML =
+    '<div style="display:flex;gap:24px;flex-wrap:wrap;">'
+    + infoBox('IMEI', current.imei || '—')
+    + infoBox('Serial Number', current.serial || '—')
+    + infoBox('Device Model', current.model || '—')
+    + infoBox('Current Bin', atBin ? (current.bin || '—') : 'Not at a bin')
+    + infoBox('Latest Transaction', current.type || '—')
+    + infoBox('Last Seen', fmtDate(current.timestamp))
+    + '</div>';
+
+  // History table
+  historyCard.style.display = 'block';
+  document.getElementById('historyCount').textContent = '(' + rows.length + ')';
+  document.getElementById('historyBody').innerHTML = rows.map(r =>
+    '<tr>'
+    + '<td class="meta">' + fmtDate(r.timestamp) + '</td>'
+    + '<td>' + txnBadge(r.type) + '</td>'
+    + '<td class="meta" style="font-weight:600;">' + (r.bin || '—') + '</td>'
+    + '<td class="meta">' + (r.model || '—') + '</td>'
+    + '<td>' + (r.user || '—') + '</td>'
+    + '</tr>'
+  ).join('');
+}
+
+function infoBox(label, value) {
+  return '<div style="min-width:140px;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">' + label + '</div>'
+    + '<div style="font-size:15px;font-weight:700;color:#1a3a5c;font-family:Consolas,monospace;margin-top:2px;">' + value + '</div></div>';
+}
+
+document.getElementById('lookupInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); doLookup(); }
+});
+
+// ---- SIDEBAR ----
+function toggleNavGroup(el) {
+  const group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) group.classList.toggle('open');
+}
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const active = document.querySelector('.sidebar-nav a.active');
+  if (active) { const group = active.closest('.nav-group'); if (group) group.classList.add('open'); }
+  document.getElementById('lookupInput').focus();
+  setStatus('connected', 'Ready');
+});
+</script>
+</body>
+</html>

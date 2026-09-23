@@ -1,0 +1,1038 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Cycle Count</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .form-input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; transition: border-color 0.2s; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+
+  .issues-table { width: 100%; border-collapse: collapse; }
+  .issues-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .issues-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .issues-table tr:hover td { background: #f8f9fa; }
+  .issues-table .meta { font-family: Consolas, monospace; font-size: 12px; color: #555; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .issues-table { display: block; overflow-x: auto; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
+    <div class="nav-group">
+    <a href="cycle-count.html" class="active"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Cycle Count</h1><div class="header-sub">Scan units into a bin location for inventory counting</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+
+    <!-- Create a Bin Button -->
+    <div style="text-align:left;margin-bottom:12px;">
+      <button onclick="openCreateBin()" style="padding:8px 16px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">➕ Create a Bin</button>
+    </div>
+
+    <!-- BATCH SCAN MODE -->
+    <div class="card" id="batchCard" style="display:none;border:3px solid #28a745;background:#f0fff0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <h2 style="margin:0;border:none;padding:0;color:#28a745;" id="batchModeTitle">Cycle Count — Scanning</h2>
+          <div style="font-size:12px;color:#555;margin-top:4px;">User: <span id="batchUserLabel" style="font-weight:600;">—</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="text-align:center;"><div id="batchCount" style="font-size:36px;font-weight:700;color:#28a745;">0</div><div style="font-size:10px;color:#888;text-transform:uppercase;">This Session</div></div>
+          <button id="completeCountBtn" onclick="completeBinCycleCount()" style="display:none;padding:8px 16px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">✓ Complete Cycle Count</button>
+          <button onclick="exitBatchMode()" style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Exit Scan Mode</button>
+        </div>
+      </div>
+      <!-- Scan mode toggle -->
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:12px;font-weight:600;color:#555;">Scan Mode:</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
+          <input type="radio" name="ccScanMode" value="qr" checked onchange="toggleScanMode()"> Scan QR Code
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#333;user-select:none;">
+          <input type="radio" name="ccScanMode" value="individual" onchange="toggleScanMode()"> Scan Values Individually
+        </label>
+      </div>
+      <!-- Bin field (prominent, persists between scans) -->
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin ID (persists between scans)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="batchBinScan" placeholder="Scan bin..." autocomplete="off" style="width:160px;padding:14px;border:2px solid #ddd;border-radius:6px;font-size:18px;font-family:Consolas,monospace;">
+          <select class="form-input" id="batchBin" style="font-size:18px;padding:14px;background:white;flex:1;">
+            <option value="">— Select Bin —</option>
+          </select>
+        </div>
+      </div>
+      <!-- QR scan field -->
+      <div id="batchQRField" style="display:block;">
+        <label class="form-label">Scan QR Code</label>
+        <input type="text" class="form-input" id="bQR" placeholder="Scan unit QR code..." autocomplete="off" style="font-size:18px;padding:14px;">
+      </div>
+      <!-- Individual scan fields -->
+      <div id="batchIndividualFields" style="display:none;">
+        <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:12px;">
+          <div style="flex:1;">
+            <label class="form-label">IMEI (15 chars)</label>
+            <input type="text" class="form-input" id="bIMEI" placeholder="Scan IMEI..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="15">
+          </div>
+          <div style="flex:1;">
+            <label class="form-label">Serial Number (11 chars)</label>
+            <input type="text" class="form-input" id="bSerial" placeholder="Scan Serial..." autocomplete="off" style="font-size:18px;padding:14px;" maxlength="11">
+          </div>
+        </div>
+        <div style="max-width:220px;">
+          <label class="form-label">Device Model</label>
+          <select class="form-input" id="bDeviceModel" style="font-family:'Segoe UI',Arial,sans-serif;">
+            <option value="">— Select —</option>
+            <option value="Titan 3">Titan 3</option>
+            <option value="Titan 4">Titan 4</option>
+          </select>
+        </div>
+      </div>
+      <div id="batchFeedback" style="margin-top:12px;padding:12px 16px;border-radius:6px;font-size:14px;font-weight:600;text-align:center;display:none;"></div>
+      <div id="batchHintText" style="margin-top:12px;font-size:11px;color:#888;">Enter a Bin ID, then scan unit QR code → auto-parses IMEI, Serial, and Model → auto-submits to the current bin. Change the Bin ID any time to switch locations.</div>
+
+      <!-- Expected units panel (Bin Cycle Count only) -->
+      <div id="expectedPanel" style="display:none;margin-top:16px;background:#fff;border:1px solid #cfe2ff;border-radius:8px;padding:14px 16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#0d6efd;text-transform:uppercase;letter-spacing:0.5px;">Expected in Bin</div>
+          <div style="font-size:13px;color:#555;"><span id="expectedScannedCount" style="font-weight:700;color:#28a745;">0</span> / <span id="expectedTotalCount" style="font-weight:700;">0</span> scanned</div>
+        </div>
+        <div id="expectedList" style="max-height:220px;overflow-y:auto;"></div>
+      </div>
+
+      <div id="batchLog" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- START SCAN -->
+    <div class="card" id="startCard">
+      <h2 style="color:#28a745;">Start Cycle Count</h2>
+      <div style="max-width:560px;margin-bottom:18px;">
+        <label class="form-label">Count Type</label>
+        <div style="display:flex;gap:12px;margin-top:6px;">
+          <label id="ctCardAdd" class="count-type-card selected" style="flex:1;cursor:pointer;user-select:none;border:2px solid #28a745;background:#f0fff0;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:10px;transition:all 0.15s;">
+            <input type="radio" name="ccCountType" value="add" checked style="width:18px;height:18px;accent-color:#28a745;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1a3a5c;">➕ Adding Units to Bin</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;">Scan units to associate them with the bin.</div>
+            </div>
+          </label>
+          <label id="ctCardCycle" class="count-type-card" style="flex:1;cursor:pointer;user-select:none;border:2px solid #ddd;background:white;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:10px;transition:all 0.15s;">
+            <input type="radio" name="ccCountType" value="cyclecount" style="width:18px;height:18px;accent-color:#28a745;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1a3a5c;">🔢 Bin Cycle Count</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;">Validate everything in the bin.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div style="max-width:400px;margin-bottom:14px;">
+        <label class="form-label">Bin ID</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="startBinScan" placeholder="Scan bin..." autocomplete="off" style="width:130px;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;">
+          <select class="form-input" id="startBin" style="font-size:16px;background:white;flex:1;">
+            <option value="">— Select Bin —</option>
+          </select>
+        </div>
+      </div>
+      <div style="max-width:400px;">
+        <label class="form-label">User</label>
+        <input type="text" class="form-input" id="startUser" placeholder="Enter your name..." autocomplete="off" style="font-size:16px;font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div style="margin-top:14px;">
+        <button onclick="startBatchMode()" style="padding:12px 32px;background:#28a745;color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">▶ Start Scanning</button>
+      </div>
+    </div>
+
+    <!-- RECENT COUNTS -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Recent Counts <span id="countTotal" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+      </div>
+      <table class="issues-table">
+        <thead><tr>
+          <th>Timestamp</th>
+          <th>IMEI</th>
+          <th>Serial Number</th>
+          <th>Device Model</th>
+          <th>Bin ID</th>
+          <th>User</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- Create Bin Modal -->
+<div id="createBinModal" onclick="if(event.target===this)closeCreateBin()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:480px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">➕ Create a Bin</h3>
+      <button onclick="closeCreateBin()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin ID</label>
+        <input type="text" class="form-input" id="newBinId" placeholder="e.g. BIN-001" autocomplete="off">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Description</label>
+        <input type="text" class="form-input" id="newBinDesc" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div>
+        <label class="form-label">Bin Location</label>
+        <input type="text" class="form-input" id="newBinLocation" placeholder="Location (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeCreateBin()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px;">Cancel</button>
+      <button onclick="submitCreateBin()" id="createBinBtn" style="padding:8px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cycle Count Summary Modal -->
+<div id="summaryModal" onclick="if(event.target===this)closeSummary()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:620px;width:95%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">✓ Cycle Count Summary</h3>
+      <button onclick="closeSummary()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+      <div id="summaryStats" style="display:flex;gap:14px;margin-bottom:20px;"></div>
+      <div id="summaryMissedSection">
+        <div style="font-size:12px;font-weight:700;color:#dc3545;text-transform:uppercase;margin-bottom:10px;">Missed Units <span id="summaryMissedCount" style="color:#888;font-weight:400;"></span></div>
+        <table class="issues-table">
+          <thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead>
+          <tbody id="summaryMissedBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeSummary()" style="padding:8px 24px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allCounts = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readcyclecounts' });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      allCounts = json.data || [];
+      renderTable();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+let binOptions = [];
+async function loadBinOptions() {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readcyclecountbins' });
+    if (json.success && json.data) {
+      binOptions = json.data;
+      const optsHtml = '<option value="">— Select Bin —</option>' + binOptions.map(b => {
+        const id = (b['Bin ID']||'').trim();
+        return '<option value="' + id.replace(/"/g,'&quot;') + '">' + id + '</option>';
+      }).join('');
+      const startSel = document.getElementById('startBin');
+      const batchSel = document.getElementById('batchBin');
+      const startCur = startSel.value, batchCur = batchSel.value;
+      startSel.innerHTML = optsHtml;
+      batchSel.innerHTML = optsHtml;
+      if (startCur) startSel.value = startCur;
+      if (batchCur) batchSel.value = batchCur;
+    }
+  } catch(e) { /* silently fail */ }
+}
+
+// Match a scanned/typed value to an existing Bin ID (case-insensitive). Returns the canonical Bin ID or null.
+function matchBinId(val) {
+  const v = (val||'').trim().toLowerCase();
+  if (!v) return null;
+  const match = binOptions.find(b => (b['Bin ID']||'').trim().toLowerCase() === v);
+  return match ? (match['Bin ID']||'').trim() : null;
+}
+
+// Wire a scan field to a bin dropdown; onValid is called with the matched Bin ID
+function handleBinScan(scanInputId, selectId, onValid) {
+  const scanEl = document.getElementById(scanInputId);
+  const selEl = document.getElementById(selectId);
+  const val = scanEl.value.trim();
+  if (!val) return;
+  const binId = matchBinId(val);
+  if (binId) {
+    selEl.value = binId;
+    scanEl.value = '';
+    if (onValid) onValid(binId);
+  } else {
+    showToast('Bin "' + val + '" not found', 'error');
+    scanEl.select();
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('countTotal').textContent = allCounts.length ? '(' + allCounts.length + ')' : '';
+  if (!allCounts.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No cycle counts logged yet.</td></tr>';
+    return;
+  }
+  const recent = allCounts.slice().reverse().slice(0, 20);
+  tbody.innerHTML = recent.map((c, idx) => {
+    const rowIdx = allCounts.length - 1 - idx;
+    return '<tr>'
+    + '<td class="meta">' + fmtDate(c['Cycle Count Timestamp']) + '</td>'
+    + '<td class="meta" style="font-weight:600;">' + (c['IMEI']||'—') + '</td>'
+    + '<td class="meta">' + (c['Serial Number']||'—') + '</td>'
+    + '<td class="meta">' + (c['Device Model']||'—') + '</td>'
+    + '<td class="meta" style="font-weight:600;">' + (c['Bin ID']||'—') + '</td>'
+    + '<td>' + (c['User']||'—') + '</td>'
+    + '<td><button onclick="deleteRecord(' + rowIdx + ')" style="padding:4px 10px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">Delete</button></td>'
+    + '</tr>';
+  }).join('');
+}
+
+async function deleteRecord(rowIdx) {
+  if (!confirm('Delete this cycle count record?')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'deletecyclecount', row: rowIdx });
+    if (json.success) { showToast('Record deleted', 'success'); loadData(); }
+    else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+// ---- BATCH SCAN MODE ----
+let batchMode = false, batchSessionCount = 0, batchSubmitting = false, batchLog = [];
+let batchQueue = [], batchQueueProcessing = false;
+
+function playBeep(success) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = success ? 880 : 220;
+    osc.type = success ? 'sine' : 'square';
+    gain.gain.value = 0.5;
+    osc.start();
+    setTimeout(() => { osc.stop(); ctx.close(); }, success ? 200 : 500);
+  } catch(e) {}
+}
+
+let batchUser = '';
+let countType = 'add';               // 'add' or 'cyclecount'
+let sessionScannedKeys = {};         // set of IMEI|Serial scanned this session
+
+function startBatchMode() {
+  const user = document.getElementById('startUser').value.trim();
+  const bin = document.getElementById('startBin').value.trim();
+  if (!user) { showToast('Enter a User to start', 'error'); return; }
+  if (!bin) { showToast('Select a Bin ID to start', 'error'); return; }
+
+  // Unlock audio context (browsers require user gesture)
+  playBeep(true);
+
+  countType = document.querySelector('input[name="ccCountType"]:checked').value;
+  batchUser = user;
+  batchMode = true;
+  batchSessionCount = 0;
+  batchLog = [];
+  sessionScannedKeys = {};
+  renderBatchLog();
+
+  // Configure UI for the chosen count type
+  const isCycle = countType === 'cyclecount';
+  document.getElementById('batchModeTitle').textContent = isCycle ? 'Bin Cycle Count — Scanning' : 'Adding Units to Bin — Scanning';
+  document.getElementById('completeCountBtn').style.display = isCycle ? 'inline-block' : 'none';
+  document.getElementById('expectedPanel').style.display = isCycle ? 'block' : 'none';
+  expectedUnits = [];
+  if (isCycle) { loadExpectedUnits(bin); }
+
+  document.getElementById('batchUserLabel').textContent = user;
+  document.getElementById('batchCard').style.display = 'block';
+  document.getElementById('startCard').style.display = 'none';
+  document.getElementById('batchCount').textContent = '0';
+  document.getElementById('batchBin').value = bin;
+  document.getElementById('startBinScan').value = '';
+  document.getElementById('batchBinScan').value = '';
+  document.getElementById('bQR').value = '';
+  document.getElementById('bIMEI').value = '';
+  document.getElementById('bSerial').value = '';
+
+  // Focus the field for the currently selected scan mode
+  const mode = document.querySelector('input[name="ccScanMode"]:checked').value;
+  if (mode === 'qr') { document.getElementById('bQR').focus(); }
+  else { document.getElementById('bIMEI').focus(); }
+}
+
+function exitBatchMode() {
+  batchMode = false;
+  document.getElementById('batchCard').style.display = 'none';
+  document.getElementById('startCard').style.display = 'block';
+  loadData();
+}
+
+async function completeBinCycleCount() {
+  const bin = document.getElementById('batchBin').value.trim();
+  if (!bin) { showToast('No bin selected', 'error'); return; }
+
+  const scanned = Object.keys(sessionScannedKeys);
+  if (!confirm('Complete the cycle count for bin "' + bin + '"?\n\nYou scanned ' + scanned.length + ' unit(s). Any unit previously at this bin that was not scanned will be logged as "Missed in Cycle Count".')) return;
+
+  // Make sure any queued scans are saved first so reconciliation sees them
+  const btn = document.getElementById('completeCountBtn');
+  btn.disabled = true; btn.textContent = 'Completing...';
+
+  // Wait for the background queue to finish
+  let waitGuard = 0;
+  while ((batchQueue.length > 0 || batchQueueProcessing) && waitGuard < 100) {
+    await new Promise(r => setTimeout(r, 200));
+    waitGuard++;
+  }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'completebincyclecount',
+      bin: bin,
+      user: batchUser,
+      scanned: JSON.stringify(scanned)
+    });
+    if (json.success) {
+      showSummary(bin, json);
+      batchMode = false;
+      document.getElementById('batchCard').style.display = 'none';
+      document.getElementById('startCard').style.display = 'block';
+      loadData();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = '✓ Complete Cycle Count';
+}
+
+function showSummary(bin, res) {
+  const expected = res.expected || 0;
+  const scanned = res.scanned || 0;
+  const missedCount = res.missedCount || 0;
+  const matched = expected - missedCount;
+
+  document.getElementById('summaryStats').innerHTML = ''
+    + statBox('Bin', bin, '#1a3a5c')
+    + statBox('Scanned', scanned, '#28a745')
+    + statBox('Expected at Bin', expected, '#1a3a5c')
+    + statBox('Missed', missedCount, missedCount > 0 ? '#dc3545' : '#888');
+
+  const missed = res.missed || [];
+  document.getElementById('summaryMissedCount').textContent = missed.length ? '(' + missed.length + ')' : '';
+  const body = document.getElementById('summaryMissedBody');
+  if (!missed.length) {
+    body.innerHTML = '<tr><td colspan="3" class="empty-state">No missed units — all expected units were scanned. ✓</td></tr>';
+  } else {
+    body.innerHTML = missed.map(m =>
+      '<tr>'
+      + '<td class="meta" style="font-weight:600;">' + (m.imei||'—') + '</td>'
+      + '<td class="meta">' + (m.serial||'—') + '</td>'
+      + '<td class="meta">' + (m.model||'—') + '</td>'
+      + '</tr>'
+    ).join('');
+  }
+  document.getElementById('summaryModal').style.display = 'flex';
+}
+
+function statBox(label, value, color) {
+  return '<div style="flex:1;text-align:center;background:#f8f9fa;border-radius:8px;padding:14px 10px;">'
+    + '<div style="font-size:26px;font-weight:700;color:' + color + ';">' + value + '</div>'
+    + '<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">' + label + '</div>'
+    + '</div>';
+}
+
+function closeSummary() {
+  document.getElementById('summaryModal').style.display = 'none';
+}
+
+// ---- EXPECTED UNITS (Bin Cycle Count) ----
+let expectedUnits = [];
+
+async function loadExpectedUnits(bin) {
+  const listEl = document.getElementById('expectedList');
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;font-size:13px;">Loading expected units...</div>';
+  document.getElementById('expectedTotalCount').textContent = '0';
+  document.getElementById('expectedScannedCount').textContent = '0';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readbinexpectedunits', bin: bin });
+    if (json.success) {
+      expectedUnits = json.data || [];
+      renderExpectedUnits();
+    } else {
+      listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#dc3545;font-size:13px;">' + (json.error || 'Failed to load') + '</div>';
+    }
+  } catch(err) {
+    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#dc3545;font-size:13px;">Connection failed</div>';
+  }
+}
+
+function renderExpectedUnits() {
+  const listEl = document.getElementById('expectedList');
+  document.getElementById('expectedTotalCount').textContent = expectedUnits.length;
+
+  if (!expectedUnits.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;font-size:13px;">No units are currently expected in this bin.</div>';
+    document.getElementById('expectedScannedCount').textContent = '0';
+    return;
+  }
+
+  let scannedCount = 0;
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + '<thead><tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Status</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Model</th></tr></thead><tbody>';
+
+  expectedUnits.forEach(u => {
+    const key = ((u.imei||'') + '|' + (u.serial||'')).toUpperCase();
+    const scanned = !!sessionScannedKeys[key];
+    if (scanned) scannedCount++;
+    const badge = scanned
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#d4edda;color:#155724;">✓ Scanned</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#fff3cd;color:#856404;">Pending</span>';
+    html += '<tr style="border-bottom:1px solid #f0f0f0;' + (scanned ? 'background:#f0fff0;' : '') + '">'
+      + '<td style="padding:6px 10px;">' + badge + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + (u.imei||'—') + '</td>'
+      + '<td style="padding:6px 10px;font-family:Consolas,monospace;">' + (u.serial||'—') + '</td>'
+      + '<td style="padding:6px 10px;">' + (u.model||'—') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  listEl.innerHTML = html;
+  document.getElementById('expectedScannedCount').textContent = scannedCount;
+}
+
+function showBatchFeedback(msg, type) {
+  const el = document.getElementById('batchFeedback');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#d4edda' : '#f8d7da';
+  el.style.color = type === 'success' ? '#155724' : '#721c24';
+  setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+function renderBatchLog() {
+  const el = document.getElementById('batchLog');
+  if (!batchLog.length) { el.innerHTML = ''; return; }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#e9ecef;"><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">#</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Time</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">IMEI</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Serial</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Model</th><th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;">Bin</th></tr></thead><tbody>';
+  batchLog.forEach((entry, i) => {
+    const num = batchSessionCount - i;
+    const time = entry.time.toLocaleTimeString ? entry.time.toLocaleTimeString() : entry.time;
+    html += '<tr style="border-bottom:1px solid #f0f0f0;' + (i === 0 ? 'background:#f0fff0;' : '') + '"><td style="padding:6px 10px;color:#888;">' + num + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;color:#888;">' + time + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;font-weight:600;">' + entry.imei + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.serial + '</td><td style="padding:6px 10px;">' + (entry.deviceModel||'—') + '</td><td style="padding:6px 10px;font-family:Consolas,monospace;">' + entry.bin + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ---- SCAN MODE TOGGLE ----
+function toggleScanMode() {
+  const mode = document.querySelector('input[name="ccScanMode"]:checked').value;
+  if (mode === 'qr') {
+    document.getElementById('batchQRField').style.display = 'block';
+    document.getElementById('batchIndividualFields').style.display = 'none';
+    document.getElementById('batchHintText').textContent = 'Enter a Bin ID, then scan unit QR code → auto-parses IMEI, Serial, and Model → auto-submits to the current bin. Change the Bin ID any time to switch locations.';
+    document.getElementById('bQR').value = '';
+    document.getElementById('bQR').focus();
+  } else {
+    document.getElementById('batchQRField').style.display = 'none';
+    document.getElementById('batchIndividualFields').style.display = 'block';
+    document.getElementById('batchHintText').textContent = 'Enter a Bin ID and select a Device Model, then scan IMEI → auto-advances to Serial → auto-submits to the current bin.';
+    document.getElementById('bIMEI').focus();
+  }
+}
+
+// Individual IMEI field — auto-advance to Serial after 15 chars or Enter
+document.getElementById('bIMEI').addEventListener('input', function() {
+  if (this.value.length === 15) {
+    setTimeout(() => document.getElementById('bSerial').focus(), 50);
+  }
+});
+document.getElementById('bIMEI').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); setTimeout(() => document.getElementById('bSerial').focus(), 50); }
+});
+
+// Individual Serial field — auto-submit after 11 chars or Enter
+document.getElementById('bSerial').addEventListener('input', function() {
+  if (this.value.length === 11) { submitIndividualBatch(); }
+});
+document.getElementById('bSerial').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); if (this.value.trim().length > 0) submitIndividualBatch(); }
+});
+
+function submitIndividualBatch() {
+  if (batchSubmitting) return;
+  batchSubmitting = true;
+
+  const imei = document.getElementById('bIMEI').value.trim();
+  const serial = document.getElementById('bSerial').value.trim();
+  const deviceModel = document.getElementById('bDeviceModel').value;
+
+  // Validate IMEI
+  if (imei.length !== 15) { showBatchFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('bIMEI').focus(); document.getElementById('bIMEI').select(); batchSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showBatchFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('bIMEI').focus(); document.getElementById('bIMEI').select(); batchSubmitting = false; return; }
+  // Validate Serial
+  if (serial.length !== 11) { showBatchFeedback('Serial must be 11 characters', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
+  if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bSerial').focus(); document.getElementById('bSerial').select(); batchSubmitting = false; return; }
+
+  const bin = document.getElementById('batchBin').value.trim();
+  if (!bin) {
+    showBatchFeedback('Enter a Bin ID before scanning', 'error');
+    playBeep(false);
+    document.getElementById('batchBin').focus();
+    batchSubmitting = false;
+    return;
+  }
+
+  // Immediately update UI
+  batchSessionCount++;
+  document.getElementById('batchCount').textContent = batchSessionCount;
+  sessionScannedKeys[(imei + '|' + serial).toUpperCase()] = true;
+  batchLog.unshift({ imei, serial, deviceModel, bin, time: new Date() });
+  if (batchLog.length > 10) batchLog.pop();
+  renderBatchLog();
+  if (countType === 'cyclecount') renderExpectedUnits();
+  showBatchFeedback('✓ Counted — ' + imei + (deviceModel ? ' | ' + deviceModel : '') + ' → Bin ' + bin, 'success');
+  playBeep(true);
+  document.getElementById('bIMEI').value = '';
+  document.getElementById('bSerial').value = '';
+  setTimeout(() => document.getElementById('bIMEI').focus(), 50);
+  batchSubmitting = false;
+
+  // Queue for background save
+  batchQueue.push({ imei, serial, deviceModel, bin, user: batchUser });
+  processBatchQueue();
+}
+
+// QR field - submit on Enter OR auto-submit after scanner pause
+let qrInputTimer = null;
+document.getElementById('bQR').addEventListener('input', function() {
+  clearTimeout(qrInputTimer);
+  const val = this.value.trim();
+  if (val.length > 20) {
+    qrInputTimer = setTimeout(() => {
+      if (this.value.trim().length > 20) submitQRBatch(this.value.trim());
+    }, 300);
+  }
+});
+document.getElementById('bQR').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(qrInputTimer);
+    const val = this.value.trim();
+    if (val.length > 20) submitQRBatch(val);
+  }
+});
+
+function parseQRCode(raw) {
+  // Extract IMEI from E: field (15 digits)
+  const imeiMatch = raw.match(/;E:(\d{15})/);
+  // Extract Serial from S: field (starts with A, 11 chars)
+  const serialMatch = raw.match(/;S:(A[A-Za-z0-9]{10})/);
+  // Extract Model from M: field
+  const modelMatch = raw.match(/M:(ASK-NCM1100|WNC-CR200A)/);
+
+  if (!imeiMatch) return { error: 'Could not find IMEI in QR code. Make sure the full QR code was scanned.' };
+  if (!serialMatch) return { error: 'Could not find Serial Number in QR code.' };
+
+  const imei = imeiMatch[1];
+  const serial = serialMatch[1];
+  const modelRaw = modelMatch ? modelMatch[1] : '';
+  let deviceModel = '';
+  if (modelRaw.includes('CR200A')) deviceModel = 'Titan 3';
+  else if (modelRaw.includes('NCM1100')) deviceModel = 'Titan 4';
+
+  return { imei, serial, deviceModel };
+}
+
+function submitQRBatch(raw) {
+  if (batchSubmitting) return;
+  batchSubmitting = true;
+
+  const parsed = parseQRCode(raw);
+  if (parsed.error) {
+    showBatchFeedback(parsed.error, 'error');
+    playBeep(false);
+    document.getElementById('bQR').select();
+    batchSubmitting = false;
+    return;
+  }
+
+  const { imei, serial, deviceModel } = parsed;
+
+  // Validate IMEI
+  if (imei.length !== 15) { showBatchFeedback('IMEI must be 15 characters', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  if (!imei.startsWith('3')) { showBatchFeedback('IMEI must start with 3', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  // Validate Serial
+  if (serial.length !== 11) { showBatchFeedback('Serial must be 11 characters (got: ' + serial + ')', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+  if (!serial.toUpperCase().startsWith('A')) { showBatchFeedback('Serial must start with A', 'error'); playBeep(false); document.getElementById('bQR').select(); batchSubmitting = false; return; }
+
+  const bin = document.getElementById('batchBin').value.trim();
+  if (!bin) {
+    showBatchFeedback('Enter a Bin ID before scanning', 'error');
+    playBeep(false);
+    document.getElementById('bQR').value = '';
+    document.getElementById('batchBin').focus();
+    batchSubmitting = false;
+    return;
+  }
+
+  // Immediately update UI
+  batchSessionCount++;
+  document.getElementById('batchCount').textContent = batchSessionCount;
+  sessionScannedKeys[(imei + '|' + serial).toUpperCase()] = true;
+  batchLog.unshift({ imei, serial, deviceModel, bin, time: new Date() });
+  if (batchLog.length > 10) batchLog.pop();
+  renderBatchLog();
+  if (countType === 'cyclecount') renderExpectedUnits();
+  showBatchFeedback('✓ Counted — ' + imei + (deviceModel ? ' | ' + deviceModel : '') + ' → Bin ' + bin, 'success');
+  playBeep(true);
+  document.getElementById('bQR').value = '';
+  document.getElementById('bQR').focus();
+  batchSubmitting = false;
+
+  // Queue for background save
+  batchQueue.push({ imei, serial, deviceModel, bin, user: batchUser });
+  processBatchQueue();
+}
+
+async function processBatchQueue() {
+  if (batchQueueProcessing) return;
+  batchQueueProcessing = true;
+  while (batchQueue.length > 0) {
+    const item = batchQueue.shift();
+    try {
+      await jsonpRequest(scriptUrl, {
+        action: 'logcyclecount',
+        imei: item.imei,
+        serial: item.serial,
+        devicemodel: item.deviceModel,
+        bin: item.bin,
+        user: item.user,
+        txntype: 'At Bin'
+      });
+    } catch(e) { /* silently continue; UI already reflected the scan */ }
+  }
+  batchQueueProcessing = false;
+}
+
+// ---- CREATE BIN ----
+function openCreateBin() {
+  document.getElementById('newBinId').value = '';
+  document.getElementById('newBinDesc').value = '';
+  document.getElementById('newBinLocation').value = '';
+  document.getElementById('createBinModal').style.display = 'flex';
+  document.getElementById('newBinId').focus();
+}
+
+function closeCreateBin() {
+  document.getElementById('createBinModal').style.display = 'none';
+}
+
+async function submitCreateBin() {
+  const binId = document.getElementById('newBinId').value.trim();
+  const binDesc = document.getElementById('newBinDesc').value.trim();
+  const binLocation = document.getElementById('newBinLocation').value.trim();
+  if (!binId) { showToast('Bin ID is required', 'error'); return; }
+
+  // Client-side duplicate check (case-insensitive)
+  const dup = (binOptions || []).find(b => (b['Bin ID']||'').trim().toLowerCase() === binId.toLowerCase());
+  if (dup) { showToast('Bin "' + binId + '" already exists', 'error'); return; }
+
+  const btn = document.getElementById('createBinBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation });
+    if (json.success) {
+      showToast('Bin created: ' + binId, 'success');
+      closeCreateBin();
+      await loadBinOptions();
+      // Auto-select the newly created bin on the start card
+      document.getElementById('startBin').value = binId;
+      if (confirm('Bin "' + binId + '" created. Print a label for it now?')) {
+        printBinLabel(binId, binDesc, binLocation);
+      }
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Create';
+}
+
+// ---- PRINT BIN LABEL (4" x 6") ----
+function printBinLabel(binId, desc, location) {
+  desc = (desc || '').trim() || '—';
+  location = (location || '').trim() || '—';
+  const lastCount = '—'; // newly created bin has no cycle count yet
+
+  const w = window.open('', '_blank', 'width=420,height=640');
+  if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+
+  w.document.write('<html><head><title>Bin Label - ' + binId + '</title>');
+  w.document.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+  w.document.write('<style>');
+  w.document.write('@page { size: 4in 6in; margin: 0; }');
+  w.document.write('* { box-sizing: border-box; margin: 0; padding: 0; }');
+  w.document.write('body { font-family: Arial, sans-serif; color: black; }');
+  w.document.write('.label { width: 4in; height: 6in; padding: 0.2in; display: flex; flex-direction: column; }');
+  w.document.write('.logo { text-align: center; padding: 10px 0; border-bottom: 3px solid black; }');
+  w.document.write('.subtitle { text-align: center; font-size: 16px; font-weight: 800; letter-spacing: 3px; padding: 8px 0; border-bottom: 3px solid black; }');
+  w.document.write('.caption { text-align: center; font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 2px; padding-top: 12px; }');
+  w.document.write('.binid { text-align: center; font-size: 44px; font-weight: 800; padding: 6px 0 10px; letter-spacing: 1px; word-break: break-all; }');
+  w.document.write('.bcwrap { text-align: center; padding: 4px 0 12px; border-bottom: 3px solid black; }');
+  w.document.write('.row { display: flex; border-bottom: 1px solid black; min-height: 52px; }');
+  w.document.write('.cell { padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; }');
+  w.document.write('.cell-label { flex: 0 0 140px; border-right: 1px solid black; font-size: 11px; color: #555; text-transform: uppercase; font-weight: 700; }');
+  w.document.write('.cell-value { flex: 1; font-size: 15px; font-weight: 700; word-break: break-word; }');
+  w.document.write('.spacer { flex: 1; }');
+  w.document.write('.footer { text-align: center; font-size: 10px; color: #555; padding: 8px 0; border-top: 2px solid black; }');
+  w.document.write('<\/style></head><body>');
+  w.document.write('<div class="label">');
+  w.document.write('<div class="logo"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" style="height:40px;filter:invert(1);"></div>');
+  w.document.write('<div class="subtitle">FWA INVENTORY</div>');
+  w.document.write('<div class="caption">Bin ID</div>');
+  w.document.write('<div class="binid">' + binId + '</div>');
+  w.document.write('<div class="bcwrap"><canvas id="bc"></canvas></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Description</div><div class="cell cell-value">' + desc + '</div></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Location</div><div class="cell cell-value">' + location + '</div></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Last Cycle Count</div><div class="cell cell-value">' + lastCount + '</div></div>');
+  w.document.write('<div class="spacer"></div>');
+  w.document.write('<div class="footer">CTDI — FWA Inventory</div>');
+  w.document.write('</div>');
+  w.document.write('<script>window.onload=function(){');
+  w.document.write('try{JsBarcode("#bc","' + binId.replace(/"/g,'\\"') + '",{format:"CODE128",width:2,height:55,displayValue:true,fontSize:14,margin:0});}catch(e){}');
+  w.document.write('setTimeout(function(){window.print();},400);');
+  w.document.write('};<\/script>');
+  w.document.write('</body></html>');
+  w.document.close();
+}
+
+// ---- SIDEBAR ----
+function toggleNavGroup(el) {
+  const group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) group.classList.toggle('open');
+}
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+// Open the nav group containing the active link
+document.addEventListener('DOMContentLoaded', function() {
+  const active = document.querySelector('.sidebar-nav a.active');
+  if (active) { const group = active.closest('.nav-group'); if (group) group.classList.add('open'); }
+});
+
+// Highlight the selected count-type card
+document.querySelectorAll('input[name="ccCountType"]').forEach(r => {
+  r.addEventListener('change', function() {
+    const addCard = document.getElementById('ctCardAdd');
+    const cycleCard = document.getElementById('ctCardCycle');
+    const addSelected = this.value === 'add';
+    addCard.style.borderColor = addSelected ? '#28a745' : '#ddd';
+    addCard.style.background = addSelected ? '#f0fff0' : 'white';
+    cycleCard.style.borderColor = addSelected ? '#ddd' : '#28a745';
+    cycleCard.style.background = addSelected ? 'white' : '#f0fff0';
+  });
+});
+
+// Create Bin — Enter flow
+document.getElementById('newBinId').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinDesc').focus(); }
+});
+document.getElementById('newBinDesc').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinLocation').focus(); }
+});
+document.getElementById('newBinLocation').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); submitCreateBin(); }
+});
+
+// Enter flow: Bin scan → User → Start scanning
+document.getElementById('startUser').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); startBatchMode(); }
+});
+document.getElementById('startBin').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('startUser').focus(); }
+});
+
+// Start-card bin scan field — match & select on Enter or scanner pause, then focus User
+document.getElementById('startBinScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); handleBinScan('startBinScan', 'startBin', function() { document.getElementById('startUser').focus(); }); }
+});
+document.getElementById('startBinScan').addEventListener('input', function() {
+  const val = this.value.trim();
+  // Auto-match if the scanned value exactly matches a bin (scanners fire fast then stop)
+  if (val && matchBinId(val)) { handleBinScan('startBinScan', 'startBin'); }
+});
+
+// Scanning-card bin scan field — match & select, keeps focus on QR/IMEI after
+document.getElementById('batchBinScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleBinScan('batchBinScan', 'batchBin', function() { focusScanField(); });
+  }
+});
+document.getElementById('batchBinScan').addEventListener('input', function() {
+  const val = this.value.trim();
+  if (val && matchBinId(val)) {
+    handleBinScan('batchBinScan', 'batchBin', function() { focusScanField(); });
+  }
+});
+
+function focusScanField() {
+  const mode = document.querySelector('input[name="ccScanMode"]:checked').value;
+  if (mode === 'qr') { document.getElementById('bQR').focus(); }
+  else { document.getElementById('bIMEI').focus(); }
+}
+
+// Reload expected units if the bin is changed mid-session during a Bin Cycle Count
+document.getElementById('batchBin').addEventListener('change', function() {
+  if (batchMode && countType === 'cyclecount') {
+    const bin = this.value.trim();
+    if (bin) loadExpectedUnits(bin);
+  }
+});
+
+loadData();
+loadBinOptions();
+</script>
+</body>
+</html>

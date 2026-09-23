@@ -644,6 +644,374 @@ function doGet(e) {
       return _respond({ success: true, message: 'Audit logged', auditId: auditId }, callback);
     }
 
+    // ---- READ CYCLE COUNTS ----
+    if (action === 'readcyclecounts') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      if (!ccSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = ccSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = ccSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var headers = ['IMEI', 'Serial Number', 'Device Model', 'Bin ID', 'Cycle Count Timestamp', 'User', 'Transaction Type'];
+      var rows = data.map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    // ---- LOG CYCLE COUNT ----
+    if (action === 'logcyclecount') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      if (!ccSheet) {
+        ccSheet = ss.insertSheet('Cycle Counts TXN');
+        ccSheet.getRange(1, 1, 1, 7).setValues([['IMEI', 'Serial Number', 'Device Model', 'Bin ID', 'Cycle Count Timestamp', 'User', 'Transaction Type']]);
+      }
+      var imei = (e.parameter.imei || '').toString().trim();
+      var serial = (e.parameter.serial || '').toString().trim();
+      var deviceModel = (e.parameter.devicemodel || '').toString().trim();
+      var binId = (e.parameter.bin || '').toString().trim();
+      var user = (e.parameter.user || '').toString().trim();
+      var txnType = (e.parameter.txntype || 'At Bin').toString().trim();
+
+      if (!imei && !serial) return _respond({ success: false, error: 'IMEI or Serial required' }, callback);
+
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss') + ' EST';
+
+      ccSheet.appendRow([imei, serial, deviceModel, binId, ts, user, txnType]);
+      return _respond({ success: true, message: 'Cycle count logged' }, callback);
+    }
+
+    // ---- READ CYCLE COUNT BINS ----
+    if (action === 'readcyclecountbins') {
+      var cbSheet = ss.getSheetByName('Cycle Count Bins');
+      if (!cbSheet) return _respond({ success: true, data: [] }, callback);
+      var lastRow = cbSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+      var data = cbSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+      var headers = ['Bin ID', 'Bin Description', 'Bin Location', 'Last Cycle Count Timestamp'];
+      var rows = data.filter(function(row) { return row[0]; }).map(function(row) {
+        var obj = {};
+        headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
+        return obj;
+      });
+      return _respond({ success: true, data: rows }, callback);
+    }
+
+    // ---- CREATE CYCLE COUNT BIN ----
+    if (action === 'createcyclecountbin') {
+      var cbSheet = ss.getSheetByName('Cycle Count Bins');
+      if (!cbSheet) {
+        cbSheet = ss.insertSheet('Cycle Count Bins');
+        cbSheet.getRange(1, 1, 1, 4).setValues([['Bin ID', 'Bin Description', 'Bin Location', 'Last Cycle Count Timestamp']]);
+      }
+      var binId = (e.parameter.binid || '').toString().trim();
+      var binDesc = (e.parameter.bindescription || '').toString().trim();
+      var binLocation = (e.parameter.binlocation || '').toString().trim();
+      if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
+
+      // Prevent duplicates
+      var lastRow = cbSheet.getLastRow();
+      if (lastRow >= 2) {
+        var existing = cbSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+        for (var i = 0; i < existing.length; i++) {
+          if ((existing[i][0] || '').toString().trim().toLowerCase() === binId.toLowerCase()) {
+            return _respond({ success: false, error: 'Bin "' + binId + '" already exists' }, callback);
+          }
+        }
+      }
+
+      cbSheet.appendRow([binId, binDesc, binLocation, '']);
+      return _respond({ success: true, message: 'Bin created' }, callback);
+    }
+
+    // ---- LOOKUP UNIT CYCLE COUNT TRANSACTIONS ----
+    // Returns all Cycle Counts TXN rows matching a given IMEI or Serial Number.
+    if (action === 'lookupunittransactions') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      var query = (e.parameter.query || '').toString().trim();
+      if (!query) return _respond({ success: false, error: 'IMEI or Serial required' }, callback);
+      if (!ccSheet) return _respond({ success: true, data: [], current: null }, callback);
+
+      var lastRow = ccSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [], current: null }, callback);
+
+      // A=IMEI, B=Serial, C=Model, D=Bin, E=Timestamp, F=User, G=Type
+      var data = ccSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var q = query.toLowerCase();
+      var rows = [];
+      for (var i = 0; i < data.length; i++) {
+        var imei = (data[i][0] || '').toString().trim();
+        var serial = (data[i][1] || '').toString().trim();
+        if (imei.toLowerCase() === q || serial.toLowerCase() === q) {
+          rows.push({
+            imei: imei,
+            serial: serial,
+            model: (data[i][2] || '').toString().trim(),
+            bin: (data[i][3] || '').toString().trim(),
+            timestamp: (data[i][4] || '').toString().trim(),
+            user: (data[i][5] || '').toString().trim(),
+            type: (data[i][6] || '').toString().trim(),
+            rowIndex: i // chronological order index
+          });
+        }
+      }
+
+      // Current status = the latest matching transaction
+      var current = null;
+      if (rows.length > 0) {
+        current = rows[rows.length - 1];
+      }
+
+      // Return most recent first
+      rows.reverse();
+      return _respond({ success: true, data: rows, current: current }, callback);
+    }
+
+    // ---- UPDATE CYCLE COUNT BIN ----
+    if (action === 'updatecyclecountbin') {
+      var cbSheet = ss.getSheetByName('Cycle Count Bins');
+      if (!cbSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var binId = (e.parameter.binid || '').toString().trim();
+      var binDesc = (e.parameter.bindescription || '').toString().trim();
+      var binLocation = (e.parameter.binlocation || '').toString().trim();
+      if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
+
+      var lastRow = cbSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: false, error: 'Bin not found' }, callback);
+      var binIds = cbSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+      for (var i = 0; i < binIds.length; i++) {
+        if ((binIds[i][0] || '').toString().trim().toLowerCase() === binId.toLowerCase()) {
+          cbSheet.getRange(i + 2, 2).setValue(binDesc);      // Column B = Description
+          cbSheet.getRange(i + 2, 3).setValue(binLocation);  // Column C = Location
+          return _respond({ success: true, message: 'Bin updated' }, callback);
+        }
+      }
+      return _respond({ success: false, error: 'Bin "' + binId + '" not found' }, callback);
+    }
+
+    // ---- READ BIN EXPECTED UNITS ----
+    // Returns units whose LATEST transaction is 'At Bin' for this bin.
+    if (action === 'readbinexpectedunits') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      if (!ccSheet) return _respond({ success: true, data: [] }, callback);
+      var binId = (e.parameter.bin || '').toString().trim();
+      if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
+
+      var lastRow = ccSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
+
+      var data = ccSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+      var latest = {};
+      for (var i = 0; i < data.length; i++) {
+        var imei = (data[i][0] || '').toString().trim();
+        var serial = (data[i][1] || '').toString().trim();
+        if (!imei && !serial) continue;
+        var key = (imei + '|' + serial).toUpperCase();
+        latest[key] = {
+          imei: imei,
+          serial: serial,
+          model: (data[i][2] || '').toString().trim(),
+          bin: (data[i][3] || '').toString().trim(),
+          type: (data[i][6] || '').toString().trim()
+        };
+      }
+
+      var expected = [];
+      for (var k in latest) {
+        var u = latest[k];
+        if (u.type.toLowerCase() === 'at bin' && u.bin.toLowerCase() === binId.toLowerCase()) {
+          expected.push({ imei: u.imei, serial: u.serial, model: u.model });
+        }
+      }
+      return _respond({ success: true, data: expected }, callback);
+    }
+
+    // ---- READ BIN DETAILS ----
+    // Returns current unit count (latest txn 'At Bin' for this bin) and a cycle-count history
+    // (grouped 'Missed in Cycle Count' events by timestamp/user).
+    if (action === 'readbindetails') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      var binId = (e.parameter.bin || '').toString().trim();
+      if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
+      if (!ccSheet) return _respond({ success: true, currentCount: 0, currentUnits: [], history: [] }, callback);
+
+      var lastRow = ccSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, currentCount: 0, currentUnits: [], history: [] }, callback);
+
+      // A=IMEI, B=Serial, C=Model, D=Bin, E=Timestamp, F=User, G=Type
+      var data = ccSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+
+      // Latest transaction per unit
+      var latest = {};
+      for (var i = 0; i < data.length; i++) {
+        var imei = (data[i][0] || '').toString().trim();
+        var serial = (data[i][1] || '').toString().trim();
+        if (!imei && !serial) continue;
+        var model = (data[i][2] || '').toString().trim();
+        var bin = (data[i][3] || '').toString().trim();
+        var type = (data[i][6] || '').toString().trim();
+        var key = (imei + '|' + serial).toUpperCase();
+        latest[key] = { imei: imei, serial: serial, model: model, bin: bin, type: type };
+      }
+
+      // Current units at bin
+      var currentUnits = [];
+      for (var k in latest) {
+        var u = latest[k];
+        if (u.type.toLowerCase() === 'at bin' && u.bin.toLowerCase() === binId.toLowerCase()) {
+          currentUnits.push({ imei: u.imei, serial: u.serial, model: u.model });
+        }
+      }
+
+      // Read cycle-count history from the dedicated history sheet
+      var history = [];
+      var histSheet = ss.getSheetByName('Cycle Count History');
+      if (histSheet) {
+        var hLastRow = histSheet.getLastRow();
+        if (hLastRow >= 2) {
+          // A=Timestamp, B=Bin ID, C=User, D=Expected, E=Scanned, F=Missed
+          var hData = histSheet.getRange(2, 1, hLastRow - 1, 6).getValues();
+          for (var h = 0; h < hData.length; h++) {
+            var hbin = (hData[h][1] || '').toString().trim();
+            if (hbin.toLowerCase() === binId.toLowerCase()) {
+              history.push({
+                ts: (hData[h][0] || '').toString().trim(),
+                user: (hData[h][2] || '').toString().trim(),
+                expected: hData[h][3],
+                scanned: hData[h][4],
+                missed: hData[h][5]
+              });
+            }
+          }
+        }
+      }
+      // Sort history by timestamp descending (best-effort using Date parse)
+      history.sort(function(a, b) {
+        var da = new Date(a.ts).getTime() || 0;
+        var db = new Date(b.ts).getTime() || 0;
+        return db - da;
+      });
+
+      return _respond({
+        success: true,
+        currentCount: currentUnits.length,
+        currentUnits: currentUnits,
+        history: history
+      }, callback);
+    }
+
+    // ---- COMPLETE BIN CYCLE COUNT ----
+    // Reconciles a bin: any unit whose LATEST transaction is 'At Bin' for this bin
+    // but was NOT scanned during this session gets a 'Missed in Cycle Count' transaction.
+    if (action === 'completebincyclecount') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      if (!ccSheet) return _respond({ success: false, error: 'Cycle Counts TXN sheet not found' }, callback);
+
+      var binId = (e.parameter.bin || '').toString().trim();
+      var user = (e.parameter.user || '').toString().trim();
+      // scanned = JSON array of "IMEI|Serial" keys scanned this session
+      var scannedJson = (e.parameter.scanned || '[]').toString();
+      var scannedList = [];
+      try { scannedList = JSON.parse(scannedJson); } catch(err) { scannedList = []; }
+      var scannedSet = {};
+      for (var s = 0; s < scannedList.length; s++) {
+        scannedSet[scannedList[s].toString().trim().toUpperCase()] = true;
+      }
+
+      if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
+
+      var lastRow = ccSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: true, expected: 0, scanned: scannedList.length, missed: [] }, callback);
+
+      // Read all transactions: A=IMEI, B=Serial, C=Device Model, D=Bin ID, E=Timestamp, F=User, G=Transaction Type
+      var data = ccSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+
+      // Build latest-transaction map keyed by IMEI|Serial (rows are chronological; later row = later txn)
+      var latest = {}; // key -> { imei, serial, model, bin, type, idx }
+      for (var i = 0; i < data.length; i++) {
+        var imei = (data[i][0] || '').toString().trim();
+        var serial = (data[i][1] || '').toString().trim();
+        if (!imei && !serial) continue;
+        var key = (imei + '|' + serial).toUpperCase();
+        latest[key] = {
+          imei: imei,
+          serial: serial,
+          model: (data[i][2] || '').toString().trim(),
+          bin: (data[i][3] || '').toString().trim(),
+          type: (data[i][6] || '').toString().trim(),
+          idx: i
+        };
+      }
+
+      // Expected units: latest txn is 'At Bin' for THIS bin, and not scanned this session
+      var missed = [];
+      var expectedCount = 0;
+      for (var k in latest) {
+        var u = latest[k];
+        if (u.type.toLowerCase() === 'at bin' && u.bin.toLowerCase() === binId.toLowerCase()) {
+          expectedCount++;
+          if (!scannedSet[k]) {
+            missed.push(u);
+          }
+        }
+      }
+
+      // Log a 'Missed in Cycle Count' transaction for each missed unit
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy HH:mm:ss') + ' EST';
+      if (missed.length > 0) {
+        var newRows = missed.map(function(u) {
+          return [u.imei, u.serial, u.model, binId, ts, user, 'Missed in Cycle Count'];
+        });
+        ccSheet.getRange(ccSheet.getLastRow() + 1, 1, newRows.length, 7).setValues(newRows);
+      }
+
+      // Update the bin's Last Cycle Count Timestamp
+      var cbSheet = ss.getSheetByName('Cycle Count Bins');
+      if (cbSheet) {
+        var cbLastRow = cbSheet.getLastRow();
+        if (cbLastRow >= 2) {
+          var binIds = cbSheet.getRange(2, 1, cbLastRow - 1, 1).getDisplayValues();
+          for (var b = 0; b < binIds.length; b++) {
+            if ((binIds[b][0] || '').toString().trim().toLowerCase() === binId.toLowerCase()) {
+              cbSheet.getRange(b + 2, 4).setValue(ts); // Column D = Last Cycle Count Timestamp
+              break;
+            }
+          }
+        }
+      }
+
+      // Log a completion record to the Cycle Count History sheet
+      var histSheet = ss.getSheetByName('Cycle Count History');
+      if (!histSheet) {
+        histSheet = ss.insertSheet('Cycle Count History');
+        histSheet.getRange(1, 1, 1, 6).setValues([['Timestamp', 'Bin ID', 'User', 'Expected', 'Scanned', 'Missed']]);
+      }
+      histSheet.appendRow([ts, binId, user, expectedCount, scannedList.length, missed.length]);
+
+      var missedOut = missed.map(function(u) { return { imei: u.imei, serial: u.serial, model: u.model }; });
+      return _respond({
+        success: true,
+        expected: expectedCount,
+        scanned: scannedList.length,
+        missedCount: missed.length,
+        missed: missedOut
+      }, callback);
+    }
+
+    // ---- DELETE CYCLE COUNT ----
+    if (action === 'deletecyclecount') {
+      var ccSheet = ss.getSheetByName('Cycle Counts TXN');
+      if (!ccSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var sheetRow = row + 2;
+      ccSheet.deleteRow(sheetRow);
+      return _respond({ success: true }, callback);
+    }
+
     // ---- READ REPAIR PALLETS ----
     if (action === 'readrepairpallets') {
       var rpSheet = ss.getSheetByName('Repair - Pallets');

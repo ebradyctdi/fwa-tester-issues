@@ -70,6 +70,12 @@
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
     <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
     </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
+    <div class="nav-group">
+    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
     <div class="nav-group">
     <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
@@ -108,8 +114,8 @@
     <div class="card">
       <h2>Latest Deployed URL (Reference)</h2>
       <p style="font-size:12px;color:#888;margin-bottom:8px;">Copy this URL if your browser cache gets cleared and the connection is lost.</p>
-      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbxqecP1th_jjq7ZzKcssh9R7cnghXLdlxtioOZ2UMTAp90s65E-mO_jWzQfkydfTf72qQ/exec</div>
-      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: September 16, 2026</div>
+      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec</div>
+      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: September 23, 2026</div>
     </div>
     <div class="card">
       <h2>Google Sheet</h2>
@@ -132,7 +138,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let _jsonpCounter = 0;
-const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqecP1th_jjq7ZzKcssh9R7cnghXLdlxtioOZ2UMTAp90s65E-mO_jWzQfkydfTf72qQ/exec';
+const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec';
 document.getElementById('scriptUrl').value = saved;
 
 function jsonpRequest(url, params) {

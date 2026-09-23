@@ -1,0 +1,522 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Bin Review</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .form-input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; transition: border-color 0.2s; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+
+  .issues-table { width: 100%; border-collapse: collapse; }
+  .issues-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .issues-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .issues-table tr:hover td { background: #f8f9fa; }
+  .issues-table .meta { font-family: Consolas, monospace; font-size: 12px; color: #555; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .issues-table { display: block; overflow-x: auto; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
+    <div class="nav-group">
+    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="bin-review.html" class="active"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Bin Review</h1><div class="header-sub">View cycle count bins and descriptions</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+
+    <!-- Create a Bin Button -->
+    <div style="text-align:left;margin-bottom:12px;">
+      <button onclick="openCreateBin()" style="padding:8px 16px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">➕ Create a Bin</button>
+    </div>
+
+    <!-- BIN LIST -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Bins <span id="binCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="binFilter" placeholder="Filter bins..." oninput="renderBins()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:200px;">
+          <button onclick="loadBins()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+        </div>
+      </div>
+      <table class="issues-table">
+        <thead><tr>
+          <th>Bin ID</th>
+          <th>Description</th>
+          <th>Location</th>
+          <th>Last Cycle Count</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="binTableBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- Create Bin Modal -->
+<div id="createBinModal" onclick="if(event.target===this)closeCreateBin()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:480px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">➕ Create a Bin</h3>
+      <button onclick="closeCreateBin()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin ID</label>
+        <input type="text" class="form-input" id="newBinId" placeholder="e.g. BIN-001" autocomplete="off">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Description</label>
+        <input type="text" class="form-input" id="newBinDesc" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div>
+        <label class="form-label">Bin Location</label>
+        <input type="text" class="form-input" id="newBinLocation" placeholder="Location (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeCreateBin()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px;">Cancel</button>
+      <button onclick="submitCreateBin()" id="createBinBtn" style="padding:8px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bin Details Modal -->
+<div id="detailsModal" onclick="if(event.target===this)closeBinDetails()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:680px;width:95%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">Bin Details — <span id="detailsBinId"></span></h3>
+      <button onclick="closeBinDetails()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;" id="detailsBody">
+      <div class="empty-state">Loading...</div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeBinDetails()" style="padding:8px 24px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allBins = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+async function loadBins() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  const tbody = document.getElementById('binTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readcyclecountbins' });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      allBins = json.data || [];
+      renderBins();
+    } else { throw new Error(json.error); }
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Connection failed</td></tr>';
+  }
+}
+
+function renderBins() {
+  const tbody = document.getElementById('binTableBody');
+  const filter = (document.getElementById('binFilter').value || '').trim().toLowerCase();
+  let bins = allBins;
+  if (filter) {
+    bins = allBins.filter(b =>
+      (b['Bin ID']||'').toLowerCase().includes(filter) ||
+      (b['Bin Description']||'').toLowerCase().includes(filter) ||
+      (b['Bin Location']||'').toLowerCase().includes(filter)
+    );
+  }
+  document.getElementById('binCount').textContent = allBins.length ? '(' + allBins.length + ')' : '';
+  if (!bins.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">' + (allBins.length ? 'No bins match your filter.' : 'No bins created yet.') + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = bins.map(b => {
+    const id = (b['Bin ID']||'').trim();
+    return '<tr>'
+    + '<td class="meta" style="font-weight:600;">' + (b['Bin ID']||'—') + '</td>'
+    + '<td>' + (b['Bin Description']||'—') + '</td>'
+    + '<td>' + (b['Bin Location']||'—') + '</td>'
+    + '<td class="meta">' + fmtDate(b['Last Cycle Count Timestamp']) + '</td>'
+    + '<td style="text-align:right;white-space:nowrap;">'
+      + '<button onclick="openBinDetails(\'' + id.replace(/'/g,"\\'") + '\')" style="width:110px;padding:6px 12px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:6px;">Details</button>'
+      + '<button onclick="printBinLabel(\'' + id.replace(/'/g,"\\'") + '\')" style="width:110px;padding:6px 12px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">🏷️ Print Label</button>'
+      + '</td>'
+    + '</tr>';
+  }).join('');
+}
+
+function openCreateBin() {
+  document.getElementById('newBinId').value = '';
+  document.getElementById('newBinDesc').value = '';
+  document.getElementById('newBinLocation').value = '';
+  document.getElementById('createBinModal').style.display = 'flex';
+  document.getElementById('newBinId').focus();
+}
+
+function closeCreateBin() {
+  document.getElementById('createBinModal').style.display = 'none';
+}
+
+async function submitCreateBin() {
+  const binId = document.getElementById('newBinId').value.trim();
+  const binDesc = document.getElementById('newBinDesc').value.trim();
+  const binLocation = document.getElementById('newBinLocation').value.trim();
+  if (!binId) { showToast('Bin ID is required', 'error'); return; }
+
+  // Client-side duplicate check (case-insensitive)
+  const dup = allBins.find(b => (b['Bin ID']||'').trim().toLowerCase() === binId.toLowerCase());
+  if (dup) { showToast('Bin "' + binId + '" already exists', 'error'); return; }
+
+  const btn = document.getElementById('createBinBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation });
+    if (json.success) {
+      showToast('Bin created: ' + binId, 'success');
+      closeCreateBin();
+      await loadBins();
+      if (confirm('Bin "' + binId + '" created. Print a label for it now?')) {
+        printBinLabel(binId);
+      }
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Create';
+}
+
+// ---- PRINT BIN LABEL (4" x 6") ----
+function printBinLabel(binId) {
+  const bin = allBins.find(b => (b['Bin ID']||'').trim() === binId);
+  if (!bin) { showToast('Bin not found', 'error'); return; }
+  const desc = (bin['Bin Description']||'').trim() || '—';
+  const location = (bin['Bin Location']||'').trim() || '—';
+  const lastCount = fmtDate(bin['Last Cycle Count Timestamp']);
+
+  const w = window.open('', '_blank', 'width=420,height=640');
+  if (!w) { showToast('Popup blocked — allow popups to print', 'error'); return; }
+
+  w.document.write('<html><head><title>Bin Label - ' + binId + '</title>');
+  w.document.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+  w.document.write('<style>');
+  w.document.write('@page { size: 4in 6in; margin: 0; }');
+  w.document.write('* { box-sizing: border-box; margin: 0; padding: 0; }');
+  w.document.write('body { font-family: Arial, sans-serif; color: black; }');
+  w.document.write('.label { width: 4in; height: 6in; padding: 0.2in; display: flex; flex-direction: column; }');
+  w.document.write('.logo { text-align: center; padding: 10px 0; border-bottom: 3px solid black; }');
+  w.document.write('.subtitle { text-align: center; font-size: 16px; font-weight: 800; letter-spacing: 3px; padding: 8px 0; border-bottom: 3px solid black; }');
+  w.document.write('.caption { text-align: center; font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 2px; padding-top: 12px; }');
+  w.document.write('.binid { text-align: center; font-size: 44px; font-weight: 800; padding: 6px 0 10px; letter-spacing: 1px; word-break: break-all; }');
+  w.document.write('.bcwrap { text-align: center; padding: 4px 0 12px; border-bottom: 3px solid black; }');
+  w.document.write('.row { display: flex; border-bottom: 1px solid black; min-height: 52px; }');
+  w.document.write('.cell { padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; }');
+  w.document.write('.cell-label { flex: 0 0 140px; border-right: 1px solid black; font-size: 11px; color: #555; text-transform: uppercase; font-weight: 700; }');
+  w.document.write('.cell-value { flex: 1; font-size: 15px; font-weight: 700; word-break: break-word; }');
+  w.document.write('.spacer { flex: 1; }');
+  w.document.write('.footer { text-align: center; font-size: 10px; color: #555; padding: 8px 0; border-top: 2px solid black; }');
+  w.document.write('<\/style></head><body>');
+  w.document.write('<div class="label">');
+  w.document.write('<div class="logo"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" style="height:40px;filter:invert(1);"></div>');
+  w.document.write('<div class="subtitle">FWA INVENTORY</div>');
+  w.document.write('<div class="caption">Bin ID</div>');
+  w.document.write('<div class="binid">' + binId + '</div>');
+  w.document.write('<div class="bcwrap"><canvas id="bc"></canvas></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Description</div><div class="cell cell-value">' + desc + '</div></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Location</div><div class="cell cell-value">' + location + '</div></div>');
+  w.document.write('<div class="row"><div class="cell cell-label">Last Cycle Count</div><div class="cell cell-value">' + lastCount + '</div></div>');
+  w.document.write('<div class="spacer"></div>');
+  w.document.write('<div class="footer">CTDI — FWA Inventory</div>');
+  w.document.write('</div>');
+  w.document.write('<script>window.onload=function(){');
+  w.document.write('try{JsBarcode("#bc","' + binId.replace(/"/g,'\\"') + '",{format:"CODE128",width:2,height:55,displayValue:true,fontSize:14,margin:0});}catch(e){}');
+  w.document.write('setTimeout(function(){window.print();},400);');
+  w.document.write('};<\/script>');
+  w.document.write('</body></html>');
+  w.document.close();
+}
+
+// ---- BIN DETAILS ----
+function openBinDetails(binId) {
+  document.getElementById('detailsBinId').textContent = binId;
+  document.getElementById('detailsBody').innerHTML = '<div class="empty-state">Loading...</div>';
+  document.getElementById('detailsModal').style.display = 'flex';
+  loadBinDetails(binId);
+}
+
+function closeBinDetails() {
+  document.getElementById('detailsModal').style.display = 'none';
+}
+
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  const caret = document.getElementById(id + 'Caret');
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (caret) caret.textContent = open ? '▶' : '▼';
+}
+
+async function saveBinInfo(binId) {
+  const desc = document.getElementById('editBinDesc').value.trim();
+  const location = document.getElementById('editBinLocation').value.trim();
+  const fb = document.getElementById('binInfoFeedback');
+  const btn = document.getElementById('saveBinInfoBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecyclecountbin', binid: binId, bindescription: desc, binlocation: location });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Saved</span>';
+      // Update local data + refresh underlying table
+      const bin = allBins.find(b => (b['Bin ID']||'').trim() === binId);
+      if (bin) { bin['Bin Description'] = desc; bin['Bin Location'] = location; }
+      renderBins();
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error || 'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
+  btn.disabled = false; btn.textContent = 'Save';
+}
+
+async function loadBinDetails(binId) {
+  const body = document.getElementById('detailsBody');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readbindetails', bin: binId });
+    if (!json.success) { body.innerHTML = '<div class="empty-state">' + (json.error || 'Failed to load') + '</div>'; return; }
+
+    const currentCount = json.currentCount || 0;
+    const units = json.currentUnits || [];
+    const history = json.history || [];
+    const bin = allBins.find(b => (b['Bin ID']||'').trim() === binId) || {};
+    const curDesc = (bin['Bin Description']||'').trim();
+    const curLoc = (bin['Bin Location']||'').trim();
+
+    let html = '';
+
+    // Editable Description & Location
+    html += '<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:18px;">';
+    html += '<div style="font-size:12px;font-weight:700;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Bin Info</div>';
+    html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">';
+    html += '<div style="flex:2;min-width:180px;"><label class="form-label">Description</label>'
+      + '<input type="text" class="form-input" id="editBinDesc" value="' + curDesc.replace(/"/g,'&quot;') + '" placeholder="Description" style="font-family:\'Segoe UI\',Arial,sans-serif;"></div>';
+    html += '<div style="flex:1;min-width:140px;"><label class="form-label">Location</label>'
+      + '<input type="text" class="form-input" id="editBinLocation" value="' + curLoc.replace(/"/g,'&quot;') + '" placeholder="Location" style="font-family:\'Segoe UI\',Arial,sans-serif;"></div>';
+    html += '<button id="saveBinInfoBtn" onclick="saveBinInfo(\'' + binId.replace(/'/g,"\\'") + '\')" style="padding:10px 20px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>';
+    html += '</div>';
+    html += '<div id="binInfoFeedback" style="margin-top:6px;font-size:11px;"></div>';
+    html += '</div>';
+
+    // Units at Bin (collapsible, collapsed by default)
+    html += '<div style="border:1px solid #eee;border-radius:8px;margin-bottom:12px;overflow:hidden;">';
+    html += '<div onclick="toggleSection(\'unitsSection\')" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8f9fa;">'
+      + '<span style="font-size:12px;font-weight:700;color:#1a3a5c;text-transform:uppercase;">Units at Bin (' + currentCount + ')</span>'
+      + '<span id="unitsSectionCaret" style="font-size:12px;color:#888;">▶</span>'
+      + '</div>';
+    html += '<div id="unitsSection" style="display:none;padding:12px 14px;">';
+    if (!units.length) {
+      html += '<div class="empty-state" style="padding:16px;">No units currently associated with this bin.</div>';
+    } else {
+      html += '<div style="max-height:220px;overflow-y:auto;"><table class="issues-table"><thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead><tbody>';
+      html += units.map(u =>
+        '<tr>'
+        + '<td class="meta" style="font-weight:600;">' + (u.imei||'—') + '</td>'
+        + '<td class="meta">' + (u.serial||'—') + '</td>'
+        + '<td class="meta">' + (u.model||'—') + '</td>'
+        + '</tr>'
+      ).join('');
+      html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+
+    // Cycle Count History (collapsible, collapsed by default)
+    html += '<div style="border:1px solid #eee;border-radius:8px;overflow:hidden;">';
+    html += '<div onclick="toggleSection(\'historySection\')" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8f9fa;">'
+      + '<span style="font-size:12px;font-weight:700;color:#1a3a5c;text-transform:uppercase;">Cycle Count History (' + history.length + ')</span>'
+      + '<span id="historySectionCaret" style="font-size:12px;color:#888;">▶</span>'
+      + '</div>';
+    html += '<div id="historySection" style="display:none;padding:12px 14px;">';
+    if (!history.length) {
+      html += '<div class="empty-state" style="padding:16px;">No cycle counts have been completed for this bin.</div>';
+    } else {
+      html += '<table class="issues-table"><thead><tr><th>Completed</th><th>User</th><th>Expected</th><th>Scanned</th><th>Missed</th></tr></thead><tbody>';
+      html += history.map(h =>
+        '<tr>'
+        + '<td class="meta">' + fmtDate(h.ts) + '</td>'
+        + '<td>' + (h.user||'—') + '</td>'
+        + '<td style="text-align:center;">' + (h.expected != null ? h.expected : '—') + '</td>'
+        + '<td style="text-align:center;color:#28a745;font-weight:600;">' + (h.scanned != null ? h.scanned : '—') + '</td>'
+        + '<td style="text-align:center;color:' + (Number(h.missed) > 0 ? '#dc3545' : '#888') + ';font-weight:600;">' + (h.missed != null ? h.missed : '—') + '</td>'
+        + '</tr>'
+      ).join('');
+      html += '</tbody></table>';
+    }
+    html += '</div></div>';
+
+    body.innerHTML = html;
+  } catch(err) {
+    body.innerHTML = '<div class="empty-state">Connection failed</div>';
+  }
+}
+
+// Create Bin — Enter flow
+document.getElementById('newBinId').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinDesc').focus(); }
+});
+document.getElementById('newBinDesc').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinLocation').focus(); }
+});
+document.getElementById('newBinLocation').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); submitCreateBin(); }
+});
+
+// ---- SIDEBAR ----
+function toggleNavGroup(el) {
+  const group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) group.classList.toggle('open');
+}
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+// Open the nav group containing the active link
+document.addEventListener('DOMContentLoaded', function() {
+  const active = document.querySelector('.sidebar-nav a.active');
+  if (active) { const group = active.closest('.nav-group'); if (group) group.classList.add('open'); }
+});
+
+loadBins();
+</script>
+</body>
+</html>

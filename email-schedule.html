@@ -109,6 +109,12 @@
     <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
     <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
     </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
+    <div class="nav-group">
+    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
     <div class="nav-group">
     <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
@@ -211,7 +217,7 @@
 const URL_KEY = 'fwa_script_url';
 const SCHEDULES_KEY = 'fwa_email_schedules';
 let scriptUrl = '', schedules = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqecP1th_jjq7ZzKcssh9R7cnghXLdlxtioOZ2UMTAp90s65E-mO_jWzQfkydfTf72qQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
 try { schedules = JSON.parse(localStorage.getItem(SCHEDULES_KEY)) || []; } catch(e) { schedules = []; }
 
 function jsonpRequest(url, params) {
