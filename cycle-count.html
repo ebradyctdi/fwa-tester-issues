@@ -300,9 +300,26 @@
       <button onclick="closeSummary()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
     </div>
     <div style="padding:20px 24px;overflow-y:auto;flex:1;">
-      <div id="summaryStats" style="display:flex;gap:14px;margin-bottom:20px;"></div>
-      <div id="summaryMissedSection">
-        <div style="font-size:12px;font-weight:700;color:#dc3545;text-transform:uppercase;margin-bottom:10px;">Missed Units <span id="summaryMissedCount" style="color:#888;font-weight:400;"></span></div>
+      <div id="summaryStats" style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;"></div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:12px;font-weight:700;color:#28a745;text-transform:uppercase;margin-bottom:8px;">Expected Units <span id="summaryExpectedCount" style="color:#888;font-weight:400;"></span></div>
+        <table class="issues-table">
+          <thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead>
+          <tbody id="summaryExpectedBody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-size:12px;font-weight:700;color:#fd7e14;text-transform:uppercase;margin-bottom:8px;">Unexpected Units <span id="summaryUnexpectedCount" style="color:#888;font-weight:400;"></span></div>
+        <table class="issues-table">
+          <thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead>
+          <tbody id="summaryUnexpectedBody"></tbody>
+        </table>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#dc3545;text-transform:uppercase;margin-bottom:8px;">Units Missing from Cycle Count <span id="summaryMissedCount" style="color:#888;font-weight:400;"></span></div>
         <table class="issues-table">
           <thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead>
           <tbody id="summaryMissedBody"></tbody>
@@ -318,7 +335,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allCounts = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -465,6 +482,7 @@ function playBeep(success) {
 let batchUser = '';
 let countType = 'add';               // 'add' or 'cyclecount'
 let sessionScannedKeys = {};         // set of IMEI|Serial scanned this session
+let sessionScannedUnits = [];        // [{imei, serial, model}] scanned this session
 
 function startBatchMode() {
   const user = document.getElementById('startUser').value.trim();
@@ -481,6 +499,7 @@ function startBatchMode() {
   batchSessionCount = 0;
   batchLog = [];
   sessionScannedKeys = {};
+  sessionScannedUnits = [];
   renderBatchLog();
 
   // Configure UI for the chosen count type
@@ -538,7 +557,8 @@ async function completeBinCycleCount() {
       action: 'completebincyclecount',
       bin: bin,
       user: batchUser,
-      scanned: JSON.stringify(scanned)
+      scanned: JSON.stringify(scanned),
+      scannedunits: JSON.stringify(sessionScannedUnits)
     });
     if (json.success) {
       showSummary(bin, json);
@@ -555,21 +575,31 @@ function showSummary(bin, res) {
   const expected = res.expected || 0;
   const scanned = res.scanned || 0;
   const missedCount = res.missedCount || 0;
-  const matched = expected - missedCount;
+  const expectedScanned = res.expectedScanned || [];
+  const unexpectedScanned = res.unexpectedScanned || [];
+  const missed = res.missed || [];
 
   document.getElementById('summaryStats').innerHTML = ''
     + statBox('Bin', bin, '#1a3a5c')
     + statBox('Scanned', scanned, '#28a745')
     + statBox('Expected at Bin', expected, '#1a3a5c')
+    + statBox('Unexpected', unexpectedScanned.length, unexpectedScanned.length > 0 ? '#fd7e14' : '#888')
     + statBox('Missed', missedCount, missedCount > 0 ? '#dc3545' : '#888');
 
-  const missed = res.missed || [];
-  document.getElementById('summaryMissedCount').textContent = missed.length ? '(' + missed.length + ')' : '';
-  const body = document.getElementById('summaryMissedBody');
-  if (!missed.length) {
-    body.innerHTML = '<tr><td colspan="3" class="empty-state">No missed units — all expected units were scanned. ✓</td></tr>';
+  fillSummaryTable('summaryExpectedBody', 'summaryExpectedCount', expectedScanned, 'No expected units were scanned.');
+  fillSummaryTable('summaryUnexpectedBody', 'summaryUnexpectedCount', unexpectedScanned, 'No unexpected units — everything scanned belonged to this bin. ✓');
+  fillSummaryTable('summaryMissedBody', 'summaryMissedCount', missed, 'No missing units — all expected units were scanned. ✓');
+
+  document.getElementById('summaryModal').style.display = 'flex';
+}
+
+function fillSummaryTable(bodyId, countId, list, emptyMsg) {
+  document.getElementById(countId).textContent = list.length ? '(' + list.length + ')' : '';
+  const body = document.getElementById(bodyId);
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="3" class="empty-state">' + emptyMsg + '</td></tr>';
   } else {
-    body.innerHTML = missed.map(m =>
+    body.innerHTML = list.map(m =>
       '<tr>'
       + '<td class="meta" style="font-weight:600;">' + (m.imei||'—') + '</td>'
       + '<td class="meta">' + (m.serial||'—') + '</td>'
@@ -577,7 +607,6 @@ function showSummary(bin, res) {
       + '</tr>'
     ).join('');
   }
-  document.getElementById('summaryModal').style.display = 'flex';
 }
 
 function statBox(label, value, color) {
@@ -726,10 +755,23 @@ function submitIndividualBatch() {
     return;
   }
 
+  // Prevent duplicate scans of the same unit within this batch session
+  const dupKey = (imei + '|' + serial).toUpperCase();
+  if (sessionScannedKeys[dupKey]) {
+    showBatchFeedback('⚠️ Already scanned this session — ' + imei, 'error');
+    playBeep(false);
+    document.getElementById('bIMEI').value = '';
+    document.getElementById('bSerial').value = '';
+    setTimeout(() => document.getElementById('bIMEI').focus(), 50);
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
-  sessionScannedKeys[(imei + '|' + serial).toUpperCase()] = true;
+  sessionScannedKeys[dupKey] = true;
+  sessionScannedUnits.push({ imei, serial, model: deviceModel });
   batchLog.unshift({ imei, serial, deviceModel, bin, time: new Date() });
   if (batchLog.length > 10) batchLog.pop();
   renderBatchLog();
@@ -819,10 +861,22 @@ function submitQRBatch(raw) {
     return;
   }
 
+  // Prevent duplicate scans of the same unit within this batch session
+  const dupKey = (imei + '|' + serial).toUpperCase();
+  if (sessionScannedKeys[dupKey]) {
+    showBatchFeedback('⚠️ Already scanned this session — ' + imei, 'error');
+    playBeep(false);
+    document.getElementById('bQR').value = '';
+    document.getElementById('bQR').focus();
+    batchSubmitting = false;
+    return;
+  }
+
   // Immediately update UI
   batchSessionCount++;
   document.getElementById('batchCount').textContent = batchSessionCount;
-  sessionScannedKeys[(imei + '|' + serial).toUpperCase()] = true;
+  sessionScannedKeys[dupKey] = true;
+  sessionScannedUnits.push({ imei, serial, model: deviceModel });
   batchLog.unshift({ imei, serial, deviceModel, bin, time: new Date() });
   if (batchLog.length > 10) batchLog.pop();
   renderBatchLog();
@@ -891,9 +945,8 @@ async function submitCreateBin() {
       await loadBinOptions();
       // Auto-select the newly created bin on the start card
       document.getElementById('startBin').value = binId;
-      if (confirm('Bin "' + binId + '" created. Print a label for it now?')) {
-        printBinLabel(binId, binDesc, binLocation);
-      }
+      // Open the label print preview popup for the new bin
+      printBinLabel(binId, binDesc, binLocation);
     } else { showToast(json.error || 'Failed', 'error'); }
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Create';

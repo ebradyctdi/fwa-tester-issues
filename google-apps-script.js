@@ -919,6 +919,16 @@ function doGet(e) {
       for (var s = 0; s < scannedList.length; s++) {
         scannedSet[scannedList[s].toString().trim().toUpperCase()] = true;
       }
+      // scannedunits = JSON array of {imei, serial, model} scanned this session (for detailed summary)
+      var scannedUnitsJson = (e.parameter.scannedunits || '[]').toString();
+      var scannedUnits = [];
+      try { scannedUnits = JSON.parse(scannedUnitsJson); } catch(err) { scannedUnits = []; }
+      var scannedUnitByKey = {};
+      for (var su = 0; su < scannedUnits.length; su++) {
+        var suu = scannedUnits[su];
+        var suKey = ((suu.imei||'') + '|' + (suu.serial||'')).toUpperCase();
+        scannedUnitByKey[suKey] = { imei: suu.imei||'', serial: suu.serial||'', model: suu.model||'' };
+      }
 
       if (!binId) return _respond({ success: false, error: 'Bin ID required' }, callback);
 
@@ -945,16 +955,30 @@ function doGet(e) {
         };
       }
 
-      // Expected units: latest txn is 'At Bin' for THIS bin, and not scanned this session
+      // Build set of keys expected at this bin (latest txn 'At Bin' for THIS bin)
+      var expectedKeys = {};
       var missed = [];
       var expectedCount = 0;
       for (var k in latest) {
         var u = latest[k];
         if (u.type.toLowerCase() === 'at bin' && u.bin.toLowerCase() === binId.toLowerCase()) {
+          expectedKeys[k] = true;
           expectedCount++;
           if (!scannedSet[k]) {
             missed.push(u);
           }
+        }
+      }
+
+      // Categorize scanned units into expected vs unexpected (relative to prior state)
+      var expectedScanned = [];
+      var unexpectedScanned = [];
+      for (var sk in scannedUnitByKey) {
+        var sunit = scannedUnitByKey[sk];
+        if (expectedKeys[sk]) {
+          expectedScanned.push(sunit);
+        } else {
+          unexpectedScanned.push(sunit);
         }
       }
 
@@ -997,7 +1021,9 @@ function doGet(e) {
         expected: expectedCount,
         scanned: scannedList.length,
         missedCount: missed.length,
-        missed: missedOut
+        missed: missedOut,
+        expectedScanned: expectedScanned,
+        unexpectedScanned: unexpectedScanned
       }, callback);
     }
 

@@ -199,7 +199,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allBins = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzPx4d7ReEdp27FudRj2qeMmt_F8kHzWNGWBWRu0cfdb9dyhA44phJLAVDJGFHSrYshhQ/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -314,9 +314,8 @@ async function submitCreateBin() {
       showToast('Bin created: ' + binId, 'success');
       closeCreateBin();
       await loadBins();
-      if (confirm('Bin "' + binId + '" created. Print a label for it now?')) {
-        printBinLabel(binId);
-      }
+      // Open the label print preview popup for the new bin
+      printBinLabel(binId);
     } else { showToast(json.error || 'Failed', 'error'); }
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Create';
