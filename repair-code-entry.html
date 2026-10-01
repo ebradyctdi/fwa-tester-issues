@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAN Test &amp; Repair Demo - Repair Code Entry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+  .panel { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .panel h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 18px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .fld { margin-bottom: 16px; }
+  .fld label { font-size: 12px; font-weight: 600; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fld select, .fld input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; background: white; font-family: inherit; }
+  .fld select:focus, .fld input:focus { border-color: #1a3a5c; outline: none; }
+  .order-meta { background: #f8f9fa; border-radius: 6px; padding: 12px 14px; font-size: 13px; color: #555; margin-bottom: 16px; display: none; }
+  .order-meta.show { display: block; }
+  .order-meta span { font-family: Consolas, monospace; color: #1a3a5c; font-weight: 600; }
+
+  .test-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .ts-card { border-radius: 8px; padding: 12px 8px; text-align: center; border: 2px solid #e0e0e0; background: #f8f9fa; }
+  .ts-card .dot { width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 6px; background: #adb5bd; }
+  .ts-card.pass { border-color: #28a745; background: #eaf7ee; }
+  .ts-card.pass .dot { background: #28a745; }
+  .ts-card.fail { border-color: #dc3545; background: #fdeaec; }
+  .ts-card.fail .dot { background: #dc3545; }
+  .ts-card .ts-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #444; }
+  .ts-card .ts-when { font-size: 10px; color: #999; margin-top: 2px; font-family: Consolas, monospace; }
+  .fail-card .fail-n { font-size: 22px; font-weight: 700; color: #adb5bd; line-height: 1; margin-bottom: 4px; }
+  .fail-card.has-fails { border-color: #dc3545; background: #fdeaec; }
+  .fail-card.has-fails .fail-n { color: #dc3545; }
+  .ts-card.na-card { background: #eef0f2; border-color: #dfe3e6; opacity: 0.7; }
+  .ts-card.na-card .fail-n, .ts-card.na-card .ts-name, .ts-card.na-card .ts-when { color: #9aa4ad; }
+  .ts-card.na-card .dot { background: #cfd4d9; }
+
+  .current-code { background: #f8f9fa; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #555; margin-bottom: 12px; }
+  .current-code span { font-family: Consolas, monospace; font-weight: 600; color: #1a3a5c; }
+
+  .suggested { display: flex; align-items: center; gap: 12px; background: #eef4fb; border: 1px solid #cfe0f3; border-radius: 6px; padding: 12px 14px; margin-bottom: 16px; }
+  .suggested .sug-val { font-family: Consolas, monospace; font-weight: 700; font-size: 18px; color: #1a3a5c; }
+  .suggested .sug-label { font-size: 10px; color: #6a7f96; text-transform: uppercase; letter-spacing: 0.5px; }
+  .suggested .sug-note { font-size: 12px; color: #445; margin-top: 4px; line-height: 1.35; }
+  .suggested .apply-btn { margin-left: auto; padding: 7px 14px; border: none; border-radius: 6px; background: #1a3a5c; color: white; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .suggested .apply-btn:hover { background: #244d73; }
+  .suggested .apply-btn:disabled { background: #9fb3c8; cursor: not-allowed; }
+
+  .btn { padding: 13px 32px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; color: white; background: #1a3a5c; margin-top: 4px; }
+  .btn:hover { background: #244d73; }
+  .btn:disabled { background: #9fb3c8; cursor: not-allowed; }
+
+  /* History timeline */
+  .history-panel { position: sticky; top: 24px; }
+  .history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .history-head h2 { border: none; margin: 0; padding: 0; font-size: 16px; color: #1a3a5c; }
+  .sort-toggle { display: inline-flex; border: 1px solid #1a3a5c; border-radius: 6px; overflow: hidden; }
+  .sort-toggle button { padding: 6px 12px; border: none; background: white; font-size: 12px; font-weight: 600; color: #1a3a5c; cursor: pointer; white-space: nowrap; }
+  .sort-toggle button + button { border-left: 1px solid #1a3a5c; }
+  .sort-toggle button.active { background: #1a3a5c; color: white; }
+  .sort-toggle button:not(.active):hover { background: #eef2f7; }
+  .history-empty { text-align: center; color: #aaa; padding: 30px 12px; font-size: 14px; }
+  .hist-body { max-height: 70vh; overflow-y: auto; }
+  .hist-row { border-left: 4px solid #ccc; background: #f8f9fa; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  .hist-row.milestone { background: #f1f3f5; border-left-color: #adb5bd; }
+  .hist-row.repair { background: #e7f1fb; border-left-color: #7fb2e8; }
+  .hist-row.test-pass { background: #eaf7ee; border-left-color: #6cc389; }
+  .hist-row.test-fail { background: #fdeaec; border-left-color: #e08e97; }
+  .hist-row.unr { background: #fff1e6; border-left-color: #f0b483; }
+  .hist-row .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .hist-row .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 8px; border-radius: 10px; color: white; }
+  .tag.receipt { background: #6c757d; } .tag.test { background: #17a2b8; } .tag.repair { background: #fd7e14; } .tag.unr { background: #6f42c1; }
+  .hist-row .tt { font-weight: 600; font-size: 13px; }
+  .hist-row .when { font-size: 11px; color: #888; font-family: Consolas, monospace; }
+  .hist-row .meta { font-size: 12px; color: #666; margin-top: 4px; }
+  .hist-row .txn { font-family: Consolas, monospace; font-size: 11px; color: #999; margin-top: 4px; }
+
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .history-panel { position: static; } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .test-status { grid-template-columns: repeat(2, 1fr); }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>Repair Code Entry</h1><div class="header-sub">Review a PO's full history and assign a repair code</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="layout">
+      <div class="left-col">
+        <div class="panel">
+          <h2>Assign Repair Code</h2>
+          <div class="fld"><label>PO Number (non-shipped orders)</label><select id="fPO" onchange="onPoChange()"><option value="">&mdash; Select a PO &mdash;</option></select></div>
+          <div class="order-meta" id="orderMeta"></div>
+
+          <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px;">Test Fails</label>
+          <div class="test-status" id="testFails">
+            <div class="ts-card fail-card"><div class="fail-n">0</div><div class="ts-name">Visual</div></div>
+            <div class="ts-card fail-card"><div class="fail-n">0</div><div class="ts-name">Functional</div></div>
+            <div class="ts-card fail-card"><div class="fail-n">0</div><div class="ts-name">Burn</div></div>
+            <div class="ts-card fail-card"><div class="fail-n">0</div><div class="ts-name">Provisioning</div></div>
+          </div>
+
+          <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px;">Latest Test Status</label>
+          <div class="test-status" id="testStatus" style="grid-template-columns:repeat(3,1fr);">
+            <div class="ts-card"><div class="dot"></div><div class="ts-name">Functional</div><div class="ts-when">&mdash;</div></div>
+            <div class="ts-card"><div class="dot"></div><div class="ts-name">Burn</div><div class="ts-when">&mdash;</div></div>
+            <div class="ts-card"><div class="dot"></div><div class="ts-name">Provisioning</div><div class="ts-when">&mdash;</div></div>
+          </div>
+
+          <div class="current-code" id="currentCode" style="display:none;"></div>
+          <div class="suggested" id="suggestedBox">
+            <div style="flex:1;min-width:0;">
+              <div class="sug-label">Suggested Repair Code</div>
+              <div class="sug-val" id="suggestedVal">[-]</div>
+              <div class="sug-note" id="suggestedNote" style="display:none;"></div>
+            </div>
+            <button type="button" class="apply-btn" id="applyBtn" onclick="applySuggested()" disabled>Use Suggested</button>
+          </div>
+          <div class="fld"><label>Repair Code</label><input type="text" id="fRepairCode" placeholder="Enter repair code" disabled></div>
+          <div class="fld"><label>Repair Note</label><textarea id="fRepairNote" placeholder="Optional repair note" disabled style="width:100%;padding:12px 14px;border:2px solid #ddd;border-radius:6px;font-size:15px;font-family:inherit;resize:vertical;min-height:70px;"></textarea></div>
+          <button class="btn" id="saveBtn" onclick="saveRepairCode()" disabled>Save Repair Code</button>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="panel history-panel">
+          <div class="history-head">
+            <h2 id="historyTitle">PO History</h2>
+            <div class="sort-toggle">
+              <button type="button" id="sortNewest" onclick="setSort('newest')">Most Recent</button>
+              <button type="button" id="sortOldest" class="active" onclick="setSort('oldest')">Oldest First</button>
+            </div>
+          </div>
+          <div class="hist-body" id="historyBody"><div class="history-empty">Select a PO to see its full history.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script src="nav.js"></script>
+<script>
+const URL_KEY = 'ran_tr_script_url';
+let scriptUrl = '', _jsonpCounter = 0;
+let orders = [], ordersByPo = {};
+let testTxns = [], repairTxns = [], unrTxns = [];
+let partFlags = {}; // partFlags[PART] = { FUNCTIONAL:bool, BURN:bool, PROVISIONING:bool }
+let historySort = 'oldest';
+const TEST_STAGES = ['VISUAL', 'FUNCTIONAL', 'BURN', 'PROVISIONING'];
+// Which part flag governs each stage. Stages not listed always apply (e.g. VISUAL).
+const STAGE_FLAG = { FUNCTIONAL: 'Functional Test', BURN: 'Burn Test', PROVISIONING: 'Provisioning' };
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function esc(s) { return (s==null?'':String(s)).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+function fmtShort(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+async function loadAll() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL &mdash; go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [ordersJson, testJson, repairJson, unrJson, partsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readorders' }),
+      jsonpRequest(scriptUrl, { action: 'readtransactions' }),
+      jsonpRequest(scriptUrl, { action: 'readrepairtransactions' }),
+      jsonpRequest(scriptUrl, { action: 'readunrtransactions' }),
+      jsonpRequest(scriptUrl, { action: 'readpartnumbers' })
+    ]);
+    if (!ordersJson.success) throw new Error(ordersJson.error);
+    setStatus('connected', 'Connected');
+
+    orders = ordersJson.data || [];
+    testTxns = testJson.success ? (testJson.data || []) : [];
+    repairTxns = repairJson.success ? (repairJson.data || []) : [];
+    unrTxns = unrJson.success ? (unrJson.data || []) : [];
+    buildPartFlags(partsJson.success ? (partsJson.data || []) : []);
+    populatePoDropdown();
+    onPoChange();
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function populatePoDropdown() {
+  ordersByPo = {};
+  const nonShipped = orders.filter(o => (o['PO Number']||'').trim() && (o['Process']||'').trim() !== 'Shipped');
+  nonShipped.forEach(o => { const po = o['PO Number'].trim(); if (!ordersByPo[po]) ordersByPo[po] = o; });
+  const pos = Object.keys(ordersByPo).sort();
+  const sel = document.getElementById('fPO');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">&mdash; Select a PO &mdash;</option>' + pos.map(po => '<option value="' + esc(po) + '">' + esc(po) + '</option>').join('');
+  if (prev && pos.indexOf(prev) !== -1) sel.value = prev;
+}
+
+function onPoChange() {
+  const po = document.getElementById('fPO').value;
+  const meta = document.getElementById('orderMeta');
+  const codeInput = document.getElementById('fRepairCode');
+  const saveBtn = document.getElementById('saveBtn');
+  const currentCode = document.getElementById('currentCode');
+
+  const noteInput = document.getElementById('fRepairNote');
+
+  if (po && ordersByPo[po]) {
+    const o = ordersByPo[po];
+    meta.innerHTML = 'Part: <span>' + esc(o['Part Number']||'&mdash;') + '</span> &nbsp;&bull;&nbsp; Serial: <span>' + esc(o['Serial Number']||'&mdash;') + '</span> &nbsp;&bull;&nbsp; Process: <span>' + esc(o['Process']||'&mdash;') + '</span>';
+    meta.classList.add('show');
+    codeInput.disabled = false;
+    codeInput.value = o['Repair Code'] || '';
+    noteInput.disabled = false;
+    noteInput.value = o['Repair Note'] || '';
+    saveBtn.disabled = false;
+    if (o['Repair Code']) {
+      currentCode.style.display = 'block';
+      currentCode.innerHTML = 'Current repair code: <span>' + esc(o['Repair Code']) + '</span>';
+    } else { currentCode.style.display = 'none'; }
+  } else {
+    meta.classList.remove('show');
+    codeInput.disabled = true; codeInput.value = '';
+    noteInput.disabled = true; noteInput.value = '';
+    saveBtn.disabled = true;
+    currentCode.style.display = 'none';
+  }
+  renderTestStatus(po);
+  renderSuggestion(po);
+  renderHistory(po);
+}
+
+// Determine the suggested repair code for a PO.
+//   [UNR]    - the PO has any unrepairable record
+//   [REPAIR] - latest FUNCTIONAL test PASSED and there is >= 1 repair action
+//   [NTF]    - latest FUNCTIONAL test PASSED and there are no repair actions
+//   [-]      - none of the above
+function computeSuggestion(po) {
+  if (!po) return '[-]';
+
+  const hasUnr = unrTxns.some(t => (t['PO Number']||'').trim() === po);
+  if (hasUnr) return '[UNR]';
+
+  const funcTests = testTxns.filter(t =>
+    (t['PO Number']||'').trim() === po && (t['Test Type']||'').trim().toUpperCase() === 'FUNCTIONAL');
+  funcTests.sort((a, b) => new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0));
+  const latestFuncPass = funcTests.length && (funcTests[0]['Test Result']||'').trim().toUpperCase() === 'PASS';
+
+  if (latestFuncPass) {
+    const hasRepair = repairTxns.some(t => (t['PO Number']||'').trim() === po);
+    return hasRepair ? '[REPAIR]' : '[NTF]';
+  }
+  return '[-]';
+}
+
+// Build a suggested repair note from the PO's repair / unrepairable actions.
+//   [NTF]    -> no note
+//   [REPAIR] -> summary of repair actions (action + component)
+//   [UNR]    -> summary of unrepairable records (type + comment)
+//   [-]      -> no note
+function computeSuggestedNote(po, suggestion) {
+  if (!po) return '';
+
+  if (suggestion === '[REPAIR]') {
+    const parts = repairTxns
+      .filter(t => (t['PO Number']||'').trim() === po)
+      .sort((a, b) => new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0))
+      .map(t => {
+        const action = (t['Repair Action']||'').trim();
+        const detail = [t['Component'], t['Component Age']].filter(Boolean).join(' ').trim();
+        return detail ? action + ' (' + detail + ')' : action;
+      })
+      .filter(Boolean);
+    return parts.length ? 'Repair performed: ' + parts.join('; ') : '';
+  }
+
+  if (suggestion === '[UNR]') {
+    const parts = unrTxns
+      .filter(t => (t['PO Number']||'').trim() === po)
+      .sort((a, b) => new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0))
+      .map(t => {
+        const type = (t['UNR Type']||'').trim();
+        const comment = (t['UNR Comment']||'').trim();
+        return comment ? type + ': ' + comment : type;
+      })
+      .filter(Boolean);
+    return parts.length ? 'Unrepairable: ' + parts.join('; ') : '';
+  }
+
+  return ''; // NTF and [-] get no note
+}
+
+function renderSuggestion(po) {
+  const suggestion = computeSuggestion(po);
+  const note = computeSuggestedNote(po, suggestion);
+  document.getElementById('suggestedVal').textContent = suggestion;
+
+  const noteEl = document.getElementById('suggestedNote');
+  if (note) { noteEl.style.display = 'block'; noteEl.textContent = 'Note: ' + note; }
+  else { noteEl.style.display = 'none'; noteEl.textContent = ''; }
+
+  // Enable Apply when there's a real code to apply, or a note to apply.
+  document.getElementById('applyBtn').disabled = !(po && (suggestion !== '[-]' || note));
+}
+
+function applySuggested() {
+  const po = document.getElementById('fPO').value;
+  const suggestion = computeSuggestion(po);
+  const note = computeSuggestedNote(po, suggestion);
+  const codeInput = document.getElementById('fRepairCode');
+  const noteInput = document.getElementById('fRepairNote');
+  if (codeInput.disabled) return;
+  if (suggestion !== '[-]') codeInput.value = suggestion;
+  noteInput.value = note; // NTF/[-] clear the note
+  codeInput.focus();
+}
+
+// Render both the Initial and Latest test-status rows for a PO.
+//   Latest  : each stage's most recent test result.
+//   Initial : Visual always (earliest result); Functional/Burn/Provisioning
+//             only appear when performed exactly once (earliest == latest).
+function renderTestStatus(po) {
+  renderTestFails(po);
+  // Latest row excludes Visual.
+  paintStatusRow('#testStatus', po, 'latest', ['FUNCTIONAL', 'BURN', 'PROVISIONING']);
+}
+
+function buildPartFlags(parts) {
+  partFlags = {};
+  parts.forEach(p => {
+    const pn = (p['Part Number']||'').trim();
+    if (!pn) return;
+    partFlags[pn] = {
+      FUNCTIONAL: (p['Functional Test']||'').trim().toLowerCase() === 'yes',
+      BURN: (p['Burn Test']||'').trim().toLowerCase() === 'yes',
+      PROVISIONING: (p['Provisioning']||'').trim().toLowerCase() === 'yes'
+    };
+  });
+}
+
+// Does this stage apply to the given PO's part? Stages without a flag (VISUAL)
+// always apply; unknown parts apply everything.
+function stageApplies(po, stage) {
+  if (!STAGE_FLAG[stage]) return true; // VISUAL
+  const part = (po && ordersByPo[po]) ? (ordersByPo[po]['Part Number']||'').trim() : '';
+  const flags = partFlags[part];
+  if (!flags) return true;
+  return !!flags[stage];
+}
+
+// Count of FAIL results per test type. Red card when >= 1 fail, grey when 0, N/A when the part is not tested for it.
+function renderTestFails(po) {
+  const cards = document.querySelectorAll('#testFails .ts-card');
+  TEST_STAGES.forEach((stage, idx) => {
+    const card = cards[idx];
+    const nEl = card.querySelector('.fail-n');
+    card.classList.remove('has-fails', 'na-card');
+
+    if (po && !stageApplies(po, stage)) {
+      nEl.textContent = 'N/A';
+      card.classList.add('na-card');
+      return;
+    }
+
+    const count = !po ? 0 : testTxns.filter(t =>
+      (t['PO Number']||'').trim() === po
+      && (t['Test Type']||'').trim().toUpperCase() === stage
+      && (t['Test Result']||'').trim().toUpperCase() === 'FAIL').length;
+    nEl.textContent = count;
+    card.classList.toggle('has-fails', count > 0);
+  });
+}
+
+function paintStatusRow(sel, po, mode, stages) {
+  const cards = document.querySelectorAll(sel + ' .ts-card');
+  stages.forEach((stage, idx) => {
+    const card = cards[idx];
+    card.className = 'ts-card';
+    const whenEl = card.querySelector('.ts-when');
+    whenEl.textContent = '\u2014';
+    if (!po) return;
+
+    if (!stageApplies(po, stage)) { card.classList.add('na-card'); whenEl.textContent = 'N/A'; return; }
+
+    const matches = testTxns.filter(t =>
+      (t['PO Number']||'').trim() === po && (t['Test Type']||'').trim().toUpperCase() === stage);
+    if (!matches.length) return; // stays grey
+
+    matches.sort((a, b) => new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0)); // oldest -> newest
+
+    let rec;
+    if (mode === 'latest') {
+      rec = matches[matches.length - 1];
+    } else {
+      // Initial: Visual always uses earliest; other stages only when done once.
+      if (stage !== 'VISUAL' && matches.length !== 1) return; // stays grey
+      rec = matches[0];
+    }
+
+    const result = (rec['Test Result']||'').trim().toUpperCase();
+    if (result === 'PASS') card.classList.add('pass');
+    else if (result === 'FAIL') card.classList.add('fail');
+    whenEl.textContent = fmtShort(rec['Timestamp']);
+  });
+}
+
+function setSort(order) {
+  historySort = order;
+  document.getElementById('sortNewest').classList.toggle('active', order === 'newest');
+  document.getElementById('sortOldest').classList.toggle('active', order === 'oldest');
+  renderHistory(document.getElementById('fPO').value);
+}
+
+// Combined chronological history: Receipt + Test + Repair + UNR.
+function renderHistory(po) {
+  const title = document.getElementById('historyTitle');
+  const body = document.getElementById('historyBody');
+
+  if (!po) {
+    title.textContent = 'PO History';
+    body.innerHTML = '<div class="history-empty">Select a PO to see its full history.</div>';
+    return;
+  }
+  title.textContent = 'PO History \u2014 ' + po;
+
+  const events = [];
+
+  // Receipt event from the order itself.
+  const o = ordersByPo[po];
+  if (o && o['Receive Date']) {
+    events.push({ ts: o['Receive Date'], kind: 'receipt', tag: 'Receipt', tagCls: 'receipt', rowCls: 'milestone',
+      title: 'Received', meta: [], id: '' });
+  }
+
+  testTxns.filter(t => (t['PO Number']||'').trim() === po).forEach(t => {
+    const result = (t['Test Result']||'').trim().toUpperCase();
+    const meta = [];
+    if (result === 'FAIL' && (t['Failure Code'] || t['Failure'])) meta.push('Failure: ' + [t['Failure Code'], t['Failure']].filter(Boolean).join(' \u2014 '));
+    if (t['Software Version']) meta.push('SW: ' + t['Software Version']);
+    const resultColor = result === 'PASS' ? '#28a745' : result === 'FAIL' ? '#dc3545' : '#666';
+    events.push({ ts: t['Timestamp'], kind: 'test', tag: 'Test', tagCls: 'test',
+      rowCls: result === 'FAIL' ? 'test-fail' : 'test-pass',
+      titleHtml: esc(t['Test Type']||'') + ' \u2014 <span style="color:' + resultColor + ';">' + esc(result||'\u2014') + '</span>',
+      title: (t['Test Type']||'') + ' \u2014 ' + (result || '\u2014'), meta: meta, id: t['Transaction #']||'' });
+  });
+
+  repairTxns.filter(t => (t['PO Number']||'').trim() === po).forEach(t => {
+    const meta = [];
+    if (t['Component']) meta.push('Component: ' + t['Component'] + (t['Component Age'] ? ' (' + t['Component Age'] + ')' : ''));
+    if (t['Repair Location']) meta.push('Location: ' + t['Repair Location']);
+    if (t['Repair Note']) meta.push('Note: ' + t['Repair Note']);
+    events.push({ ts: t['Timestamp'], kind: 'repair', tag: 'Repair', tagCls: 'repair', rowCls: 'repair',
+      title: t['Repair Action']||'\u2014', meta: meta, id: t['Transaction #']||'' });
+  });
+
+  unrTxns.filter(t => (t['PO Number']||'').trim() === po).forEach(t => {
+    const meta = [];
+    if (t['UNR Comment']) meta.push('Comment: ' + t['UNR Comment']);
+    events.push({ ts: t['Timestamp'], kind: 'unr', tag: 'UNR', tagCls: 'unr', rowCls: 'unr',
+      title: t['UNR Type']||'\u2014', meta: meta, id: t['Transaction #']||'' });
+  });
+
+  if (!events.length) {
+    body.innerHTML = '<div class="history-empty">No history for this PO yet.</div>';
+    return;
+  }
+
+  const dir = historySort === 'oldest' ? 1 : -1;
+  events.sort((a, b) => dir * (new Date(a.ts||0) - new Date(b.ts||0)));
+
+  body.innerHTML = events.map(ev =>
+    '<div class="hist-row ' + ev.rowCls + '">'
+    + '<div class="top"><span class="tt"><span class="tag ' + ev.tagCls + '">' + ev.tag + '</span> &nbsp;' + (ev.titleHtml || esc(ev.title)) + '</span><span class="when">' + fmtDate(ev.ts) + '</span></div>'
+    + ev.meta.map(m => '<div class="meta">' + esc(m) + '</div>').join('')
+    + (ev.id ? '<div class="txn">' + esc(ev.id) + '</div>' : '')
+    + '</div>'
+  ).join('');
+}
+
+async function saveRepairCode() {
+  const po = document.getElementById('fPO').value;
+  const code = document.getElementById('fRepairCode').value.trim();
+  const note = document.getElementById('fRepairNote').value.trim();
+  if (!po) { showToast('Select a PO Number', 'error'); return; }
+  if (!code) { showToast('Enter a repair code', 'error'); return; }
+  if (!scriptUrl) { showToast('Not connected. Go to Settings.', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updateorderbypo', ponumber: po, field: 'repaircode', value: code, repairnote: note });
+    if (json.success) {
+      showToast('Repair code saved for PO ' + po, 'success');
+      if (ordersByPo[po]) { ordersByPo[po]['Repair Code'] = code; ordersByPo[po]['Repair Note'] = note; }
+      loadAll();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Save Repair Code';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+renderNav('repair-code-entry.html');
+loadAll();
+</script>
+</body>
+</html>

@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FWA - Settings</title>
+<title>RAN Test &amp; Repair Demo - Settings</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -12,12 +12,10 @@
   .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
   .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
   .sidebar-nav::-webkit-scrollbar { width: 6px; }
-  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
   .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
-  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
   .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
-  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #888; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
   .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
   .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
@@ -53,52 +51,11 @@
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
-  <div class="sidebar-nav">
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
-    <div class="nav-group">
-    <a href="index.html"><span class="icon">🏠</span> Overview</a>
-    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
-    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
-    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
-    <div class="nav-group">
-    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
-    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
-    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
-    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
-    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
-    <div class="nav-group">
-    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
-    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
-    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
-    <div class="nav-group">
-    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
-    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
-    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
-    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
-    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
-    <div class="nav-group">
-    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
-    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
-    <div class="nav-group">
-    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
-    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
-    <a href="settings.html" class="active"><span class="icon">⚙️</span> Settings</a>
-    </div>
-  </div>
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
 </nav>
 <div class="main-wrap">
-  <div class="header"><div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Settings</h1><div class="header-sub">Configure Google Sheets connection</div></div></div>
+  <div class="header"><div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>Settings</h1><div class="header-sub">Configure Google Sheets connection</div></div></div>
   <div class="container">
     <div class="card">
       <h2>Google Apps Script Connection</h2>
@@ -106,40 +63,39 @@
       <input type="text" class="field-input" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
       <div class="help-text">Deploy the Apps Script (see <code>google-apps-script.js</code>), then paste the Web App URL here.</div>
       <div>
-        <button class="save-btn" onclick="saveAndTest()">Save & Test</button>
+        <button class="save-btn" onclick="saveAndTest()">Save &amp; Test</button>
         <button class="test-btn" onclick="testOnly()">Test Connection</button>
       </div>
       <div class="status-msg" id="statusMsg"></div>
     </div>
     <div class="card">
-      <h2>Latest Deployed URL (Reference)</h2>
-      <p style="font-size:12px;color:#888;margin-bottom:8px;">Copy this URL if your browser cache gets cleared and the connection is lost.</p>
-      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec</div>
-      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: September 23, 2026</div>
-    </div>
-    <div class="card">
       <h2>Google Sheet</h2>
-      <p style="font-size:13px;color:#666;margin-bottom:12px;">View and edit the raw data directly in Google Sheets.</p>
-      <a href="https://docs.google.com/spreadsheets/d/1PPTCKPN3rqy5myeUny0lzy5bs4exb7KxyyU8nssQSNM/edit" target="_blank" style="display:inline-block;padding:10px 20px;background:#1a3a5c;color:white;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open Google Sheet ↗</a>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">View and edit the raw data directly in Google Sheets. Paste your sheet URL below once created.</p>
+      <input type="text" class="field-input" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..../edit">
+      <button class="test-btn" style="margin-left:0;" onclick="openSheet()">Open Google Sheet &#8599;</button>
     </div>
     <div class="card">
       <h2>Setup Instructions</h2>
       <ol style="font-size:13px;color:#555;line-height:2;padding-left:20px;">
-        <li>Create a new Google Sheet with a tab named <strong>"Tester Issue Log"</strong></li>
-        <li>Add headers: <code>Reported By | Tester Type | Tester ID | Severity | Issue Type | Description | Status | Issue Start | Issue Stop</code></li>
-        <li>Go to Extensions → Apps Script</li>
+        <li>Create a new Google Sheet with a tab named <strong>"Orders"</strong> (or let the script create it)</li>
+        <li>Add headers (row 1): <code>PO Number | Part Number | Serial Number | Process | Receive Date | Repair Code | Ship Date</code></li>
+        <li>Go to Extensions &rarr; Apps Script</li>
         <li>Paste the code from <code>google-apps-script.js</code></li>
-        <li>Deploy → New Deployment → Web App → Execute as: Me → Who has access: Anyone</li>
-        <li>Copy the URL and paste it above</li>
+        <li>Deploy &rarr; New Deployment &rarr; Web App &rarr; Execute as: Me &rarr; Who has access: Anyone</li>
+        <li>Copy the <code>/exec</code> URL and paste it above, then click Save &amp; Test</li>
       </ol>
     </div>
   </div>
 </div>
+<script src="nav.js"></script>
 <script>
-const URL_KEY = 'fwa_script_url';
+const URL_KEY = 'ran_tr_script_url';
+const SHEET_KEY = 'ran_tr_sheet_url';
 let _jsonpCounter = 0;
-const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec';
-document.getElementById('scriptUrl').value = saved;
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFfjzk_NdU_2Jno6fTjwGfAifUxDETK3rwFy2Tm606I8n2-1NWQa1AtwlrQ0pGFRz1/exec';
+const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1rwuER1byA59jyu22nEvR7BGq9A_JXRoBV0LfvPTxJOs/edit';
+document.getElementById('scriptUrl').value = localStorage.getItem(URL_KEY) || DEFAULT_SCRIPT_URL;
+document.getElementById('sheetUrl').value = localStorage.getItem(SHEET_KEY) || DEFAULT_SHEET_URL;
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -163,41 +119,36 @@ async function testOnly() {
   if (!url) { setMsg('Enter a URL first.', 'error'); return; }
   setMsg('Testing...', 'pending');
   try {
-    const json = await jsonpRequest(url, {});
-    if (json.success) setMsg('Connected. ' + (json.data ? json.data.length : 0) + ' issues in sheet.', 'success');
+    const json = await jsonpRequest(url, { action: 'readorders' });
+    if (json.success) setMsg('Connected. ' + (json.data ? json.data.length : 0) + ' orders in sheet.', 'success');
     else setMsg('Error: ' + (json.error || 'Unknown'), 'error');
   } catch(err) { setMsg('Failed: ' + err.message, 'error'); }
 }
 
 async function saveAndTest() {
   const url = document.getElementById('scriptUrl').value.trim();
+  const sheet = document.getElementById('sheetUrl').value.trim();
   if (!url) { setMsg('Enter a URL first.', 'error'); return; }
   localStorage.setItem(URL_KEY, url);
+  localStorage.setItem(SHEET_KEY, sheet);
   setMsg('Saved. Testing...', 'pending');
   try {
-    const json = await jsonpRequest(url, {});
-    if (json.success) setMsg('Saved & connected. ' + (json.data ? json.data.length : 0) + ' issues.', 'success');
+    const json = await jsonpRequest(url, { action: 'readorders' });
+    if (json.success) setMsg('Saved & connected. ' + (json.data ? json.data.length : 0) + ' orders.', 'success');
     else setMsg('Saved but error: ' + (json.error || 'Unknown'), 'error');
   } catch(err) { setMsg('Saved but failed: ' + err.message, 'error'); }
 }
 
-function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); }
-function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); }
-
-function toggleNavGroup(el) {
-  var group = el.nextElementSibling;
-  if (group && group.classList.contains('nav-group')) {
-    group.classList.toggle('open');
-    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
-  }
+function openSheet() {
+  const sheet = document.getElementById('sheetUrl').value.trim();
+  if (!sheet) { setMsg('Enter a Google Sheet URL first.', 'error'); return; }
+  localStorage.setItem(SHEET_KEY, sheet);
+  window.open(sheet, '_blank');
 }
-document.querySelectorAll('.nav-group').forEach(function(g) {
-  if (g.querySelector('a.active')) {
-    g.classList.add('open');
-    var hdr = g.previousElementSibling;
-    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
-  }
-});
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); }
+
+renderNav('settings.html');
 </script>
 </body>
 </html>

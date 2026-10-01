@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAN Test &amp; Repair Demo - Test Record</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+  .panel { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .history-panel { position: sticky; top: 24px; }
+  .history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .history-head h2 { border: none; margin: 0; padding: 0; }
+  .sort-toggle { display: inline-flex; border: 1px solid #1a3a5c; border-radius: 6px; overflow: hidden; }
+  .sort-toggle button { padding: 6px 12px; border: none; background: white; font-size: 12px; font-weight: 600; color: #1a3a5c; cursor: pointer; white-space: nowrap; }
+  .sort-toggle button + button { border-left: 1px solid #1a3a5c; }
+  .sort-toggle button.active { background: #1a3a5c; color: white; }
+  .sort-toggle button:not(.active):hover { background: #eef2f7; }
+  .history-empty { text-align: center; color: #aaa; padding: 30px 12px; font-size: 14px; }
+  .history-summary { display: flex; gap: 10px; margin-bottom: 14px; }
+  .history-kpi { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 12px; text-align: center; }
+  .history-kpi .n { font-size: 24px; font-weight: 700; }
+  .history-kpi .l { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .hist-row { border-left: 4px solid #ccc; background: #f8f9fa; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  .hist-row.test-pass { background: #eaf7ee; border-left-color: #6cc389; }
+  .hist-row.test-fail { background: #fdeaec; border-left-color: #e08e97; }
+  .hist-row .top { display: flex; justify-content: space-between; align-items: center; }
+  .hist-row .tt { font-weight: 600; font-size: 13px; }
+  .hist-row .when { font-size: 11px; color: #888; font-family: Consolas, monospace; }
+  .hist-row .meta { font-size: 12px; color: #666; margin-top: 4px; }
+  .hist-row .txn { font-family: Consolas, monospace; font-size: 11px; color: #999; }
+  .panel h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 18px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .fld { margin-bottom: 16px; }
+  .fld label { font-size: 12px; font-weight: 600; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fld select, .fld input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; background: white; }
+  .fld select:focus, .fld input:focus { border-color: #1a3a5c; outline: none; }
+  .order-meta { background: #f8f9fa; border-radius: 6px; padding: 12px 14px; font-size: 13px; color: #555; margin-bottom: 16px; display: none; }
+  .order-meta.show { display: block; }
+  .order-meta span { font-family: Consolas, monospace; color: #1a3a5c; font-weight: 600; }
+
+  .result-toggle { display: flex; gap: 12px; }
+  .result-btn { flex: 1; padding: 16px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.15s; color: #888; }
+  .result-btn.pass.active { border-color: #28a745; background: #28a745; color: white; }
+  .result-btn.fail.active { border-color: #dc3545; background: #dc3545; color: white; }
+
+  .btn { padding: 13px 32px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; color: white; background: #1a3a5c; margin-top: 8px; }
+  .btn:hover { background: #244d73; }
+  .btn:disabled { background: #9fb3c8; cursor: not-allowed; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1a3a5c; color: white; text-align: left; padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #f8f9fa; }
+  .mono { font-family: Consolas, monospace; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; }
+
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .history-panel { position: static; } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>Test Record</h1><div class="header-sub">Record a test result against an order</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="layout">
+      <div class="left-col">
+        <div class="panel">
+          <h2>Record Test</h2>
+          <div class="fld"><label>PO Number (non-shipped orders)</label><select id="fPO" onchange="onPoChange()"><option value="">&mdash; Select a PO &mdash;</option></select></div>
+          <div class="order-meta" id="orderMeta"></div>
+          <div class="fld"><label>Test Type</label><select id="fTestType" onchange="updateConditionalFields()"><option value="">&mdash; Select a test type &mdash;</option></select></div>
+          <div class="fld">
+            <label>Result</label>
+            <div class="result-toggle">
+              <button type="button" class="result-btn pass" id="btnPass" onclick="setResult('PASS')">PASS</button>
+              <button type="button" class="result-btn fail" id="btnFail" onclick="setResult('FAIL')">FAIL</button>
+            </div>
+          </div>
+          <div id="failFields" style="display:none;">
+            <div class="fld"><label>Failure Code</label><input type="text" id="fFailureCode" placeholder="e.g. F-102"></div>
+            <div class="fld"><label>Failure</label><input type="text" id="fFailure" placeholder="Describe the failure"></div>
+          </div>
+          <div id="swVersionField" class="fld" style="display:none;"><label>Software Version</label><input type="text" id="fSoftwareVersion" placeholder="e.g. v4.7.1"></div>
+          <button class="btn" id="recordBtn" onclick="recordTest()">Record Test</button>
+        </div>
+
+        <div class="panel">
+          <h2>Recent Test Transactions</h2>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Transaction #</th><th>PO Number</th><th>Serial</th><th>Test Type</th><th>Result</th></tr></thead>
+              <tbody id="txnBody"><tr><td colspan="5" style="text-align:center;color:#aaa;">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="panel history-panel">
+          <div class="history-head">
+            <h2 id="historyTitle">Test History</h2>
+            <div class="sort-toggle">
+              <button type="button" id="sortNewest" onclick="setSort('newest')">Most Recent</button>
+              <button type="button" id="sortOldest" class="active" onclick="setSort('oldest')">Oldest First</button>
+            </div>
+          </div>
+          <div id="historyBody"><div class="history-empty">Select a PO to see its test history.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script src="nav.js"></script>
+<script>
+const URL_KEY = 'ran_tr_script_url';
+let scriptUrl = '', _jsonpCounter = 0;
+let orders = [], ordersByPo = {}, allTxns = [], selectedResult = '';
+let allTestTypes = [], partFlags = {}; // partFlags[PART] = { FUNCTIONAL:bool, BURN:bool, PROVISIONING:bool }
+let historySort = 'oldest'; // 'newest' or 'oldest'
+
+// Which part flag governs each test type. Types not listed are always allowed (e.g. VISUAL).
+const TYPE_FLAG = { FUNCTIONAL: 'Functional Test', BURN: 'Burn Test', PROVISIONING: 'Provisioning' };
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function esc(s) { return (s==null?'':String(s)).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadAll() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL &mdash; go to Settings'); document.getElementById('txnBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;">Not connected. Configure it in Settings.</td></tr>'; return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [ordersJson, typesJson, txnJson, partsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readorders' }),
+      jsonpRequest(scriptUrl, { action: 'readtesttypes' }),
+      jsonpRequest(scriptUrl, { action: 'readtransactions' }),
+      jsonpRequest(scriptUrl, { action: 'readpartnumbers' })
+    ]);
+    if (!ordersJson.success) throw new Error(ordersJson.error);
+    setStatus('connected', 'Connected');
+
+    orders = ordersJson.data || [];
+    allTxns = txnJson.success ? (txnJson.data || []) : [];
+    allTestTypes = typesJson.success ? (typesJson.data || []) : [];
+    buildPartFlags(partsJson.success ? (partsJson.data || []) : []);
+    populatePoDropdown();
+    renderTxns(allTxns);
+    onPoChange(); // refresh order meta + test-type options + history
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function populatePoDropdown() {
+  // Non-shipped orders that have a PO Number. Keep the first row per PO for meta display.
+  ordersByPo = {};
+  const nonShipped = orders.filter(o => (o['PO Number']||'').trim() && (o['Process']||'').trim() !== 'Shipped');
+  nonShipped.forEach(o => { const po = o['PO Number'].trim(); if (!ordersByPo[po]) ordersByPo[po] = o; });
+  const pos = Object.keys(ordersByPo).sort();
+  const sel = document.getElementById('fPO');
+  const prev = sel.value; // preserve selection across reload
+  sel.innerHTML = '<option value="">&mdash; Select a PO &mdash;</option>' + pos.map(po => '<option value="' + esc(po) + '">' + esc(po) + '</option>').join('');
+  if (prev && pos.indexOf(prev) !== -1) sel.value = prev;
+}
+
+function buildPartFlags(parts) {
+  partFlags = {};
+  parts.forEach(p => {
+    const pn = (p['Part Number']||'').trim();
+    if (!pn) return;
+    partFlags[pn] = {
+      FUNCTIONAL: (p['Functional Test']||'').trim().toLowerCase() === 'yes',
+      BURN: (p['Burn Test']||'').trim().toLowerCase() === 'yes',
+      PROVISIONING: (p['Provisioning']||'').trim().toLowerCase() === 'yes'
+    };
+  });
+}
+
+// True if the given part is allowed to run this test type.
+// Types without a flag (e.g. VISUAL) are always allowed. Unknown parts allow all.
+function testAllowed(part, testType) {
+  const flagKey = TYPE_FLAG[(testType||'').trim().toUpperCase()];
+  if (!flagKey) return true; // e.g. VISUAL
+  const flags = partFlags[(part||'').trim()];
+  if (!flags) return true; // unknown part -> don't block
+  return !!flags[(testType||'').trim().toUpperCase()];
+}
+
+// Rebuild the Test Type dropdown for the selected PO's part, disabling
+// (and labeling N/A) any test type the part is not configured for.
+function populateTestTypes() {
+  const sel = document.getElementById('fTestType');
+  const po = document.getElementById('fPO').value;
+  const part = (po && ordersByPo[po]) ? (ordersByPo[po]['Part Number']||'').trim() : '';
+  const prev = sel.value;
+
+  let html = '<option value="">&mdash; Select a test type &mdash;</option>';
+  allTestTypes.forEach(t => {
+    const allowed = testAllowed(part, t);
+    html += '<option value="' + esc(t) + '"' + (allowed ? '' : ' disabled') + '>' + esc(t) + (allowed ? '' : ' (N/A)') + '</option>';
+  });
+  sel.innerHTML = html;
+
+  // Preserve prior selection only if still allowed.
+  if (prev && testAllowed(part, prev)) sel.value = prev; else sel.value = '';
+}
+
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function onPoChange() {
+  const po = document.getElementById('fPO').value;
+  const meta = document.getElementById('orderMeta');
+  if (po && ordersByPo[po]) {
+    const o = ordersByPo[po];
+    meta.innerHTML = 'Part: <span>' + esc(o['Part Number']||'&mdash;') + '</span> &nbsp;&bull;&nbsp; Serial: <span>' + esc(o['Serial Number']||'&mdash;') + '</span> &nbsp;&bull;&nbsp; Process: <span>' + esc(o['Process']||'&mdash;') + '</span>';
+    meta.classList.add('show');
+  } else {
+    meta.classList.remove('show');
+  }
+  populateTestTypes(); // gate test types by the selected PO's part
+  updateConditionalFields();
+  renderHistory();
+}
+
+function setSort(order) {
+  historySort = order;
+  document.getElementById('sortNewest').classList.toggle('active', order === 'newest');
+  document.getElementById('sortOldest').classList.toggle('active', order === 'oldest');
+  renderHistory();
+}
+
+// Render the test history for the currently selected PO in the right panel.
+function renderHistory() {
+  const po = document.getElementById('fPO').value;
+  const title = document.getElementById('historyTitle');
+  const body = document.getElementById('historyBody');
+
+  if (!po) {
+    title.textContent = 'Test History';
+    body.innerHTML = '<div class="history-empty">Select a PO to see its test history.</div>';
+    return;
+  }
+
+  title.textContent = 'Test History \u2014 ' + po;
+  const rows = allTxns.filter(t => (t['PO Number']||'').trim() === po);
+  // Sort by Timestamp per the toggle (newest or oldest first).
+  const dir = historySort === 'oldest' ? 1 : -1;
+  rows.sort((a, b) => dir * (new Date(a['Timestamp']||0) - new Date(b['Timestamp']||0)));
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="history-empty">No tests recorded for this PO yet.</div>';
+    return;
+  }
+
+  const passes = rows.filter(t => (t['Test Result']||'').trim().toUpperCase() === 'PASS').length;
+  const fails = rows.filter(t => (t['Test Result']||'').trim().toUpperCase() === 'FAIL').length;
+
+  let html = '<div class="history-summary">'
+    + '<div class="history-kpi"><div class="n" style="color:#1a3a5c;">' + rows.length + '</div><div class="l">Tests</div></div>'
+    + '<div class="history-kpi"><div class="n" style="color:#28a745;">' + passes + '</div><div class="l">Pass</div></div>'
+    + '<div class="history-kpi"><div class="n" style="color:#dc3545;">' + fails + '</div><div class="l">Fail</div></div>'
+    + '</div>';
+
+  rows.forEach(t => {
+    const result = (t['Test Result']||'').trim().toUpperCase();
+    const resultColor = result === 'PASS' ? '#28a745' : result === 'FAIL' ? '#dc3545' : '#666';
+    const rowCls = result === 'FAIL' ? 'test-fail' : 'test-pass';
+    const failInfo = (result === 'FAIL' && (t['Failure Code'] || t['Failure']))
+      ? '<div class="meta">Failure: ' + esc([t['Failure Code'], t['Failure']].filter(Boolean).join(' \u2014 ')) + '</div>' : '';
+    const swInfo = t['Software Version']
+      ? '<div class="meta">SW: ' + esc(t['Software Version']) + '</div>' : '';
+    html += '<div class="hist-row ' + rowCls + '">'
+      + '<div class="top"><span class="tt">' + esc(t['Test Type']||'&mdash;') + ' \u2014 <span style="color:' + resultColor + ';">' + esc(result||'&mdash;') + '</span></span><span class="when">' + fmtDate(t['Timestamp']) + '</span></div>'
+      + failInfo + swInfo
+      + '<div class="txn">' + esc(t['Transaction #']||'') + '</div>'
+      + '</div>';
+  });
+  body.innerHTML = html;
+}
+
+function setResult(r) {
+  selectedResult = r;
+  document.getElementById('btnPass').classList.toggle('active', r === 'PASS');
+  document.getElementById('btnFail').classList.toggle('active', r === 'FAIL');
+  updateConditionalFields();
+}
+
+// Show failure fields on FAIL, and the Software Version field only for a
+// passing PROVISIONING test. Clears hidden fields so stale values aren't sent.
+function updateConditionalFields() {
+  const testType = (document.getElementById('fTestType').value || '').toUpperCase();
+
+  const showFail = (selectedResult === 'FAIL');
+  document.getElementById('failFields').style.display = showFail ? 'block' : 'none';
+  if (!showFail) {
+    document.getElementById('fFailureCode').value = '';
+    document.getElementById('fFailure').value = '';
+  }
+
+  const showSw = (testType === 'PROVISIONING' && selectedResult === 'PASS');
+  document.getElementById('swVersionField').style.display = showSw ? 'block' : 'none';
+  if (!showSw) document.getElementById('fSoftwareVersion').value = '';
+}
+
+function renderTxns(txns) {
+  const recent = txns.slice(-10).reverse();
+  if (!recent.length) { document.getElementById('txnBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;">No test transactions yet.</td></tr>'; return; }
+  document.getElementById('txnBody').innerHTML = recent.map(t => {
+    const result = (t['Test Result']||'').trim().toUpperCase();
+    const color = result === 'PASS' ? '#28a745' : result === 'FAIL' ? '#dc3545' : '#6c757d';
+    return '<tr>'
+      + '<td class="mono">' + esc(t['Transaction #']||'') + '</td>'
+      + '<td class="mono">' + esc(t['PO Number']||'') + '</td>'
+      + '<td class="mono">' + esc(t['Serial Number']||'') + '</td>'
+      + '<td>' + esc(t['Test Type']||'') + '</td>'
+      + '<td><span class="badge" style="background:' + color + ';">' + esc(result||'&mdash;') + '</span></td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function recordTest() {
+  const po = document.getElementById('fPO').value;
+  const testtype = document.getElementById('fTestType').value;
+  if (!po) { showToast('Select a PO Number', 'error'); return; }
+  if (!testtype) { showToast('Select a test type', 'error'); return; }
+  const part = (ordersByPo[po] || {})['Part Number'] || '';
+  if (!testAllowed(part, testtype)) { showToast(testtype + ' is not applicable for this part', 'error'); return; }
+  if (!selectedResult) { showToast('Select Pass or Fail', 'error'); return; }
+  if (!scriptUrl) { showToast('Not connected. Go to Settings.', 'error'); return; }
+
+  const failurecode = selectedResult === 'FAIL' ? document.getElementById('fFailureCode').value.trim() : '';
+  const failure = selectedResult === 'FAIL' ? document.getElementById('fFailure').value.trim() : '';
+  const isProvisioningPass = (testtype.toUpperCase() === 'PROVISIONING' && selectedResult === 'PASS');
+  const softwareversion = isProvisioningPass ? document.getElementById('fSoftwareVersion').value.trim() : '';
+
+  if (isProvisioningPass && !softwareversion) { showToast('Software Version is required for a passing Provisioning test', 'error'); return; }
+
+  const o = ordersByPo[po] || {};
+  const btn = document.getElementById('recordBtn');
+  btn.disabled = true; btn.textContent = 'Recording...';
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'addtransaction',
+      ponumber: po,
+      partnumber: o['Part Number'] || '',
+      serialnumber: o['Serial Number'] || '',
+      testtype: testtype,
+      testresult: selectedResult,
+      failurecode: failurecode,
+      failure: failure,
+      softwareversion: softwareversion
+    });
+    if (json.success) {
+      showToast('Test recorded: ' + (json.transaction || ''), 'success');
+      setResult('');
+      loadAll();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Record Test';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+renderNav('test-record.html');
+loadAll();
+</script>
+</body>
+</html>

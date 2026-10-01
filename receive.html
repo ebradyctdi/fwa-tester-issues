@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAN Test &amp; Repair Demo - Receive</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 620px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .panel { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .panel h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 6px; }
+  .panel .hint { font-size: 12px; color: #888; margin-bottom: 18px; }
+  .fld { margin-bottom: 16px; }
+  .fld label { font-size: 12px; font-weight: 600; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fld input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; font-family: Consolas, monospace; }
+  .fld input:focus { border-color: #1a3a5c; outline: none; }
+  .process-chip { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; color: white; background: #6c757d; letter-spacing: 0.5px; }
+  .btn { padding: 13px 32px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; color: white; background: #28a745; }
+  .btn:hover { background: #218838; }
+  .btn:disabled { background: #9bd0aa; cursor: not-allowed; }
+
+  .recent { font-size: 13px; }
+  .recent-item { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 6px; background: #f8f9fa; margin-bottom: 6px; }
+  .recent-item .mono { font-family: Consolas, monospace; font-weight: 600; }
+  .recent-item .when { color: #888; font-size: 12px; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>Receive</h1><div class="header-sub">Record an incoming order</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="panel">
+      <h2>Receive Order</h2>
+      <div class="hint">New orders start at process <span class="process-chip">CNS-WIP</span></div>
+      <div class="fld"><label>PO Number</label><input type="text" id="fPO" placeholder="e.g. 8000123456" maxlength="10" inputmode="numeric" autofocus></div>
+      <div class="fld"><label>Part Number</label><select id="fPart" style="width:100%;padding:12px 14px;border:2px solid #ddd;border-radius:6px;font-size:15px;font-family:Consolas,monospace;background:white;"><option value="">&mdash; Select a part number &mdash;</option></select></div>
+      <div class="fld"><label>Serial Number</label><input type="text" id="fSerial" placeholder="e.g. SN12345"></div>
+      <button class="btn" id="receiveBtn" onclick="receiveOrder()">Receive Order</button>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-bottom:14px;">Recently Received</h2>
+      <div class="recent" id="recentWrap"><div style="color:#aaa;">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script src="nav.js"></script>
+<script>
+const URL_KEY = 'ran_tr_script_url';
+let scriptUrl = '', _jsonpCounter = 0, allOrders = [];
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function esc(s) { return (s==null?'':String(s)).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadRecent() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL &mdash; go to Settings'); document.getElementById('recentWrap').innerHTML = '<div style="color:#aaa;">Not connected.</div>'; return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [ordersJson, partsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readorders' }),
+      jsonpRequest(scriptUrl, { action: 'readpartnumbers' })
+    ]);
+    if (!ordersJson.success) throw new Error(ordersJson.error);
+    setStatus('connected', 'Connected');
+
+    populateParts(partsJson.success ? (partsJson.data || []) : []);
+
+    allOrders = ordersJson.data || [];
+    const recent = allOrders.slice().sort((a,b) => new Date(b['Receive Date']||0) - new Date(a['Receive Date']||0)).slice(0, 8);
+    if (!recent.length) { document.getElementById('recentWrap').innerHTML = '<div style="color:#aaa;">No orders yet.</div>'; return; }
+    document.getElementById('recentWrap').innerHTML = recent.map(o =>
+      '<div class="recent-item"><span><span class="mono">' + esc(o['PO Number']||'&mdash;') + '</span> &nbsp;<span style="color:#666;">' + esc(o['Serial Number']||'') + '</span></span><span class="when">' + fmtDate(o['Receive Date']) + '</span></div>'
+    ).join('');
+  } catch(err) { setStatus('disconnected', 'Connection failed'); document.getElementById('recentWrap').innerHTML = '<div style="color:#aaa;">Could not load.</div>'; }
+}
+
+function populateParts(parts) {
+  const sel = document.getElementById('fPart');
+  const prev = sel.value;
+  const nums = parts.map(p => (p['Part Number']||'').trim()).filter(Boolean).sort();
+  sel.innerHTML = '<option value="">&mdash; Select a part number &mdash;</option>' + nums.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  if (prev && nums.indexOf(prev) !== -1) sel.value = prev;
+}
+
+const PO_REGEX = /^8000\d{6}$/; // begins with 8000, 10 digits, all numeric
+
+async function receiveOrder() {
+  const ponumber = document.getElementById('fPO').value.trim();
+  const partnumber = document.getElementById('fPart').value.trim();
+  const serialnumber = document.getElementById('fSerial').value.trim();
+
+  if (!ponumber) { showToast('PO Number is required', 'error'); return; }
+  if (!PO_REGEX.test(ponumber)) { showToast('PO Number must be 10 digits starting with 8000 (e.g. 8000123456)', 'error'); return; }
+  if (allOrders.some(o => (o['PO Number']||'').toString().trim() === ponumber)) { showToast('PO ' + ponumber + ' has already been received', 'error'); return; }
+  if (!scriptUrl) { showToast('Not connected. Go to Settings.', 'error'); return; }
+
+  const btn = document.getElementById('receiveBtn');
+  btn.disabled = true; btn.textContent = 'Receiving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'addorder', ponumber, partnumber, serialnumber, process: 'CNS-WIP' });
+    if (json.success) {
+      showToast('Order received: ' + (ponumber || serialnumber), 'success');
+      document.getElementById('fPO').value = '';
+      document.getElementById('fPart').value = '';
+      document.getElementById('fSerial').value = '';
+      document.getElementById('fPO').focus();
+      loadRecent();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Receive Order';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+// Enter key on any field submits.
+['fPO','fPart','fSerial'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') receiveOrder(); });
+});
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+renderNav('receive.html');
+loadRecent();
+</script>
+</body>
+</html>

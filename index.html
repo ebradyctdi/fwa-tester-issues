@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FWA - Overview</title>
+<title>RAN Test &amp; Repair Demo - Overview</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -17,7 +17,7 @@
   .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
   .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
-  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
   .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
   .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
@@ -40,39 +40,19 @@
   .kpi-val { font-size: 32px; font-weight: 700; }
   .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
-  .type-row { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 14px; }
-  .type-row-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .type-row-label { font-size: 14px; font-weight: 700; color: white; padding: 4px 14px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .type-row-count { font-size: 12px; color: #888; }
-  .tester-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+  .panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .panel h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
 
-  .tester-cell { width: 70px; height: 70px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; font-size: 13px; font-weight: 700; font-family: Consolas, monospace; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-  .tester-cell:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-  .tester-cell.green { background: #28a745; }
-  .tester-cell.red { background: #dc3545; animation: pulse-red 2s infinite; }
-  @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+  .stage-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stage-card { flex: 1; min-width: 150px; background: #f8f9fa; border-radius: 8px; padding: 16px; border-left: 4px solid #4a90d9; }
+  .stage-card .stage-name { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stage-card .stage-count { font-size: 28px; font-weight: 700; color: #1a3a5c; margin-top: 4px; }
 
-  /* Modal */
-  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
-  .modal-overlay.show { display: flex; }
-  .modal { background: white; border-radius: 12px; max-width: 520px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
-  .modal-header { padding: 16px 24px; color: white; }
-  .modal-header h3 { font-size: 16px; }
-  .modal-header .modal-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
-  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
-  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; text-align: right; }
-  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
-
-  .issue-item { padding: 12px 16px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid; }
-  .issue-item.open { background: #fff5f5; border-color: #dc3545; }
-  .issue-item.resolved { background: #f0fff0; border-color: #28a745; }
-  .issue-item .issue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .issue-item .issue-severity { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
-  .issue-item .issue-date { font-size: 11px; color: #888; font-family: Consolas, monospace; }
-  .issue-item .issue-desc { font-size: 13px; color: #333; margin-top: 4px; line-height: 1.4; }
-  .issue-item .issue-reporter { font-size: 11px; color: #888; margin-top: 4px; }
-
-  .no-issues { text-align: center; padding: 20px; color: #28a745; font-size: 14px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1a3a5c; color: white; text-align: left; padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #f8f9fa; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; }
 
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 768px) {
@@ -85,107 +65,61 @@
     .header h1 { font-size: 16px; }
     .container { padding: 16px; }
     .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
-    .tester-cell { width: 56px; height: 56px; font-size: 11px; }
   }
   @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
 </style>
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
-  <div class="sidebar-nav">
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
-    <div class="nav-group">
-    <a href="index.html" class="active"><span class="icon">🏠</span> Overview</a>
-    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
-    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
-    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Product/Device Issues</div>
-    <div class="nav-group">
-    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
-    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
-    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
-    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
-    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
-    <div class="nav-group">
-    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
-    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
-    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
-    <div class="nav-group">
-    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
-    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
-    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
-    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
-    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
-    <div class="nav-group">
-    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
-    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
-    </div>
-    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
-    <div class="nav-group">
-    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
-    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
-    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
-    </div>
-  </div>
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
 </nav>
 <div class="main-wrap">
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
-    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>FWA Tester Issues</h1><div class="header-sub">CTDI — Tester Status Overview</div></div>
+    <div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>RAN Test &amp; Repair Demo</h1><div class="header-sub">CTDI &mdash; Test &amp; Repair Revamp Demo</div></div>
     <div class="header-right">
       <span class="status-dot disconnected" id="statusDot"></span>
       <span class="status-label" id="statusLabel">Not connected</span>
     </div>
   </div>
   <div class="container">
-    <!-- KPIs -->
-    <div class="kpi-row" style="grid-template-columns: repeat(3, 1fr);">
-      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiHealthy">—</div><div class="kpi-label">Healthy</div></div>
-      <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiWithIssues">—</div><div class="kpi-label">With Issues</div></div>
-      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-label">Total Testers</div></div>
+    <div class="kpi-row">
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">&mdash;</div><div class="kpi-label">Total Orders</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiInProgress">&mdash;</div><div class="kpi-label">In Process</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiShipped">&mdash;</div><div class="kpi-label">Shipped</div></div>
+      <div class="kpi" style="border-top:4px solid #17a2b8;"><div class="kpi-val" id="kpiReceivedToday">&mdash;</div><div class="kpi-label">Received Today</div></div>
     </div>
 
-    <!-- TESTER ROWS -->
-    <div id="testerRows">
-      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#0d6efd;">Functional</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
-      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#fd7e14;">RF</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
-      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#6f42c1;">Firmware</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
-      <div class="type-row"><div class="type-row-header"><span class="type-row-label" style="background:#17a2b8;">CIC</span></div><div class="tester-grid" style="color:#aaa;font-size:13px;">Loading...</div></div>
+    <div class="panel">
+      <h2>Orders by Process</h2>
+      <div class="stage-row" id="stageRow">
+        <div class="stage-card"><div class="stage-name">Loading...</div><div class="stage-count">&mdash;</div></div>
+      </div>
     </div>
-  </div>
-</div>
 
-<!-- DETAIL MODAL -->
-<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-header" id="modalHeader" style="background:#1a3a5c;">
-      <h3 id="modalTitle">Tester Details</h3>
-      <div class="modal-sub" id="modalSub"></div>
+    <div class="panel">
+      <h2>Recent Orders</h2>
+      <div id="recentWrap" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>PO Number</th><th>Part Number</th><th>Serial Number</th><th>Process</th><th>Repair Code</th><th>Received</th></tr></thead>
+          <tbody id="recentBody"><tr><td colspan="6" style="text-align:center;color:#aaa;">Loading...</td></tr></tbody>
+        </table>
+      </div>
     </div>
-    <div class="modal-body" id="modalBody"></div>
-    <div class="modal-footer"><button onclick="closeModal()">Close</button></div>
   </div>
 </div>
 
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
-</body>
-</html>
 
+<script src="nav.js"></script>
 <script>
-const URL_KEY = 'fwa_script_url';
-let scriptUrl = '', allTesters = [], allIssues = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec'; } catch(e) {}
+const URL_KEY = 'ran_tr_script_url';
+let scriptUrl = '', allOrders = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
 
-const typeOrder = ['Functional', 'RF', 'Firmware', 'CIC'];
-const typeColors = { 'Functional': '#0d6efd', 'RF': '#fd7e14', 'Firmware': '#6f42c1', 'CIC': '#17a2b8' };
+const PROCESS_ORDER = ['CNS-WIP', 'Diagnostics', 'Repair', 'Retest', 'QA', 'Shipped'];
+const PROCESS_COLORS = { 'CNS-WIP':'#6c757d', 'Diagnostics':'#0d6efd', 'Repair':'#fd7e14', 'Retest':'#6f42c1', 'QA':'#17a2b8', 'Shipped':'#28a745' };
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -208,209 +142,88 @@ function setStatus(state, label) {
 }
 
 function fmtDate(str) {
-  if (!str) return '—';
+  if (!str) return '';
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function getIssuesForTester(testerID) {
-  return allIssues.filter(i => (i['Tester ID']||'').trim() === testerID);
-}
-
-function getOpenIssuesForTester(testerID) {
-  return allIssues.filter(i => (i['Tester ID']||'').trim() === testerID && (i['Status']||'').trim() !== 'Resolved');
+function isToday(str) {
+  if (!str) return false;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
 async function loadData() {
-  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  if (!scriptUrl) { setStatus('disconnected', 'No URL &mdash; go to Settings'); renderEmpty(); return; }
   setStatus('pending', 'Loading...');
   try {
-    const [testersJson, issuesJson] = await Promise.all([
-      jsonpRequest(scriptUrl, { action: 'readtesters' }),
-      jsonpRequest(scriptUrl, {})
-    ]);
-    if (testersJson.success) {
+    const json = await jsonpRequest(scriptUrl, { action: 'readorders' });
+    if (json.success) {
       setStatus('connected', 'Connected');
-      allTesters = testersJson.data || [];
-    } else { throw new Error(testersJson.error); }
-    if (issuesJson.success) {
-      allIssues = issuesJson.data || [];
-    }
-    renderKPIs();
-    renderRows();
-  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+      allOrders = json.data || [];
+      renderKPIs();
+      renderProcesses();
+      renderRecent();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); renderEmpty(); }
+}
+
+function renderEmpty() {
+  document.getElementById('kpiTotal').textContent = '0';
+  document.getElementById('kpiInProgress').textContent = '0';
+  document.getElementById('kpiShipped').textContent = '0';
+  document.getElementById('kpiReceivedToday').textContent = '0';
+  document.getElementById('stageRow').innerHTML = '<div class="stage-card"><div class="stage-name">No data</div><div class="stage-count">0</div></div>';
+  document.getElementById('recentBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;">No orders. Configure the connection in Settings.</td></tr>';
 }
 
 function renderKPIs() {
-  const activeTesters = allTesters.filter(t => (t['Status']||'').trim() === 'Active');
-  const testersWithIssues = new Set();
-  allIssues.forEach(i => { if ((i['Status']||'').trim() !== 'Resolved') testersWithIssues.add((i['Tester ID']||'').trim()); });
-  const healthy = activeTesters.filter(t => !testersWithIssues.has((t['Tester ID']||'').trim())).length;
-  const withIssues = activeTesters.filter(t => testersWithIssues.has((t['Tester ID']||'').trim())).length;
-
-  document.getElementById('kpiHealthy').textContent = healthy;
-  document.getElementById('kpiWithIssues').textContent = withIssues;
-  document.getElementById('kpiTotal').textContent = activeTesters.length;
+  const total = allOrders.length;
+  const shipped = allOrders.filter(o => (o['Process']||'').trim() === 'Shipped').length;
+  const inProcess = total - shipped;
+  const receivedToday = allOrders.filter(o => isToday(o['Receive Date'])).length;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiInProgress').textContent = inProcess;
+  document.getElementById('kpiShipped').textContent = shipped;
+  document.getElementById('kpiReceivedToday').textContent = receivedToday;
 }
 
-function renderRows() {
-  const container = document.getElementById('testerRows');
+function renderProcesses() {
   let html = '';
-
-  typeOrder.forEach(type => {
-    const color = typeColors[type] || '#6c757d';
-    const testers = allTesters.filter(t => (t['Tester Type']||'').trim() === type && (t['Status']||'').trim() === 'Active');
-
-    html += '<div class="type-row">';
-    html += '<div class="type-row-header"><span class="type-row-label" style="background:' + color + ';">' + type + '</span><span class="type-row-count">' + testers.length + ' testers</span></div>';
-    html += '<div class="tester-grid">';
-
-    if (!testers.length) {
-      html += '<span style="color:#aaa;font-size:13px;">No active testers</span>';
-    } else {
-      testers.forEach(t => {
-        const id = (t['Tester ID']||'').trim();
-        const openIssues = getOpenIssuesForTester(id);
-        const hasIssue = openIssues.length > 0;
-        const cls = hasIssue ? 'red' : 'green';
-        html += '<div class="tester-cell ' + cls + '" onclick="showDetail(\'' + id.replace(/'/g,"\\'") + '\',\'' + type.replace(/'/g,"\\'") + '\')" title="' + id + (hasIssue ? ' — ' + openIssues.length + ' open issue(s)' : ' — No issues') + '">' + id + '</div>';
-      });
-    }
-
-    html += '</div></div>';
+  PROCESS_ORDER.forEach(process => {
+    const count = allOrders.filter(o => (o['Process']||'').trim() === process).length;
+    const color = PROCESS_COLORS[process] || '#4a90d9';
+    html += '<div class="stage-card" style="border-left-color:' + color + ';"><div class="stage-name">' + process + '</div><div class="stage-count">' + count + '</div></div>';
   });
-
-  container.innerHTML = html;
+  document.getElementById('stageRow').innerHTML = html;
 }
 
-let selectedDetailTester = null, selectedDetailType = '';
-
-function showDetail(testerID, testerType) {
-  selectedDetailTester = testerID;
-  selectedDetailType = testerType;
-  const openIssues = getOpenIssuesForTester(testerID);
-  const allTesterIssues = getIssuesForTester(testerID);
-  const hasOpen = openIssues.length > 0;
-
-  document.getElementById('modalTitle').textContent = testerID;
-  document.getElementById('modalSub').textContent = testerType;
-  document.getElementById('modalHeader').style.background = hasOpen ? '#dc3545' : '#28a745';
-
-  let bodyHtml = '';
-
-  // Active issues with resolve buttons
-  if (hasOpen) {
-    bodyHtml += '<div style="font-size:12px;font-weight:600;color:#dc3545;text-transform:uppercase;margin-bottom:10px;">Active Issues (' + openIssues.length + ')</div>';
-    openIssues.forEach((i, idx) => {
-      const sevColors = { 'Critical':'#dc3545', 'Major':'#fd7e14', 'Minor':'#17a2b8' };
-      const rowIdx = allIssues.indexOf(i);
-      bodyHtml += '<div class="issue-item open">'
-        + '<div class="issue-header"><span class="issue-severity" style="background:' + (sevColors[i['Severity']]||'#888') + ';color:white;">' + (i['Severity']||'—') + '</span><span class="issue-date">' + fmtDate(i['Time of Issue']) + '</span></div>'
-        + '<div class="issue-desc">' + (i['Issue Note']||'—').replace(/</g,'&lt;') + '</div>'
-        + '<div class="issue-reporter">Reported by: ' + (i['Reported By']||'—') + '</div>'
-        + '<div id="resolveForm_' + rowIdx + '" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f0c0c0;">'
-        + '<input type="text" id="resolveBy_' + rowIdx + '" placeholder="Resolved by..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;">'
-        + '<textarea id="resolveNote_' + rowIdx + '" placeholder="Resolution note..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:50px;margin-bottom:6px;"></textarea>'
-        + '<div style="display:flex;gap:8px;"><button onclick="doResolve(' + rowIdx + ')" style="padding:6px 16px;background:#28a745;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Confirm Resolve</button><button onclick="document.getElementById(\'resolveForm_' + rowIdx + '\').style.display=\'none\'" style="padding:6px 12px;background:#e9ecef;color:#333;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Cancel</button></div>'
-        + '</div>'
-        + '<button onclick="document.getElementById(\'resolveForm_' + rowIdx + '\').style.display=\'block\'" style="margin-top:8px;padding:5px 14px;background:#28a745;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Resolve</button>'
-        + '</div>';
-    });
-  } else {
-    bodyHtml += '<div class="no-issues">No active issues</div>';
+function renderRecent() {
+  const sorted = allOrders.slice().sort((a,b) => new Date(b['Receive Date']||0) - new Date(a['Receive Date']||0)).slice(0, 10);
+  if (!sorted.length) {
+    document.getElementById('recentBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;">No orders yet.</td></tr>';
+    return;
   }
-
-  // Log new issue form
-  bodyHtml += '<div style="margin-top:20px;padding-top:16px;border-top:2px solid #1a3a5c;">'
-    + '<div style="font-size:12px;font-weight:600;color:#1a3a5c;text-transform:uppercase;margin-bottom:10px;">Log New Issue</div>'
-    + '<input type="text" id="logReportedBy" placeholder="Reported by..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;">'
-    + '<select id="logSeverity" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;margin-bottom:6px;background:white;"><option value="">— Severity —</option><option value="Critical">Critical</option><option value="Major">Major</option><option value="Minor">Minor</option></select>'
-    + '<textarea id="logDescription" placeholder="Describe the issue..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:60px;margin-bottom:6px;"></textarea>'
-    + '<button onclick="doLogIssue()" id="logIssueBtn" style="padding:8px 20px;background:#dc3545;color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Report Issue</button>'
-    + '</div>';
-
-  // Recent resolved
-  const resolved = allTesterIssues.filter(i => (i['Status']||'').trim() === 'Resolved').sort((a, b) => new Date(b['Time of Resolution']||0) - new Date(a['Time of Resolution']||0)).slice(0, 5);
-  if (resolved.length) {
-    bodyHtml += '<div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;margin-top:20px;margin-bottom:10px;padding-top:12px;border-top:1px solid #eee;">Recent Resolved (' + resolved.length + ')</div>';
-    resolved.forEach(i => {
-      bodyHtml += '<div class="issue-item resolved">'
-        + '<div class="issue-header"><span class="issue-severity" style="background:#28a745;color:white;">Resolved</span><span class="issue-date">' + fmtDate(i['Time of Resolution']) + '</span></div>'
-        + '<div class="issue-desc">' + (i['Issue Note']||'—').replace(/</g,'&lt;') + '</div>'
-        + '<div class="issue-reporter">Reported by: ' + (i['Reported By']||'—') + ' | Started: ' + fmtDate(i['Time of Issue']) + '</div>'
-        + '</div>';
-    });
-  } else if (!hasOpen) {
-    bodyHtml += '<div style="text-align:center;padding:12px;color:#aaa;font-size:13px;">No issue history for this tester.</div>';
-  }
-
-  document.getElementById('modalBody').innerHTML = bodyHtml;
-  document.getElementById('detailModal').classList.add('show');
+  let html = '';
+  sorted.forEach(o => {
+    const process = (o['Process']||'').trim();
+    const processColor = PROCESS_COLORS[process] || '#6c757d';
+    html += '<tr>'
+      + '<td style="font-family:Consolas,monospace;font-weight:600;">' + esc(o['PO Number']||'') + '</td>'
+      + '<td>' + esc(o['Part Number']||'') + '</td>'
+      + '<td style="font-family:Consolas,monospace;">' + esc(o['Serial Number']||'') + '</td>'
+      + '<td><span class="badge" style="background:' + processColor + ';">' + esc(process||'&mdash;') + '</span></td>'
+      + '<td style="color:#666;">' + esc(o['Repair Code']||'') + '</td>'
+      + '<td style="color:#888;font-size:12px;">' + fmtDate(o['Receive Date']) + '</td>'
+      + '</tr>';
+  });
+  document.getElementById('recentBody').innerHTML = html;
 }
 
-async function doLogIssue() {
-  const reportedBy = document.getElementById('logReportedBy').value.trim();
-  const severity = document.getElementById('logSeverity').value;
-  const description = document.getElementById('logDescription').value.trim();
-
-  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
-  if (!severity) { showToast('Select a severity', 'error'); return; }
-  if (!description) { showToast('Description is required', 'error'); return; }
-
-  const btn = document.getElementById('logIssueBtn');
-  btn.disabled = true; btn.textContent = 'Submitting...';
-
-  const now = new Date();
-  const issueStart = (now.getMonth()+1) + '/' + now.getDate() + '/' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
-
-  try {
-    const json = await jsonpRequest(scriptUrl, {
-      action: 'logissue',
-      reportedby: reportedBy,
-      testertype: selectedDetailType,
-      testerid: selectedDetailTester,
-      severity: severity,
-      type: '',
-      description: description,
-      issuestart: issueStart
-    });
-    if (json.success) {
-      showToast('Issue logged for ' + selectedDetailTester, 'success');
-      closeModal();
-      loadData();
-    } else { showToast(json.error || 'Failed', 'error'); }
-  } catch(err) { showToast('Error: ' + err.message, 'error'); }
-  btn.disabled = false; btn.textContent = 'Report Issue';
-}
-
-async function doResolve(rowIdx) {
-  const resolvedBy = document.getElementById('resolveBy_' + rowIdx).value.trim();
-  const resolution = document.getElementById('resolveNote_' + rowIdx).value.trim();
-
-  if (!resolvedBy) { showToast('Resolved By is required', 'error'); return; }
-  if (!resolution) { showToast('Resolution note is required', 'error'); return; }
-
-  const now = new Date();
-  const issueStop = (now.getMonth()+1) + '/' + now.getDate() + '/' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
-
-  try {
-    const json = await jsonpRequest(scriptUrl, {
-      action: 'resolveissue',
-      row: rowIdx,
-      resolvedby: resolvedBy,
-      resolution: resolution,
-      issuestop: issueStop
-    });
-    if (json.success) {
-      showToast('Issue resolved', 'success');
-      closeModal();
-      loadData();
-    } else { showToast(json.error || 'Failed', 'error'); }
-  } catch(err) { showToast('Error: ' + err.message, 'error'); }
-}
-
-function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
+function esc(s) { return (s==null?'':String(s)).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function showToast(msg, type) {
   const t = document.getElementById('toast'); t.textContent = msg;
@@ -422,21 +235,7 @@ function showToast(msg, type) {
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 
-function toggleNavGroup(el) {
-  var group = el.nextElementSibling;
-  if (group && group.classList.contains('nav-group')) {
-    group.classList.toggle('open');
-    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
-  }
-}
-document.querySelectorAll('.nav-group').forEach(function(g) {
-  if (g.querySelector('a.active')) {
-    g.classList.add('open');
-    var hdr = g.previousElementSibling;
-    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
-  }
-});
-
+renderNav('index.html');
 loadData();
 </script>
 </body>

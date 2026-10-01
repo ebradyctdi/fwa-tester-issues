@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAN Test &amp; Repair Demo - Ship</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #4a90d9; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 700px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .panel { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .panel h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 18px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .fld { margin-bottom: 16px; }
+  .fld label { font-size: 12px; font-weight: 600; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .fld select { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; background: white; }
+  .fld select:focus { border-color: #1a3a5c; outline: none; }
+
+  .order-card { background: #f8f9fa; border-radius: 8px; padding: 16px 18px; margin-bottom: 18px; display: none; }
+  .order-card.show { display: block; }
+  .order-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #eee; }
+  .order-card .row:last-child { border-bottom: none; }
+  .order-card .k { color: #888; }
+  .order-card .v { font-family: Consolas, monospace; font-weight: 600; color: #1a3a5c; }
+  .process-chip { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; color: white; }
+
+  .btn { padding: 14px 32px; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer; color: white; background: #28a745; width: 100%; }
+  .btn:hover { background: #218838; }
+  .btn:disabled { background: #b5b5b5; cursor: not-allowed; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1a3a5c; color: white; text-align: left; padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #f8f9fa; }
+  .mono { font-family: Consolas, monospace; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; background: #28a745; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">RAN Test &amp; Repair</div></div>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><h1>Ship</h1><div class="header-sub">Ship out a PO</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="panel">
+      <h2>Ship Order</h2>
+      <div class="fld"><label>PO Number (non-shipped orders)</label><select id="fPO" onchange="onPoChange()"><option value="">&mdash; Select a PO &mdash;</option></select></div>
+      <div class="order-card" id="orderCard"></div>
+      <div id="shipWarn" style="display:none;background:#fdeaec;border:1px solid #f5c2c7;color:#842029;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:16px;"></div>
+      <button class="btn" id="shipBtn" onclick="shipOrder()" disabled>Ship Order</button>
+    </div>
+
+    <div class="panel">
+      <h2>Recently Shipped</h2>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>PO Number</th><th>Part Number</th><th>Serial</th><th>Ship Date</th></tr></thead>
+          <tbody id="shippedBody"><tr><td colspan="4" style="text-align:center;color:#aaa;">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<script src="nav.js"></script>
+<script>
+const URL_KEY = 'ran_tr_script_url';
+let scriptUrl = '', _jsonpCounter = 0;
+let orders = [], poToIndex = {};
+try { scriptUrl = localStorage.getItem(URL_KEY) || ''; } catch(e) {}
+
+const PROCESS_COLORS = { 'CNS-WIP':'#6c757d', 'Diagnostics':'#0d6efd', 'Repair':'#fd7e14', 'Retest':'#6f42c1', 'QA':'#17a2b8', 'Shipped':'#28a745' };
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function esc(s) { return (s==null?'':String(s)).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadAll() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL &mdash; go to Settings'); document.getElementById('shippedBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#aaa;">Not connected. Configure it in Settings.</td></tr>'; return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readorders' });
+    if (!json.success) throw new Error(json.error);
+    setStatus('connected', 'Connected');
+    orders = json.data || [];
+    populatePoDropdown();
+    renderShipped();
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function populatePoDropdown() {
+  // Map each non-shipped PO to its row index in the orders array (first match wins).
+  poToIndex = {};
+  orders.forEach((o, i) => {
+    const po = (o['PO Number']||'').trim();
+    if (po && (o['Process']||'').trim() !== 'Shipped' && !(po in poToIndex)) poToIndex[po] = i;
+  });
+  const pos = Object.keys(poToIndex).sort();
+  const sel = document.getElementById('fPO');
+  sel.innerHTML = '<option value="">&mdash; Select a PO &mdash;</option>' + pos.map(po => '<option value="' + esc(po) + '">' + esc(po) + '</option>').join('');
+  onPoChange();
+}
+
+function onPoChange() {
+  const po = document.getElementById('fPO').value;
+  const card = document.getElementById('orderCard');
+  const warn = document.getElementById('shipWarn');
+  const btn = document.getElementById('shipBtn');
+  if (po && (po in poToIndex)) {
+    const o = orders[poToIndex[po]];
+    const process = (o['Process']||'').trim();
+    const color = PROCESS_COLORS[process] || '#6c757d';
+    const repairCode = (o['Repair Code']||'').trim();
+    card.innerHTML =
+      '<div class="row"><span class="k">PO Number</span><span class="v">' + esc(o['PO Number']||'&mdash;') + '</span></div>'
+      + '<div class="row"><span class="k">Part Number</span><span class="v">' + esc(o['Part Number']||'&mdash;') + '</span></div>'
+      + '<div class="row"><span class="k">Serial Number</span><span class="v">' + esc(o['Serial Number']||'&mdash;') + '</span></div>'
+      + '<div class="row"><span class="k">Current Process</span><span class="process-chip" style="background:' + color + ';">' + esc(process||'&mdash;') + '</span></div>'
+      + '<div class="row"><span class="k">Repair Code</span><span class="v" style="color:' + (repairCode ? '#1a3a5c' : '#dc3545') + ';">' + (repairCode ? esc(repairCode) : 'Missing') + '</span></div>'
+      + '<div class="row"><span class="k">Received</span><span class="v">' + fmtDate(o['Receive Date']) + '</span></div>';
+    card.classList.add('show');
+
+    if (!repairCode) {
+      warn.style.display = 'block';
+      warn.textContent = 'This order needs a Repair Code before it can be shipped. Assign one on the Repair Code Entry page.';
+      btn.disabled = true;
+    } else {
+      warn.style.display = 'none';
+      btn.disabled = false;
+    }
+  } else {
+    card.classList.remove('show');
+    card.innerHTML = '';
+    warn.style.display = 'none';
+    btn.disabled = true;
+  }
+}
+
+function renderShipped() {
+  const shipped = orders.filter(o => (o['Process']||'').trim() === 'Shipped')
+    .sort((a,b) => new Date(b['Ship Date']||0) - new Date(a['Ship Date']||0)).slice(0, 10);
+  if (!shipped.length) { document.getElementById('shippedBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#aaa;">Nothing shipped yet.</td></tr>'; return; }
+  document.getElementById('shippedBody').innerHTML = shipped.map(o =>
+    '<tr>'
+    + '<td class="mono" style="font-weight:600;">' + esc(o['PO Number']||'') + '</td>'
+    + '<td>' + esc(o['Part Number']||'') + '</td>'
+    + '<td class="mono">' + esc(o['Serial Number']||'') + '</td>'
+    + '<td style="color:#888;font-size:12px;">' + fmtDate(o['Ship Date']) + '</td>'
+    + '</tr>'
+  ).join('');
+}
+
+async function shipOrder() {
+  const po = document.getElementById('fPO').value;
+  if (!po || !(po in poToIndex)) { showToast('Select a PO Number', 'error'); return; }
+  const order = orders[poToIndex[po]] || {};
+  if (!(order['Repair Code']||'').trim()) { showToast('A Repair Code is required before shipping', 'error'); return; }
+  if (!scriptUrl) { showToast('Not connected. Go to Settings.', 'error'); return; }
+  if (!confirm('Ship PO ' + po + '? This sets the order to Shipped and stamps the Ship Date.')) return;
+
+  const rowIdx = poToIndex[po];
+  const btn = document.getElementById('shipBtn');
+  btn.disabled = true; btn.textContent = 'Shipping...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updateorder', row: rowIdx, field: 'process', value: 'Shipped' });
+    if (json.success) {
+      showToast('Shipped PO ' + po, 'success');
+      loadAll();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Ship Order';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+renderNav('ship.html');
+loadAll();
+</script>
+</body>
+</html>
