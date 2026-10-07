@@ -1,168 +1,172 @@
-# RAN - Test & Repair Demo — Project Context
+# FWA Tester Issues — Project Context
 
 ## Overview
-Demo web tool for a Test & Repair revamp. Tracks repair **orders** as they move through the
-process (received → diagnostics → repair → retest → QA → shipped). Built with an HTML/JS
-frontend + Google Sheets backend via Apps Script — the same architecture as the FWA Tester
-Issues tool.
+Web-based tool for CTDI's FWA (Fixed Wireless Access) operation to track tester equipment issues, device/product issues, cart management, pallet audits, and WNC repair pallet builds. Built with HTML/JS frontend + Google Sheets backend via Apps Script.
 
 ## Hosting
-- **GitHub Pages:** _(set once published, e.g. https://<user>.github.io/ran-test-repair-demo/)_
-- **Repository:** _(set once created)_
-- **Workspace:** `RAN - Test and Repair\RAN - Test & Repair Demo\`
+- **GitHub Pages:** https://ebradyctdi.github.io/fwa-tester-issues/
+- **Repository:** https://github.com/ebradyctdi/fwa-tester-issues
+- **Workspace:** `c:\Users\ebrady\OneDrive - Communications Test Design, Inc\Desktop\Kiro\FWA\Tester Issues\`
 
-## Configuration
-- **Apps Script URL:** set on the Settings page; stored in `localStorage` under `ran_tr_script_url`.
-- **Google Sheet URL:** set on the Settings page; stored under `ran_tr_sheet_url`.
-  Defaults to the project's demo sheet if nothing is saved yet.
+## Current Apps Script URL
+```
+https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpVOYFw-uv62quFS6tS0jRNL_uZZtCwQ/exec
+```
 
 ## Google Sheet
-- **Sheet:** https://docs.google.com/spreadsheets/d/1rwuER1byA59jyu22nEvR7BGq9A_JXRoBV0LfvPTxJOs/edit
-- **Sheet ID:** `1rwuER1byA59jyu22nEvR7BGq9A_JXRoBV0LfvPTxJOs`
+- **Name:** FWA Data
+- **URL:** https://docs.google.com/spreadsheets/d/1PPTCKPN3rqy5myeUny0lzy5bs4exb7KxyyU8nssQSNM/edit
 
-### Tabs & Columns
+### Tabs & Columns:
 | Tab | Columns |
 |-----|---------|
-| Orders | A: PO Number, B: Part Number, C: Serial Number, D: Process, E: Receive Date, F: Repair Code, G: Repair Date, H: Repair Note, I: Ship Date |
-| Test - Types | A: Test Types (one per row, e.g. VISUAL, FUNCTIONAL, BURN, PROVISIONING) |
-| Test - Transactions | A: Transaction #, B: Timestamp, C: PO Number, D: Part Number, E: Serial Number, F: Test Type, G: Test Result, H: Failure Code, I: Failure, J: Software Version |
-| Repair - Actions | A: Repair Actions (one per row, e.g. PART REPLACEMENT, COMPONENT REPAIR, SOFTWARE) |
-| Repair - Transactions | A: Transaction #, B: Timestamp, C: PO Number, D: Part Number, E: Serial Number, F: Repair Action, G: Component, H: Component Age, I: Repair Location, J: Repair Note |
-| UNR - Types | A: Types (one per row, e.g. Environmental, Physical Damage, Infestation, Unavailable Parts, Tech Unable to Repair) |
-| UNR - Transactions | A: Transaction #, B: Timestamp, C: PO Number, D: Part Number, E: Serial Number, F: UNR Type, G: UNR Comment |
-| Part Numbers | A: Record ID, B: Part Number, C: Functional Test, D: Burn Test, E: Provisioning (C–E are Yes/No flags for which tests the part requires) |
-
-`Receive Date` is auto-stamped on add if left blank. `Ship Date` is auto-stamped when an
-order's Process is set to **Shipped** (if not already set). Test transactions get a `Timestamp`
-+ `TESTxxxxxx` ID; repair transactions get a `Timestamp` + `RPRxxxxxx` ID; UNR transactions get
-a `Timestamp` + `UNRxxxxxx` ID. Timestamps use `M/d/yyyy HH:mm:ss` in the script's timezone.
-The Apps Script auto-creates the `Orders`, `Test - Transactions`, `Repair - Transactions`, and
-`UNR - Transactions` tabs with headers if missing. The `Test - Types`, `Repair - Actions`, and `UNR - Types` tabs are expected to
-already exist and are read-only lookup lists to the tool. The `Part Numbers` tab is
-auto-created and is managed in-app on the Part Numbers page (add/edit).
+| Tester Issue Log | A-K (Reported By, Tester Type, Tester ID, Time of Issue, Severity, Issue Type, Issue Note, Resolved By, Time of Resolution, Resolution Note, Status) |
+| FWA Testers | A-E (Tester ID, Tester Type, Status, Location, Notes) |
+| FWA Tester Types | A (Tester Type) |
+| Email Schedules | A-D (Email, Frequency, Time, Report Type) |
+| Device Issues | A-I (IMEI, Serial Number, Cart, Device Model, Reported By, Note, Timestamp, Status, Resolution Timestamp) |
+| Carts | A-G (Cart ID, Location, Cart Status, Date Created, Date Removed, Model Type, Note) |
+| Device Location | A-G (Cart ID, IMEI, Serial Number, Device Model, Date Added, Date Removed, Status) |
+| Cart - Standard Note | A (Note text) |
+| Pallet Audits | A-ER: A-H headers (Pallet ID, Part Number, Audit Start Timestamp, # of IMEIs on Pallet, # of IMEIs Scanned During Audit, Audit Result, Audit Performed By, Notes), I-DX = IMEI Scan #1-120, DY-ER = Quality IMEI #1-20 |
+| Pallet Audit Issues | A-I (Pallet ID, IMEI, Timestamp, Reported By, Issue, Status, Resolved By, Resolution Timestamp, Resolution Note) |
+| Repair - Pallets | A-F (Pallet ID, Pallet PO #, SKU, Pallet Status, Pallet Open Date, Pallet Close Date) |
+| Repair - Pallet Build | A-F (Pallet ID, IMEI, Serial Number, Put to Pallet Date, Removed from Pallet Date, Status) |
 
 ## Pages & Files
 
-### Sidebar Navigation (defined once in `nav.js`)
+### Sidebar Navigation Structure (all pages share this)
 ```
-▶ Workflow
+▶ Tester Health
   - index.html (Overview)
-  - receive.html (Receive)
-  - test-record.html (Test Record)
-  - repair-record.html (Repair Record)
-  - unrepairable-record.html (Unrepairable Record)
-  - repair-code-entry.html (Repair Code Entry)
-  - ship.html (Ship)
-  - orders.html (Order History)
+  - report-issue.html (Report An Issue)
+  - open-issues.html (Open Issues)
+  - issue-history.html (Issue History)
+▶ Product/Device Issues
+  - receipt-issues.html (Issue Logger)
+  - receipt-history.html (Issue History)
+  - receipt-carts.html (Carts)
+  - cart-label.html (Cart Label Maker)
+  - wip-status.html (WIP Status by Carts)
+▶ Audit Tools
+  - pallet-audit.html (Pallet Audit Tool)
+  - pallet-issues.html (Open Pallet Issues)
+  - pallet-audit-log.html (Audit Log)
+▶ WNC Repair Tools
+  - repaired-pallet-build.html (Repaired Pallet Build)
+  - repair-pallet-label.html (Repair Pallet Label Re-Print)
 ▶ System
-  - part-numbers.html (Part Numbers)
+  - testers.html (Testers)
+  - email-schedule.html (Email Schedule)
   - settings.html (Settings)
 ```
 
-### Files
+### Supporting Files (not in nav)
 | File | Purpose |
 |------|---------|
-| index.html | Dashboard: KPI cards, orders-by-process, recent orders table |
-| receive.html | Record an incoming order (PO / Part / Serial); Part Number is a dropdown from the `Part Numbers` tab; starts at process CNS-WIP |
-| test-record.html | Pick a non-shipped PO + test type + Pass/Fail (Failure Code & Failure on Fail); writes to Test - Transactions. Test types the PO's part is not configured for are disabled/(N/A) — Visual always available |
-| repair-record.html | Pick a non-shipped PO + repair action + Component + Repair Location + Repair Note; writes to Repair - Transactions |
-| unrepairable-record.html | Pick a non-shipped PO + UNR type + UNR Comment; writes to UNR - Transactions |
-| repair-code-entry.html | Pick a PO; view combined history (Receipt/Test/Repair/UNR), a Test Fails count per type, and latest test-status chips (Functional/Burn/Provisioning); see a Suggested Repair Code and enter/apply a Repair Code (saved to the Orders row) |
-| ship.html | Pick a non-shipped PO, review it, and ship (sets Process → Shipped, auto-stamps Ship Date). Requires a Repair Code first — the button is disabled and a warning shows if one is missing |
-| orders.html | Order History: read-only, searchable/filterable table of all orders (newest received first). Per-row **History** button opens a popup timeline (order milestones + Test/Repair/UNR transactions) with newest/oldest sort and category filter chips |
-| part-numbers.html | System page to add/edit part numbers and their Functional/Burn/Provisioning Yes/No flags |
-| settings.html | Configure Apps Script URL + Google Sheet URL; test connection |
-| nav.js | Shared sidebar rendering (`renderNav(activePage)`) and collapsible groups |
-| google-apps-script.js | Reference copy of the Apps Script backend (paste into the Sheet) |
-| CONTEXT.md | This file |
+| google-apps-script.js | Reference copy of all Apps Script actions |
+| pallet-build-guidelines.html | Printable pallet build guidelines (8.5×11) |
+| work-instruction-pallet-audit.html | Printable audit work instruction |
+| work-instruction-issue-logger.html | Printable issue logger work instruction |
 
-## Apps Script Actions (`doGet` / `doPost`)
-| Action | Params | Effect |
-|--------|--------|--------|
-| `readorders` | — | Returns all rows from `Orders` as objects keyed by header |
-| `addorder` | ponumber, partnumber, serialnumber, process, repaircode, (receivedate, shipdate) | Appends a row; stamps Receive Date if blank; process defaults to CNS-WIP |
-| `updateorder` | row, field, value | Updates one cell; auto-stamps Ship Date when Process → Shipped |
-| `deleteorder` | row | Deletes the row |
-| `readtesttypes` | — | Returns the list of test types from the `Test - Types` tab (column A) |
-| `readtransactions` | — | Returns all rows from `Test - Transactions` keyed by header |
-| `addtransaction` | ponumber, partnumber, serialnumber, testtype, testresult, (failurecode, failure, softwareversion) | Appends a test transaction; stamps Timestamp; auto-generates `TESTxxxxxx` ID. Software Version is stored only for a passing PROVISIONING test |
-| `readrepairactions` | — | Returns the list of repair actions from the `Repair - Actions` tab (column A) |
-| `readrepairtransactions` | — | Returns all rows from `Repair - Transactions` keyed by header |
-| `addrepairtransaction` | ponumber, partnumber, serialnumber, repairaction, component, (componentage), repairlocation, repairnote | Appends a repair transaction; stamps Timestamp; auto-generates `RPRxxxxxx` ID. Component Age is stored only for a PART REPLACEMENT action |
-| `readunrtypes` | — | Returns the list of UNR types from the `UNR - Types` tab (column A) |
-| `readunrtransactions` | — | Returns all rows from `UNR - Transactions` keyed by header |
-| `addunrtransaction` | ponumber, partnumber, serialnumber, unrtype, unrcomment | Appends a UNR transaction; stamps Timestamp; auto-generates `UNRxxxxxx` ID |
-| `readpartnumbers` | — | Returns rows from the `Part Numbers` tab (part + Functional/Burn/Provisioning Yes/No flags) |
-| `addpartnumber` | partnumber, functional, burn, provisioning | Appends a part number; auto-generates `Pxxxxxxxxx` Record ID; rejects duplicates |
-| `updatepartnumber` | row, partnumber, functional, burn, provisioning | Updates a part number row (0-based index into `readpartnumbers`) |
-| `updateorderbypo` | ponumber, field (`process`\|`repaircode`), value | Sets a field on the first non-shipped order matching the PO (used by Repair Code Entry) |
+## Key Features
 
-- `row` is the **0-based index** into the data returned by `readorders` (sheet row = `row + 2`).
-- `updateorder` `field` accepts: `ponumber`, `partnumber`, `serialnumber`, `process`,
-  `receivedate`, `repaircode`, `repairdate`, `repairnote`, `shipdate` (mapped to columns A–I).
-- `updateorderbypo` targets by PO Number instead of row index; writable fields are `process`,
-  `repaircode`, and `repairnote`. When `field=repaircode`, it also stamps **Repair Date** (G)
-  and writes the `repairnote` param into **Repair Note** (H).
+### Issue Logger (receipt-issues.html)
+- Individual entry and batch scan modes
+- Batch scan toggle: "Scan Values Individually" (IMEI + Serial) or "Scan QR Code"
+- QR code parsing: extracts IMEI from `;E:(\d{15})`, Serial from `;S:(A[A-Za-z0-9]{10})`, Model from `M:(ASK-NCM1100|WNC-CR200A)`
+- Device Model swappable during batch scan
+- Fire-and-forget queue (no wait between scans)
+- Delete removes from both Device Issues and Device Location sheets
+- Cart note auto-fills issue note; standard notes dropdown
+- Work instruction popup accessible from page
 
-## Domain Values
-| Field | Allowed values |
-|-------|----------------|
-| PO Number | Must match `^8000\d{6}$` — begins with 8000, 10 digits, all numeric (e.g. 8000123456). Must be unique (not already received). Both rules enforced on Receive and in `addorder` |
-| Process | CNS-WIP (initial), Diagnostics, Repair, Retest, QA, Shipped |
-| Repair Code | Free text (varies by defect) |
-| Test Type | Sourced from the `Test - Types` tab (VISUAL, FUNCTIONAL, BURN, PROVISIONING, ...) |
-| Test Result | PASS, FAIL |
-| Software Version | Free text; captured only on a passing PROVISIONING test |
-| Repair Action | Sourced from the `Repair - Actions` tab (PART REPLACEMENT, COMPONENT REPAIR, SOFTWARE, ...) |
-| Component Age | New, Harvested; captured only when Repair Action is PART REPLACEMENT |
-| UNR Type | Sourced from the `UNR - Types` tab (Environmental, Physical Damage, Infestation, Unavailable Parts, Tech Unable to Repair, ...) |
-| Part test applicability | The `Part Numbers` tab flags (Functional Test / Burn Test / Provisioning = Yes/No) drive which tests apply per part. VISUAL always applies. Not-applicable tests are disabled on Test Record and shown as **N/A** on Repair Code Entry |
+### Cart Management (receipt-carts.html)
+- Create carts (sequential FWA-xxxx IDs, duplicate prevention)
+- Cart ID filter, Show Inactive toggle
+- Cart detail popup: edit location, model type, note; batch add/remove units; retire/activate
+- Retire with units confirmation (removes all units first)
+- Export CSV per cart
 
-Process values live in each page's JS (`PROCESSES` / `PROCESS_ORDER`) and their colors in
-`PROCESS_COLORS`. Add a process by updating those arrays. Test types are data-driven from
-the sheet — add a row to `Test - Types` and it appears in the Test Record dropdown.
+### WIP Status by Carts (wip-status.html)
+- Upload WIP Excel file (SheetJS), cross-reference IMEI/PROCESS with active carts
+- DIS-PHOLD and DIS-RHOLD = "Awaiting Dis-Association"; others = "Dis-Associated"
+- Green threshold input (default 85%) for Dis-Association % coloring
+- Cart detail modal with process breakdown, Export CSV
+- Table: Cart ID, Model Type, Note, Units, Dis-Associated, Awaiting, Not in WIP, Dis-Association %
 
-## Workflow
-1. **Receive** — order enters at process **CNS-WIP** with a Receive Date.
-2. **Test Record** — record PASS/FAIL test results (by test type) against any non-shipped PO;
-   each result is a row in `Test - Transactions`.
-3. **Repair Record** — record a repair action (with Component + Location + Note) against any
-   non-shipped PO; each is a row in `Repair - Transactions`.
-4. **Unrepairable Record** — record a UNR type + comment against a non-shipped PO; each is a
-   row in `UNR - Transactions`.
-5. **Repair Code Entry** — pick a PO to review its full combined history (Receipt, Test,
-   Repair, UNR), a **Test Fails** count per test type (Visual/Functional/Burn/Provisioning;
-   red when ≥1 fail), and the **latest test-status** chips for Functional/Burn/Provisioning
-   (green = last PASS, red = last FAIL, grey = no test). A **Suggested Repair Code** is derived
-   (precedence: `[UNR]` if any UNR record → else `[REPAIR]` if latest FUNCTIONAL PASS with
-   ≥1 repair action → else `[NTF]` if latest FUNCTIONAL PASS with no repair action → else
-   `[-]`), along with a **Suggested Repair Note** derived from the PO's actions ([REPAIR] →
-   repair-action summary, [UNR] → unrepairable summary, [NTF]/[-] → no note). "Use Suggested"
-   applies both. Saving writes the Repair Code, Repair Note (field below the code), and an
-   auto-stamped Repair Date to the Orders row via `updateorderbypo`.
-6. **Ship** — pick a non-shipped PO and ship it: sets Process → **Shipped** and auto-stamps
-   the Ship Date. (Uses `updateorder` with the order's row index.) An order **must have a
-   Repair Code** before it can ship — enforced on the page (button disabled + warning) and in
-   the backend (both `updateorder` and `updateorderbypo` reject Shipped with a blank Repair Code).
-7. **Order History** — read-only view of all orders (searchable/filterable) for reference.
+### Pallet Audit Tool (pallet-audit.html)
+- Multi-phase: Scan Pallet ID → Part Number → IMEI manifest → Begin Audit → Scan units → Complete
+- Scan mode toggle: "Quality Check & IMEI Record" (green, default) vs "Just IMEI Record" (light blue)
+- Quality checked = green chip ✅; IMEI only = light blue chip ☑️
+- 5 KPI cards: IMEIs on Pallet, Quality Checked, Matched, Remaining, Issues Logged
+- QR code support in audit scan field (auto-detects long strings)
+- Open issues check before beginning audit
+- Audit results: "OK To Ship" / "Hold for Action" (cannot ship with open issues)
+- Print 4×6 label with barcode, quality audit count, IMEI verified count
+- Work instruction popup (loads work-instruction-pallet-audit.html in iframe)
+- Up to 120 IMEIs + 20 Quality IMEIs saved to sheet
+
+### Open Pallet Issues (pallet-issues.html)
+- Open issues table with clickable detail popup
+- Mark as Resolved (requires Resolved By + Resolution Note)
+- Resolved Pallets table (toggle to show, with Latest Resolution timestamp)
+
+### Audit Log (pallet-audit-log.html)
+- Filters: date range, result (PASS/FAIL), Pallet ID text filter
+- Record count display
+- Detail popup: shows quality validated + scanned IMEIs (up to 120), issues
+- Export CSV (overview of filtered records)
+- Per-audit Export CSV (includes quality validated + all IMEIs + issues)
+- Reprint label button
+
+### Repaired Pallet Build (repaired-pallet-build.html)
+- Create pallets (RPR + 8 sequential digits, 11 chars, PO# defaults to "-", SKU defaults to "WNC-CR200A-CLR")
+- Open Pallets table + Closed Pallets table (separate, with filters and sortable headers)
+- Add Units popup: toggle QR Code / Barcode (IMEI + Serial); fire-and-forget queue
+- SKU-aware capacity: 120 for Titan 3 (WNC-CR200A), 90 for Titan 4 (ASK-NCM1100)
+- Edit/Close Pallet popup: review units, IMEI filter, remove units, close pallet
+- Close pallet → prompt to print label
+- Reopen pallet from closed state
+- Print label popup with preview (Current style)
+- Scrollable tables (max 10 rows visible)
+
+### Repair Pallet Label (repair-pallet-label.html)
+- Combo search + dropdown for closed pallets
+- Title style: "Current" (Pallet ID as title + barcode) or "Old" (Packing Slip)
+- PDF417 barcode at bottom encoding: PO,SKU,SKU,Units,1,Units,Units
+- JsBarcode for CODE128; bwip-js for PDF417
+- 4×6 B&W label with CTDI logo
+
+### Cart Label Maker (cart-label.html)
+- Label types: 6×4 Label or 8.5×11 Sheet (Landscape)
+- Model Type shown on label
+- B&W optimized for Zebra ZD421
+
+## Validation Rules
+| Field | Rule | Example |
+|-------|------|---------|
+| IMEI | 15 numeric chars, starts with '3' | 351010695593399 |
+| Serial Number | 11 chars, starts with 'A' | ACR52500808 |
+| Pallet ID (audit) | 11 chars, starts with "PLB" | PLB00002624 |
+| Pallet ID (repair) | 11 chars, "RPR" + 8 digits | RPR00000001 |
+| Cart ID | "FWA-xxxx" sequential | FWA-0001 |
+| Part Number | WNC-CR200A or ASK-NCM1100 | WNC-CR200A |
 
 ## Technical Conventions
-- **Architecture:** Browser (HTML/JS) → JSONP → Google Apps Script → Google Sheets.
-- **JSONP:** Every request uses a `callback` param to sidestep CORS (identical helper on each page).
-- **Timestamps:** Apps Script writes them; pages display via `fmtDate` using
-  `toLocaleString('en-US', { timeZone: 'America/New_York' })`.
-- **Anti-double-click:** Submit buttons disable themselves while a request is in flight.
-- **PO / Serial as text:** Apps Script forces those columns to plain text to preserve leading zeros.
+- **Architecture:** Browser (HTML/JS) → JSONP → Google Apps Script → Google Sheets
+- **Timestamps:** Apps Script writes "M/d/yyyy h:mm:ss a EST"; pages detect EST/EDT and display raw (minus seconds), otherwise use `toLocaleString('en-US', {timeZone:'America/New_York'})`
+- **fmtDate pattern:** All pages strip seconds from display; detect EST/EDT strings to avoid timezone shift
+- **Anti-double-click:** All submit buttons use disabled + flag guards
+- **Batch scan:** Fire-and-forget queue pattern (immediate UI feedback, background network save)
+- **Sidebar:** Collapsible groups (start collapsed, active section auto-expands)
+- **Scrollbar:** Slim white-on-transparent custom scrollbar styling
+- **QR parsing:** `WIFI:S:...;ROUTER:M:[model];S:[serial];...;E:[imei];...`
 
 ## Design Style
-- Dark navy sidebar (#1a3a5c) with CTDI branding.
-- Responsive (mobile sidebar toggle + overlay).
-- Connection status dot (green/orange/red) in the header.
-- Toast notifications; colored badges for process.
-
-## Setup Checklist
-1. Open the Google Sheet; add a tab named **Orders** (or let the script create it).
-2. Extensions → Apps Script → paste `google-apps-script.js` → Deploy as Web App
-   (Execute as: Me, Access: Anyone) → copy the `/exec` URL.
-3. Open `settings.html`, paste the Apps Script URL (Sheet URL is pre-filled), click **Save & Test**.
-4. Publish the folder to GitHub Pages and update the Hosting section above.
+- Dark navy sidebar (#1a3a5c) with CTDI branding
+- Responsive (mobile sidebar toggle)
+- Status indicator (green/red/orange dot)
+- Toast notifications
+- Modal popups for detail/edit
+- Labels: B&W only (Zebra ZD421 for 4×6, standard printer for 8.5×11)
