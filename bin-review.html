@@ -87,7 +87,8 @@
     </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
     <div class="nav-group">
-    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="add-to-bin.html"><span class="icon">➕</span> Add/Remove Units to Bin</a>
+    <a href="bin-cycle-count.html"><span class="icon">🔢</span> Bin Cycle Count</a>
     <a href="bin-review.html" class="active"><span class="icon">📦</span> Bin Review</a>
     <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
     </div>
@@ -134,6 +135,8 @@
         <h2 style="margin:0;border:none;padding:0;">Bins <span id="binCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
         <div style="display:flex;gap:10px;align-items:center;">
           <input type="text" id="binFilter" placeholder="Filter bins..." oninput="renderBins()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:200px;">
+          <button onclick="exportUnitsCSV()" id="exportCsvBtn" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
+          <button id="toggleRetiredBtn" onclick="toggleShowRetired()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Show Retired</button>
           <button onclick="loadBins()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
         </div>
       </div>
@@ -142,10 +145,12 @@
           <th>Bin ID</th>
           <th>Description</th>
           <th>Location</th>
+          <th># Units in Bin</th>
           <th>Last Cycle Count</th>
+          <th>Status</th>
           <th></th>
         </tr></thead>
-        <tbody id="binTableBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="binTableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -180,6 +185,51 @@
   </div>
 </div>
 
+<!-- Edit Bin Modal -->
+<div id="editBinModal" onclick="if(event.target===this)closeEditBin()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:480px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#6c757d;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">✏️ Edit Bin — <span id="editBinTitle"></span></h3>
+      <button onclick="closeEditBin()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Description</label>
+        <input type="text" class="form-input" id="editBinDescInput" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div>
+        <label class="form-label">Bin Location</label>
+        <input type="text" class="form-input" id="editBinLocationInput" placeholder="Location (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div id="editBinFeedback" style="margin-top:8px;font-size:11px;"></div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+      <button onclick="openRetireConfirm()" id="retireBinBtn" style="padding:8px 18px;background:#dc3545;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Retire Bin</button>
+      <div>
+        <button onclick="closeEditBin()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px;">Cancel</button>
+        <button onclick="submitEditBin()" id="editBinSaveBtn" style="padding:8px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Retire Confirm Modal -->
+<div id="retireConfirmModal" onclick="if(event.target===this)closeRetireConfirm()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:600;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:440px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#dc3545;color:white;">
+      <h3 style="font-size:16px;margin:0;">⚠️ Retire Bin</h3>
+    </div>
+    <div style="padding:20px 24px;font-size:14px;line-height:1.6;color:#333;">
+      Are you sure you want to retire bin <strong id="retireBinName" style="font-family:Consolas,monospace;"></strong>?<br><br>
+      This will set the bin's status to <strong>Retired</strong>.
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeRetireConfirm()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px;">Cancel</button>
+      <button onclick="confirmRetireBin()" id="confirmRetireBtn" style="padding:8px 24px;background:#dc3545;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Retire Bin</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bin Details Modal -->
 <div id="detailsModal" onclick="if(event.target===this)closeBinDetails()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:12px;max-width:680px;width:95%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
@@ -199,7 +249,8 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allBins = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec'; } catch(e) {}
+let showRetired = false;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwv3wD_Ua-057V3NImF03OWfobJlyN7MxNd5YXXfzPp9vLjFx3SDDnpv3vnr1fmmbrXzw/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -228,6 +279,39 @@ function fmtDate(str) {
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+function csvCell(v) {
+  const s = (v == null ? '' : String(v));
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+async function exportUnitsCSV() {
+  const btn = document.getElementById('exportCsvBtn');
+  btn.disabled = true; btn.textContent = 'Exporting...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readallbinunits' });
+    if (!json.success) { showToast(json.error || 'Export failed', 'error'); return; }
+    const rows = json.data || [];
+    if (!rows.length) { showToast('No units currently in any bin', 'error'); return; }
+
+    let csv = 'Serial Number,IMEI,Bin ID,Description,Location\n';
+    rows.forEach(r => {
+      csv += [csvCell(r.serial), csvCell(r.imei), csvCell(r.bin), csvCell(r.description), csvCell(r.location)].join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const stamp = d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2);
+    a.href = url;
+    a.download = 'Bin_Units_Report_' + stamp + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Exported ' + rows.length + ' unit(s)', 'success');
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = '📥 Export CSV';
+}
+
 function showToast(msg, type) {
   const t = document.getElementById('toast'); t.textContent = msg;
   t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
@@ -235,49 +319,84 @@ function showToast(msg, type) {
   setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
 }
 
+let binUnitCounts = {}; // { binIdLowerCase: count }
+
 async function loadBins() {
   if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
   setStatus('pending', 'Loading...');
   const tbody = document.getElementById('binTableBody');
-  tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'readcyclecountbins' });
+    const [json, countsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readcyclecountbins' }),
+      jsonpRequest(scriptUrl, { action: 'readbinunitcounts' }).catch(() => ({ success: false }))
+    ]);
     if (json.success) {
       setStatus('connected', 'Connected');
       allBins = json.data || [];
+      binUnitCounts = (countsJson && countsJson.success && countsJson.counts) ? countsJson.counts : {};
       renderBins();
     } else { throw new Error(json.error); }
   } catch(err) {
     setStatus('disconnected', 'Connection failed');
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Connection failed</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Connection failed</td></tr>';
   }
+}
+
+function toggleShowRetired() {
+  showRetired = !showRetired;
+  const btn = document.getElementById('toggleRetiredBtn');
+  if (showRetired) {
+    btn.textContent = 'Hide Retired';
+    btn.style.background = '#1a3a5c';
+    btn.style.color = 'white';
+  } else {
+    btn.textContent = 'Show Retired';
+    btn.style.background = 'white';
+    btn.style.color = '#1a3a5c';
+  }
+  renderBins();
 }
 
 function renderBins() {
   const tbody = document.getElementById('binTableBody');
   const filter = (document.getElementById('binFilter').value || '').trim().toLowerCase();
   let bins = allBins;
+
+  // Status filter: show only Active unless "Show Retired" is toggled on.
+  // A bin is treated as Active if its status is 'Active' or blank (legacy bins).
+  if (!showRetired) {
+    bins = bins.filter(b => (b['Bin Status']||'').trim().toLowerCase() !== 'retired');
+  }
+
   if (filter) {
-    bins = allBins.filter(b =>
+    bins = bins.filter(b =>
       (b['Bin ID']||'').toLowerCase().includes(filter) ||
       (b['Bin Description']||'').toLowerCase().includes(filter) ||
       (b['Bin Location']||'').toLowerCase().includes(filter)
     );
   }
-  document.getElementById('binCount').textContent = allBins.length ? '(' + allBins.length + ')' : '';
+  document.getElementById('binCount').textContent = bins.length ? '(' + bins.length + ')' : '(0)';
   if (!bins.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">' + (allBins.length ? 'No bins match your filter.' : 'No bins created yet.') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (allBins.length ? 'No bins match the current view.' : 'No bins created yet.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = bins.map(b => {
     const id = (b['Bin ID']||'').trim();
+    const unitCount = binUnitCounts[id.toLowerCase()] || 0;
+    const status = (b['Bin Status']||'').trim() || 'Active';
+    const isRetired = status.toLowerCase() === 'retired';
+    const statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:' + (isRetired ? '#f8d7da;color:#721c24' : '#d4edda;color:#155724') + ';">' + status + '</span>';
     return '<tr>'
     + '<td class="meta" style="font-weight:600;">' + (b['Bin ID']||'—') + '</td>'
     + '<td>' + (b['Bin Description']||'—') + '</td>'
     + '<td>' + (b['Bin Location']||'—') + '</td>'
+    + '<td style="text-align:center;font-weight:600;">' + unitCount + '</td>'
     + '<td class="meta">' + fmtDate(b['Last Cycle Count Timestamp']) + '</td>'
+    + '<td>' + statusBadge + '</td>'
     + '<td style="text-align:right;white-space:nowrap;">'
-      + '<button onclick="openBinDetails(\'' + id.replace(/'/g,"\\'") + '\')" style="width:110px;padding:6px 12px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:6px;">Details</button>'
+      + '<button onclick="openBinDetails(\'' + id.replace(/'/g,"\\'") + '\')" style="width:90px;padding:6px 12px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:6px;">Details</button>'
+      + '<button onclick="openEditBin(\'' + id.replace(/'/g,"\\'") + '\')" style="width:90px;padding:6px 12px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:6px;">✏️ Edit</button>'
       + '<button onclick="printBinLabel(\'' + id.replace(/'/g,"\\'") + '\')" style="width:110px;padding:6px 12px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">🏷️ Print Label</button>'
       + '</td>'
     + '</tr>';
@@ -294,6 +413,77 @@ function openCreateBin() {
 
 function closeCreateBin() {
   document.getElementById('createBinModal').style.display = 'none';
+}
+
+// ---- EDIT BIN ----
+let editBinId = '';
+
+function openEditBin(binId) {
+  editBinId = binId;
+  const bin = allBins.find(b => (b['Bin ID']||'').trim() === binId) || {};
+  document.getElementById('editBinTitle').textContent = binId;
+  document.getElementById('editBinDescInput').value = (bin['Bin Description']||'').trim();
+  document.getElementById('editBinLocationInput').value = (bin['Bin Location']||'').trim();
+  document.getElementById('editBinFeedback').innerHTML = '';
+  document.getElementById('editBinModal').style.display = 'flex';
+  document.getElementById('editBinDescInput').focus();
+}
+
+function closeEditBin() {
+  document.getElementById('editBinModal').style.display = 'none';
+  editBinId = '';
+}
+
+async function submitEditBin() {
+  if (!editBinId) return;
+  const desc = document.getElementById('editBinDescInput').value.trim();
+  const location = document.getElementById('editBinLocationInput').value.trim();
+  const btn = document.getElementById('editBinSaveBtn');
+  const fb = document.getElementById('editBinFeedback');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecyclecountbin', binid: editBinId, bindescription: desc, binlocation: location });
+    if (json.success) {
+      fb.innerHTML = '<span style="color:#28a745;">✓ Saved</span>';
+      const bin = allBins.find(b => (b['Bin ID']||'').trim() === editBinId);
+      if (bin) { bin['Bin Description'] = desc; bin['Bin Location'] = location; }
+      renderBins();
+      setTimeout(() => closeEditBin(), 800);
+    } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error || 'Failed') + '</span>'; }
+  } catch(err) { fb.innerHTML = '<span style="color:#dc3545;">Error</span>'; }
+  btn.disabled = false; btn.textContent = 'Save';
+}
+
+// ---- RETIRE BIN ----
+function openRetireConfirm() {
+  if (!editBinId) return;
+  document.getElementById('retireBinName').textContent = editBinId;
+  document.getElementById('retireConfirmModal').style.display = 'flex';
+}
+
+function closeRetireConfirm() {
+  document.getElementById('retireConfirmModal').style.display = 'none';
+}
+
+async function confirmRetireBin() {
+  if (!editBinId) return;
+  const user = prompt('Enter your name (Retired by):');
+  if (!user || !user.trim()) { showToast('Name is required to retire a bin', 'error'); return; }
+  const btn = document.getElementById('confirmRetireBtn');
+  btn.disabled = true; btn.textContent = 'Retiring...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'retirecyclecountbin', binid: editBinId, user: user.trim() });
+    if (json.success) {
+      const msg = 'Bin retired: ' + editBinId + (json.unitsReleased ? ' (' + json.unitsReleased + ' unit(s) released)' : '');
+      showToast(msg, 'success');
+      const bin = allBins.find(b => (b['Bin ID']||'').trim() === editBinId);
+      if (bin) bin['Bin Status'] = 'Retired';
+      closeRetireConfirm();
+      closeEditBin();
+      loadBins();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Retire Bin';
 }
 
 async function submitCreateBin() {
@@ -448,12 +638,13 @@ async function loadBinDetails(binId) {
     if (!units.length) {
       html += '<div class="empty-state" style="padding:16px;">No units currently associated with this bin.</div>';
     } else {
-      html += '<div style="max-height:220px;overflow-y:auto;"><table class="issues-table"><thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th></tr></thead><tbody>';
+      html += '<div style="max-height:220px;overflow-y:auto;"><table class="issues-table"><thead><tr><th>IMEI</th><th>Serial Number</th><th>Device Model</th><th>Latest Scan</th></tr></thead><tbody>';
       html += units.map(u =>
         '<tr>'
         + '<td class="meta" style="font-weight:600;">' + (u.imei||'—') + '</td>'
         + '<td class="meta">' + (u.serial||'—') + '</td>'
         + '<td class="meta">' + (u.model||'—') + '</td>'
+        + '<td class="meta">' + fmtDate(u.timestamp) + '</td>'
         + '</tr>'
       ).join('');
       html += '</tbody></table></div>';
@@ -499,6 +690,14 @@ document.getElementById('newBinDesc').addEventListener('keydown', function(e) {
 });
 document.getElementById('newBinLocation').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); submitCreateBin(); }
+});
+
+// Edit Bin — Enter flow
+document.getElementById('editBinDescInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('editBinLocationInput').focus(); }
+});
+document.getElementById('editBinLocationInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); submitEditBin(); }
 });
 
 // ---- SIDEBAR ----

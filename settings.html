@@ -72,7 +72,8 @@
     </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Inventory</div>
     <div class="nav-group">
-    <a href="cycle-count.html"><span class="icon">🔢</span> Cycle Count</a>
+    <a href="add-to-bin.html"><span class="icon">➕</span> Add/Remove Units to Bin</a>
+    <a href="bin-cycle-count.html"><span class="icon">🔢</span> Bin Cycle Count</a>
     <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
     <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
     </div>
@@ -114,8 +115,8 @@
     <div class="card">
       <h2>Latest Deployed URL (Reference)</h2>
       <p style="font-size:12px;color:#888;margin-bottom:8px;">Copy this URL if your browser cache gets cleared and the connection is lost.</p>
-      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec</div>
-      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: September 23, 2026</div>
+      <div style="padding:10px 14px;background:#f8f9fa;border:1px solid #ddd;border-radius:6px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;user-select:all;">https://script.google.com/macros/s/AKfycbwv3wD_Ua-057V3NImF03OWfobJlyN7MxNd5YXXfzPp9vLjFx3SDDnpv3vnr1fmmbrXzw/exec</div>
+      <div style="margin-top:6px;font-size:11px;color:#888;">Last updated: October 7, 2026</div>
     </div>
     <div class="card">
       <h2>Google Sheet</h2>
@@ -138,7 +139,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let _jsonpCounter = 0;
-const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwimNC3n3LA20R5aXx0H-TdGeJ5jhuh9lIYbimFqyYDkOQdh4AqZv3y1kBb6MXlp2pZ4Q/exec';
+const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwv3wD_Ua-057V3NImF03OWfobJlyN7MxNd5YXXfzPp9vLjFx3SDDnpv3vnr1fmmbrXzw/exec';
 document.getElementById('scriptUrl').value = saved;
 
 function jsonpRequest(url, params) {
