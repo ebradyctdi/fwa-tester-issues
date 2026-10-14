@@ -694,6 +694,66 @@ function doGet(e) {
       return _respond({ success: true, data: groups }, callback);
     }
 
+    // ---- ADD BIN GROUP ----
+    if (action === 'addbingroup') {
+      var bgSheet = ss.getSheetByName('DD - Bin Groups');
+      if (!bgSheet) {
+        bgSheet = ss.insertSheet('DD - Bin Groups');
+        bgSheet.getRange(1, 1).setValue('Bin Groups');
+      }
+      var groupName = (e.parameter.group || '').toString().trim();
+      if (!groupName) return _respond({ success: false, error: 'Group name required' }, callback);
+      // Prevent duplicates
+      var lastRow = bgSheet.getLastRow();
+      if (lastRow >= 2) {
+        var existing = bgSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+        for (var i = 0; i < existing.length; i++) {
+          if ((existing[i][0] || '').toString().trim().toLowerCase() === groupName.toLowerCase()) {
+            return _respond({ success: false, error: 'Group "' + groupName + '" already exists' }, callback);
+          }
+        }
+      }
+      bgSheet.appendRow([groupName]);
+      return _respond({ success: true, message: 'Group added' }, callback);
+    }
+
+    // ---- RENAME BIN GROUP ----
+    if (action === 'renamebingroup') {
+      var bgSheet = ss.getSheetByName('DD - Bin Groups');
+      if (!bgSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var oldName = (e.parameter.oldname || '').toString().trim();
+      var newName = (e.parameter.newname || '').toString().trim();
+      if (!oldName || !newName) return _respond({ success: false, error: 'Old and new names required' }, callback);
+      var lastRow = bgSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: false, error: 'Group not found' }, callback);
+      var vals = bgSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+      for (var i = 0; i < vals.length; i++) {
+        if ((vals[i][0] || '').toString().trim().toLowerCase() === oldName.toLowerCase()) {
+          bgSheet.getRange(i + 2, 1).setValue(newName);
+          return _respond({ success: true, message: 'Group renamed' }, callback);
+        }
+      }
+      return _respond({ success: false, error: 'Group "' + oldName + '" not found' }, callback);
+    }
+
+    // ---- DELETE BIN GROUP ----
+    if (action === 'deletebingroup') {
+      var bgSheet = ss.getSheetByName('DD - Bin Groups');
+      if (!bgSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var groupName = (e.parameter.group || '').toString().trim();
+      if (!groupName) return _respond({ success: false, error: 'Group name required' }, callback);
+      var lastRow = bgSheet.getLastRow();
+      if (lastRow < 2) return _respond({ success: false, error: 'Group not found' }, callback);
+      var vals = bgSheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+      for (var i = 0; i < vals.length; i++) {
+        if ((vals[i][0] || '').toString().trim().toLowerCase() === groupName.toLowerCase()) {
+          bgSheet.deleteRow(i + 2);
+          return _respond({ success: true, message: 'Group deleted' }, callback);
+        }
+      }
+      return _respond({ success: false, error: 'Group "' + groupName + '" not found' }, callback);
+    }
+
     // ---- READ CYCLE COUNT BINS ----
     if (action === 'readcyclecountbins') {
       var cbSheet = ss.getSheetByName('Cycle Count Bins');
