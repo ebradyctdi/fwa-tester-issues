@@ -299,6 +299,12 @@
         <input type="text" class="form-input" id="newBinId" placeholder="e.g. BIN-001" autocomplete="off">
       </div>
       <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Group</label>
+        <select class="form-input" id="newBinGroup" style="font-family:'Segoe UI',Arial,sans-serif;background:white;">
+          <option value="">— Select Group —</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
         <label class="form-label">Bin Description</label>
         <input type="text" class="form-input" id="newBinDesc" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
       </div>
@@ -838,6 +844,7 @@ function submitRemoveQR(raw) {
 // ---- CREATE BIN ----
 function openCreateBin() {
   document.getElementById('newBinId').value = '';
+  document.getElementById('newBinGroup').value = '';
   document.getElementById('newBinDesc').value = '';
   document.getElementById('newBinLocation').value = '';
   document.getElementById('createBinModal').style.display = 'flex';
@@ -850,6 +857,7 @@ function closeCreateBin() {
 
 async function submitCreateBin() {
   const binId = document.getElementById('newBinId').value.trim();
+  const binGroup = document.getElementById('newBinGroup').value.trim();
   const binDesc = document.getElementById('newBinDesc').value.trim();
   const binLocation = document.getElementById('newBinLocation').value.trim();
   if (!binId) { showToast('Bin ID is required', 'error'); return; }
@@ -860,7 +868,7 @@ async function submitCreateBin() {
   const btn = document.getElementById('createBinBtn');
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation });
+    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation, bingroup: binGroup });
     if (json.success) {
       showToast('Bin created: ' + binId, 'success');
       closeCreateBin();
@@ -933,7 +941,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Create Bin — Enter flow
 document.getElementById('newBinId').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinDesc').focus(); }
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinGroup').focus(); }
 });
 document.getElementById('newBinDesc').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newBinLocation').focus(); }
@@ -988,8 +996,19 @@ function focusScanField() {
   else { document.getElementById('bIMEI').focus(); }
 }
 
+async function loadBinGroups() {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readbingroups' });
+    if (json.success && json.data) {
+      const opts = '<option value="">— Select Group —</option>' + json.data.map(g => '<option value="' + g.replace(/"/g,'&quot;') + '">' + g + '</option>').join('');
+      document.getElementById('newBinGroup').innerHTML = opts;
+    }
+  } catch(e) { /* silently fail */ }
+}
+
 loadData();
 loadBinOptions();
+loadBinGroups();
 </script>
 </body>
 </html>
