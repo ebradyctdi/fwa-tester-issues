@@ -124,9 +124,10 @@
   </div>
   <div class="container">
 
-    <!-- Create a Bin Button -->
-    <div style="text-align:left;margin-bottom:12px;">
+    <!-- Action Buttons -->
+    <div style="text-align:left;margin-bottom:12px;display:flex;gap:10px;">
       <button onclick="openCreateBin()" style="padding:8px 16px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">➕ Create a Bin</button>
+      <button onclick="openManageGroups()" style="padding:8px 16px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">🏷️ Manage Bin Groups</button>
     </div>
 
     <!-- BIN LIST -->
@@ -191,6 +192,35 @@
     <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
       <button onclick="closeCreateBin()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px;">Cancel</button>
       <button onclick="submitCreateBin()" id="createBinBtn" style="padding:8px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Bin Groups Modal -->
+<div id="manageGroupsModal" onclick="if(event.target===this)closeManageGroups()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:520px;width:92%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#6c757d;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;margin:0;">🏷️ Manage Bin Groups</h3>
+      <button onclick="closeManageGroups()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+      <!-- Add group -->
+      <div style="background:#f8f9fa;border-radius:8px;padding:14px;margin-bottom:18px;">
+        <div style="font-size:12px;font-weight:700;color:#1a3a5c;text-transform:uppercase;margin-bottom:8px;">Add New Group</div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-input" id="newGroupName" placeholder="Group name..." autocomplete="off" style="flex:1;font-family:'Segoe UI',Arial,sans-serif;">
+          <button onclick="submitAddGroup()" id="addGroupBtn" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Add</button>
+        </div>
+      </div>
+      <!-- Group list -->
+      <div style="font-size:12px;font-weight:700;color:#1a3a5c;text-transform:uppercase;margin-bottom:8px;">Groups <span id="groupMgmtCount" style="color:#888;font-weight:400;"></span></div>
+      <table class="issues-table">
+        <thead><tr><th>Group Name</th><th></th></tr></thead>
+        <tbody id="groupMgmtBody"><tr><td colspan="2" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #eee;text-align:right;">
+      <button onclick="closeManageGroups()" style="padding:8px 24px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
     </div>
   </div>
 </div>
@@ -266,7 +296,7 @@
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allBins = [], _jsonpCounter = 0;
 let showRetired = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzZ-P0fZi1rKfkSntSgonv8Zy1mOkVnp68KSjMAehRX9IPORlOxJe-Tj8WeRDrFG05msg/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycby4oCWO9HXTwb4t4QSvl2PUOltL7JlKqCiAv0RdTS-ZyL9kQpagLnxm7y0rIyiw15sTZA/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -756,6 +786,86 @@ async function loadBinGroups() {
     }
   } catch(e) { /* silently fail */ }
 }
+
+// ---- MANAGE BIN GROUPS ----
+function openManageGroups() {
+  document.getElementById('manageGroupsModal').style.display = 'flex';
+  document.getElementById('newGroupName').value = '';
+  renderGroupMgmt();
+}
+
+function closeManageGroups() {
+  document.getElementById('manageGroupsModal').style.display = 'none';
+}
+
+function renderGroupMgmt() {
+  const body = document.getElementById('groupMgmtBody');
+  document.getElementById('groupMgmtCount').textContent = binGroups.length ? '(' + binGroups.length + ')' : '';
+  if (!binGroups.length) {
+    body.innerHTML = '<tr><td colspan="2" class="empty-state">No groups defined yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = binGroups.map(g => {
+    const safe = g.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return '<tr>'
+      + '<td>' + g + '</td>'
+      + '<td style="text-align:right;white-space:nowrap;">'
+        + '<button onclick="renameGroupPrompt(\'' + safe + '\')" style="padding:4px 12px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;margin-right:6px;">Rename</button>'
+        + '<button onclick="deleteGroup(\'' + safe + '\')" style="padding:4px 12px;background:#fce4ec;color:#b71c1c;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">Delete</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function submitAddGroup() {
+  const name = document.getElementById('newGroupName').value.trim();
+  if (!name) { showToast('Enter a group name', 'error'); return; }
+  if (binGroups.some(g => g.toLowerCase() === name.toLowerCase())) { showToast('Group "' + name + '" already exists', 'error'); return; }
+  const btn = document.getElementById('addGroupBtn');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'addbingroup', group: name });
+    if (json.success) {
+      showToast('Group added', 'success');
+      document.getElementById('newGroupName').value = '';
+      await loadBinGroups();
+      renderGroupMgmt();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Add';
+}
+
+async function renameGroupPrompt(oldName) {
+  const newName = prompt('Rename group "' + oldName + '" to:', oldName);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) { showToast('Name cannot be empty', 'error'); return; }
+  if (trimmed === oldName) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'renamebingroup', oldname: oldName, newname: trimmed });
+    if (json.success) {
+      showToast('Group renamed', 'success');
+      await loadBinGroups();
+      renderGroupMgmt();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function deleteGroup(name) {
+  if (!confirm('Delete group "' + name + '"?\n\nBins already assigned to this group keep their value; it just won\'t be selectable going forward.')) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'deletebingroup', group: name });
+    if (json.success) {
+      showToast('Group deleted', 'success');
+      await loadBinGroups();
+      renderGroupMgmt();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+document.getElementById('newGroupName').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); submitAddGroup(); }
+});
 
 loadBins();
 loadBinGroups();
