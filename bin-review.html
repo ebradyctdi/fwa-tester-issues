@@ -134,7 +134,10 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin:0;border:none;padding:0;">Bins <span id="binCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
         <div style="display:flex;gap:10px;align-items:center;">
-          <input type="text" id="binFilter" placeholder="Filter bins..." oninput="renderBins()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:200px;">
+          <select id="groupFilter" onchange="renderBins()" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:white;">
+            <option value="">All Groups</option>
+          </select>
+          <input type="text" id="binFilter" placeholder="Filter bins..." oninput="renderBins()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:180px;">
           <button onclick="exportUnitsCSV()" id="exportCsvBtn" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
           <button id="toggleRetiredBtn" onclick="toggleShowRetired()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Show Retired</button>
           <button onclick="loadBins()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
@@ -143,6 +146,7 @@
       <table class="issues-table">
         <thead><tr>
           <th>Bin ID</th>
+          <th>Bin Group</th>
           <th>Description</th>
           <th>Location</th>
           <th># Units in Bin</th>
@@ -150,7 +154,7 @@
           <th>Status</th>
           <th></th>
         </tr></thead>
-        <tbody id="binTableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="binTableBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -172,6 +176,12 @@
       <div style="margin-bottom:12px;">
         <label class="form-label">Bin Description</label>
         <input type="text" class="form-input" id="newBinDesc" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Group</label>
+        <select class="form-input" id="newBinGroup" style="font-family:'Segoe UI',Arial,sans-serif;background:white;">
+          <option value="">— Select Group —</option>
+        </select>
       </div>
       <div>
         <label class="form-label">Bin Location</label>
@@ -196,6 +206,12 @@
       <div style="margin-bottom:12px;">
         <label class="form-label">Bin Description</label>
         <input type="text" class="form-input" id="editBinDescInput" placeholder="Description (optional)" autocomplete="off" style="font-family:'Segoe UI',Arial,sans-serif;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Bin Group</label>
+        <select class="form-input" id="editBinGroupInput" style="font-family:'Segoe UI',Arial,sans-serif;background:white;">
+          <option value="">— Select Group —</option>
+        </select>
       </div>
       <div>
         <label class="form-label">Bin Location</label>
@@ -250,7 +266,7 @@
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allBins = [], _jsonpCounter = 0;
 let showRetired = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwv3wD_Ua-057V3NImF03OWfobJlyN7MxNd5YXXfzPp9vLjFx3SDDnpv3vnr1fmmbrXzw/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzZ-P0fZi1rKfkSntSgonv8Zy1mOkVnp68KSjMAehRX9IPORlOxJe-Tj8WeRDrFG05msg/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -293,9 +309,9 @@ async function exportUnitsCSV() {
     const rows = json.data || [];
     if (!rows.length) { showToast('No units currently in any bin', 'error'); return; }
 
-    let csv = 'Serial Number,IMEI,Bin ID,Description,Location\n';
+    let csv = 'Serial Number,IMEI,Bin ID,Bin Group,Description,Location\n';
     rows.forEach(r => {
-      csv += [csvCell(r.serial), csvCell(r.imei), csvCell(r.bin), csvCell(r.description), csvCell(r.location)].join(',') + '\n';
+      csv += [csvCell(r.serial), csvCell(r.imei), csvCell(r.bin), csvCell(r.group), csvCell(r.description), csvCell(r.location)].join(',') + '\n';
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -369,16 +385,22 @@ function renderBins() {
     bins = bins.filter(b => (b['Bin Status']||'').trim().toLowerCase() !== 'retired');
   }
 
+  const groupFilter = (document.getElementById('groupFilter').value || '').trim();
+  if (groupFilter) {
+    bins = bins.filter(b => (b['Bin Group']||'').trim() === groupFilter);
+  }
+
   if (filter) {
     bins = bins.filter(b =>
       (b['Bin ID']||'').toLowerCase().includes(filter) ||
       (b['Bin Description']||'').toLowerCase().includes(filter) ||
-      (b['Bin Location']||'').toLowerCase().includes(filter)
+      (b['Bin Location']||'').toLowerCase().includes(filter) ||
+      (b['Bin Group']||'').toLowerCase().includes(filter)
     );
   }
   document.getElementById('binCount').textContent = bins.length ? '(' + bins.length + ')' : '(0)';
   if (!bins.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (allBins.length ? 'No bins match the current view.' : 'No bins created yet.') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">' + (allBins.length ? 'No bins match the current view.' : 'No bins created yet.') + '</td></tr>';
     return;
   }
   tbody.innerHTML = bins.map(b => {
@@ -389,6 +411,7 @@ function renderBins() {
     const statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:' + (isRetired ? '#f8d7da;color:#721c24' : '#d4edda;color:#155724') + ';">' + status + '</span>';
     return '<tr>'
     + '<td class="meta" style="font-weight:600;">' + (b['Bin ID']||'—') + '</td>'
+    + '<td>' + (b['Bin Group']||'—') + '</td>'
     + '<td>' + (b['Bin Description']||'—') + '</td>'
     + '<td>' + (b['Bin Location']||'—') + '</td>'
     + '<td style="text-align:center;font-weight:600;">' + unitCount + '</td>'
@@ -407,6 +430,7 @@ function openCreateBin() {
   document.getElementById('newBinId').value = '';
   document.getElementById('newBinDesc').value = '';
   document.getElementById('newBinLocation').value = '';
+  document.getElementById('newBinGroup').value = '';
   document.getElementById('createBinModal').style.display = 'flex';
   document.getElementById('newBinId').focus();
 }
@@ -424,6 +448,7 @@ function openEditBin(binId) {
   document.getElementById('editBinTitle').textContent = binId;
   document.getElementById('editBinDescInput').value = (bin['Bin Description']||'').trim();
   document.getElementById('editBinLocationInput').value = (bin['Bin Location']||'').trim();
+  document.getElementById('editBinGroupInput').value = (bin['Bin Group']||'').trim();
   document.getElementById('editBinFeedback').innerHTML = '';
   document.getElementById('editBinModal').style.display = 'flex';
   document.getElementById('editBinDescInput').focus();
@@ -438,15 +463,16 @@ async function submitEditBin() {
   if (!editBinId) return;
   const desc = document.getElementById('editBinDescInput').value.trim();
   const location = document.getElementById('editBinLocationInput').value.trim();
+  const group = document.getElementById('editBinGroupInput').value.trim();
   const btn = document.getElementById('editBinSaveBtn');
   const fb = document.getElementById('editBinFeedback');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'updatecyclecountbin', binid: editBinId, bindescription: desc, binlocation: location });
+    const json = await jsonpRequest(scriptUrl, { action: 'updatecyclecountbin', binid: editBinId, bindescription: desc, binlocation: location, bingroup: group });
     if (json.success) {
       fb.innerHTML = '<span style="color:#28a745;">✓ Saved</span>';
       const bin = allBins.find(b => (b['Bin ID']||'').trim() === editBinId);
-      if (bin) { bin['Bin Description'] = desc; bin['Bin Location'] = location; }
+      if (bin) { bin['Bin Description'] = desc; bin['Bin Location'] = location; bin['Bin Group'] = group; }
       renderBins();
       setTimeout(() => closeEditBin(), 800);
     } else { fb.innerHTML = '<span style="color:#dc3545;">' + (json.error || 'Failed') + '</span>'; }
@@ -490,6 +516,7 @@ async function submitCreateBin() {
   const binId = document.getElementById('newBinId').value.trim();
   const binDesc = document.getElementById('newBinDesc').value.trim();
   const binLocation = document.getElementById('newBinLocation').value.trim();
+  const binGroup = document.getElementById('newBinGroup').value.trim();
   if (!binId) { showToast('Bin ID is required', 'error'); return; }
 
   // Client-side duplicate check (case-insensitive)
@@ -499,7 +526,7 @@ async function submitCreateBin() {
   const btn = document.getElementById('createBinBtn');
   btn.disabled = true; btn.textContent = 'Creating...';
   try {
-    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation });
+    const json = await jsonpRequest(scriptUrl, { action: 'createcyclecountbin', binid: binId, bindescription: binDesc, binlocation: binLocation, bingroup: binGroup });
     if (json.success) {
       showToast('Bin created: ' + binId, 'success');
       closeCreateBin();
@@ -714,7 +741,24 @@ document.addEventListener('DOMContentLoaded', function() {
   if (active) { const group = active.closest('.nav-group'); if (group) group.classList.add('open'); }
 });
 
+let binGroups = [];
+async function loadBinGroups() {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readbingroups' });
+    if (json.success && json.data) {
+      binGroups = json.data;
+      const opts = binGroups.map(g => '<option value="' + g.replace(/"/g,'&quot;') + '">' + g + '</option>').join('');
+      // Create & Edit modal dropdowns
+      document.getElementById('newBinGroup').innerHTML = '<option value="">— Select Group —</option>' + opts;
+      document.getElementById('editBinGroupInput').innerHTML = '<option value="">— Select Group —</option>' + opts;
+      // Table filter dropdown
+      document.getElementById('groupFilter').innerHTML = '<option value="">All Groups</option>' + opts;
+    }
+  } catch(e) { /* silently fail */ }
+}
+
 loadBins();
+loadBinGroups();
 </script>
 </body>
 </html>
