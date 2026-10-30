@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -82,6 +82,7 @@
     <a href="bin-cycle-count.html" class="active"><span class="icon">🔢</span> Bin Cycle Count</a>
     <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
     <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    <a href="wip-status-bins.html"><span class="icon">📊</span> WIP Status by Bins</a>
     </div>
     <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
     <div class="nav-group">
@@ -317,7 +318,7 @@
 <script>
 const URL_KEY = 'fwa_script_url';
 let scriptUrl = '', allCounts = [], _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycby4oCWO9HXTwb4t4QSvl2PUOltL7JlKqCiAv0RdTS-ZyL9kQpagLnxm7y0rIyiw15sTZA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwokda_Y-AAc-LUOhr5XsefAUb87se8UI-MrbrGZLszoNzgafhvGRPCTe8YSzlqQKGWgA/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {

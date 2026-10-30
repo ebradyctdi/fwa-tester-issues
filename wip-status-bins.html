@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - WIP Status by Bins</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1500px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .upload-zone { border: 2px dashed #ccc; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
+  .upload-zone:hover { border-color: #1a3a5c; background: #f8f9fa; }
+  .upload-zone.dragover { border-color: #28a745; background: #f0fff0; }
+  .upload-zone .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone .upload-text { font-size: 14px; color: #666; }
+  .upload-zone .upload-hint { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+  .file-info { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #d4edda; border-radius: 8px; margin-bottom: 16px; }
+  .file-info .file-name { font-size: 13px; font-weight: 600; color: #155724; flex: 1; }
+  .file-info .file-rows { font-size: 11px; color: #155724; }
+  .file-info .file-clear { padding: 4px 12px; background: #c3e6cb; color: #155724; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .file-info .file-clear:hover { background: #a5d6a7; }
+
+  .bin-table { width: 100%; border-collapse: collapse; }
+  .bin-table th { padding: 12px 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; border-bottom: 2px solid #e0e0e0; }
+  .bin-table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .bin-table tbody tr { cursor: pointer; transition: background 0.1s; }
+  .bin-table tbody tr:hover { background: #f8f9fa; }
+  .bin-table .bin-id { font-weight: 700; font-family: Consolas, monospace; color: #1a3a5c; font-size: 14px; white-space: nowrap; }
+  .bin-table .num { text-align: center; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 32px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 700px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; background: #1a3a5c; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .modal-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 8px; }
+  .modal-footer button { padding: 8px 24px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .process-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .process-bar-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; min-width: 20px; transition: width 0.3s; }
+
+  .breakdown-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .breakdown-table th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 2px solid #e0e0e0; }
+  .breakdown-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+
+  .no-data { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .bin-table { display: block; overflow-x: auto; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Non-Conforming Inventory</div>
+    <div class="nav-group">
+    <a href="add-to-bin.html"><span class="icon">➕</span> Add/Remove Units to Bin</a>
+    <a href="bin-cycle-count.html"><span class="icon">🔢</span> Bin Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    <a href="wip-status-bins.html" class="active"><span class="icon">📊</span> WIP Status by Bins</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ X - Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>WIP Status by Bins</h1><div class="header-sub">Cross-reference WIP process data with units in non-conforming inventory bins</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- KPIs -->
+    <div class="kpi-row" id="kpiRow" style="display:none;">
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotalUnits">0</div><div class="kpi-label">Total Units in Bins</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiDisassociated">0</div><div class="kpi-label">Dis-Associated</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiAwaiting">0</div><div class="kpi-label">Awaiting Dis-Association</div></div>
+      <div class="kpi" style="border-top:4px solid #6f42c1;"><div class="kpi-val" id="kpiNotInWip">0</div><div class="kpi-label">Not in WIP File</div></div>
+    </div>
+
+    <!-- UPLOAD SECTION -->
+    <div class="card">
+      <h2>Upload WIP File</h2>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Click or drag &amp; drop an Excel file (.xlsx, .xls)</div>
+        <div class="upload-hint">File should contain at minimum: IMEI and PROCESS columns</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleFileSelect(event)">
+      <div id="fileInfoBar" style="display:none;"></div>
+    </div>
+
+    <!-- BIN RESULTS TABLE -->
+    <div class="card" id="resultsCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Bins — WIP Breakdown <span id="binCountLabel" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <div style="display:flex;gap:8px;">
+          <button onclick="exportUnitCSV()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export Unit Detail</button>
+          <button onclick="exportSummaryCSV()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">📥 Export CSV</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <select id="groupFilter" onchange="renderResults()" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:white;">
+          <option value="">All Groups</option>
+        </select>
+        <input type="text" id="binFilter" placeholder="Filter by Bin ID, group, description..." oninput="renderResults()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:280px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label for="greenThreshold" style="font-size:12px;color:#555;white-space:nowrap;">Green Dis-Association %:</label>
+          <input type="number" id="greenThreshold" value="85" min="0" max="100" oninput="renderResults()" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:70px;">
+          <span style="font-size:12px;color:#888;">%</span>
+        </div>
+        <button onclick="loadData()" style="padding:8px 16px;background:white;color:#1a3a5c;border:1px solid #1a3a5c;border-radius:4px;cursor:pointer;font-size:12px;">Refresh</button>
+      </div>
+      <table class="bin-table">
+        <thead><tr>
+          <th style="cursor:pointer;" onclick="toggleBinSort()">Bin ID <span id="sortArrow">▲</span></th>
+          <th>Bin Group</th>
+          <th>Description</th>
+          <th>Location</th>
+          <th class="num">Units in Bin</th>
+          <th class="num">Dis-Associated</th>
+          <th class="num">Awaiting Dis-Association</th>
+          <th class="num">Not in WIP File</th>
+          <th class="num">Dis-Association %</th>
+        </tr></thead>
+        <tbody id="binResultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Bin Details</h3>
+      <div class="modal-sub" id="modalSub"></div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer"><button onclick="exportBinCSV()" style="background:#28a745;color:white;font-weight:600;">📥 Export CSV</button><button onclick="closeModal()">Close</button></div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '', allBinUnits = [], allBins = [], wipData = [], binWipMap = {}, _jsonpCounter = 0;
+let binSortAsc = true;
+let selectedBinId = null;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwokda_Y-AAc-LUOhr5XsefAUb87se8UI-MrbrGZLszoNzgafhvGRPCTe8YSzlqQKGWgA/exec'; } catch(e) {}
+
+// WIP process steps that mean a unit is still waiting to be dis-associated.
+// Any other process found in the WIP file counts as already dis-associated.
+const AWAITING_PROCESSES = ['DIS-PHOLD', 'DIS-RHOLD'];
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 30000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 3000);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function csvCell(v) {
+  return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+}
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---- FILE UPLOAD ----
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', function(e) { e.preventDefault(); uploadZone.classList.remove('dragover'); });
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length) parseFile(files[0]);
+});
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) parseFile(file);
+}
+
+function parseFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!json.length) { showToast('File is empty or has no data rows', 'error'); return; }
+
+      // Find IMEI and PROCESS columns (case-insensitive)
+      const headers = Object.keys(json[0]);
+      const imeiCol = headers.find(h => h.toUpperCase().replace(/[^A-Z0-9]/g,'') === 'IMEI') || headers.find(h => h.toUpperCase().includes('IMEI'));
+      const processCol = headers.find(h => h.toUpperCase().replace(/[^A-Z0-9]/g,'') === 'PROCESS') || headers.find(h => h.toUpperCase().includes('PROCESS'));
+
+      if (!imeiCol) { showToast('Could not find an "IMEI" column in the file', 'error'); return; }
+      if (!processCol) { showToast('Could not find a "PROCESS" column in the file', 'error'); return; }
+
+      wipData = json.map(row => ({
+        imei: (row[imeiCol] || '').toString().trim(),
+        process: (row[processCol] || '').toString().trim()
+      })).filter(r => r.imei);
+
+      document.getElementById('fileInfoBar').style.display = 'block';
+      document.getElementById('fileInfoBar').innerHTML = '<div class="file-info"><span class="file-name">📄 ' + esc(file.name) + '</span><span class="file-rows">' + wipData.length + ' rows with IMEI</span><button class="file-clear" onclick="clearFile()">✕ Clear</button></div>';
+      uploadZone.style.display = 'none';
+
+      crossReference();
+    } catch(err) {
+      showToast('Error parsing file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearFile() {
+  wipData = [];
+  document.getElementById('fileInfoBar').style.display = 'none';
+  document.getElementById('fileInfoBar').innerHTML = '';
+  uploadZone.style.display = '';
+  document.getElementById('fileInput').value = '';
+  buildBinMap();
+}
+
+// ---- BIN MAP (units grouped by bin) ----
+// Returns { binIdLower: { binId, units: [unit...] } } for every unit currently At Bin
+function groupUnitsByBin() {
+  const byBin = {};
+  allBinUnits.forEach(u => {
+    const binId = (u.bin || '').trim();
+    if (!binId) return;
+    const k = binId.toLowerCase();
+    if (!byBin[k]) byBin[k] = { binId: binId, units: [] };
+    byBin[k].units.push(u);
+  });
+  return byBin;
+}
+
+function binMeta(binIdLower) {
+  const b = allBins.find(x => (x['Bin ID']||'').trim().toLowerCase() === binIdLower) || {};
+  return {
+    group: (b['Bin Group'] || '').trim(),
+    description: (b['Bin Description'] || '').trim(),
+    location: (b['Bin Location'] || '').trim(),
+    retired: (b['Bin Status'] || '').trim().toLowerCase() === 'retired'
+  };
+}
+
+// Build bin map without WIP data (shows units per bin, dashes for WIP fields)
+function buildBinMap() {
+  const byBin = groupUnitsByBin();
+  binWipMap = {};
+  let totalUnits = 0;
+
+  Object.keys(byBin).forEach(k => {
+    const entry = byBin[k];
+    const meta = binMeta(k);
+    if (meta.retired) return;
+    totalUnits += entry.units.length;
+    binWipMap[entry.binId] = {
+      totalUnits: entry.units.length,
+      matchedCount: null,
+      disassociatedCount: null,
+      awaitingCount: null,
+      notInWipCount: null,
+      notInWipUnits: [],
+      breakdown: {},
+      group: meta.group,
+      description: meta.description,
+      location: meta.location
+    };
+  });
+
+  document.getElementById('kpiTotalUnits').textContent = totalUnits;
+  document.getElementById('kpiDisassociated').textContent = '—';
+  document.getElementById('kpiAwaiting').textContent = '—';
+  document.getElementById('kpiNotInWip').textContent = '—';
+  document.getElementById('kpiRow').style.display = 'grid';
+  document.getElementById('resultsCard').style.display = 'block';
+
+  renderResults();
+}
+
+// ---- CROSS REFERENCE ----
+function crossReference() {
+  if (!wipData.length) return;
+
+  // IMEI → process lookup from uploaded file
+  const imeiProcessMap = {};
+  wipData.forEach(row => { imeiProcessMap[row.imei] = row.process; });
+
+  const byBin = groupUnitsByBin();
+  binWipMap = {};
+  let totalDisassociated = 0, totalAwaiting = 0, totalNotInWip = 0, totalUnits = 0;
+
+  Object.keys(byBin).forEach(k => {
+    const entry = byBin[k];
+    const meta = binMeta(k);
+    if (meta.retired) return;
+
+    const breakdown = {};
+    let disassociatedCount = 0, awaitingCount = 0, notInWipCount = 0;
+    const notInWipUnits = [];
+
+    entry.units.forEach(unit => {
+      const imei = (unit.imei || '').trim();
+      const info = { imei: imei, serial: (unit.serial || '').trim(), model: (unit.model || '').trim() };
+      if (imeiProcessMap[imei] !== undefined) {
+        const process = imeiProcessMap[imei] || '(blank)';
+        if (!breakdown[process]) breakdown[process] = [];
+        breakdown[process].push(info);
+        if (AWAITING_PROCESSES.includes(process.toUpperCase())) awaitingCount++;
+        else disassociatedCount++;
+      } else {
+        notInWipCount++;
+        notInWipUnits.push(info);
+      }
+    });
+
+    totalDisassociated += disassociatedCount;
+    totalAwaiting += awaitingCount;
+    totalNotInWip += notInWipCount;
+    totalUnits += entry.units.length;
+
+    binWipMap[entry.binId] = {
+      totalUnits: entry.units.length,
+      matchedCount: disassociatedCount + awaitingCount,
+      disassociatedCount, awaitingCount, notInWipCount, notInWipUnits, breakdown,
+      group: meta.group, description: meta.description, location: meta.location
+    };
+  });
+
+  document.getElementById('kpiTotalUnits').textContent = totalUnits;
+  document.getElementById('kpiDisassociated').textContent = totalDisassociated;
+  document.getElementById('kpiAwaiting').textContent = totalAwaiting;
+  document.getElementById('kpiNotInWip').textContent = totalNotInWip;
+  document.getElementById('kpiRow').style.display = 'grid';
+
+  renderResults();
+}
+
+function toggleBinSort() {
+  binSortAsc = !binSortAsc;
+  document.getElementById('sortArrow').textContent = binSortAsc ? '▲' : '▼';
+  renderResults();
+}
+
+function visibleEntries() {
+  const filterVal = (document.getElementById('binFilter').value || '').trim().toLowerCase();
+  const groupVal = (document.getElementById('groupFilter').value || '').trim();
+
+  let entries = Object.entries(binWipMap).filter(([id, d]) => d.totalUnits > 0);
+  if (groupVal) entries = entries.filter(([id, d]) => d.group === groupVal);
+  if (filterVal) {
+    entries = entries.filter(([id, d]) =>
+      id.toLowerCase().includes(filterVal) ||
+      (d.group || '').toLowerCase().includes(filterVal) ||
+      (d.description || '').toLowerCase().includes(filterVal) ||
+      (d.location || '').toLowerCase().includes(filterVal)
+    );
+  }
+  // natural sort so P-HOLD-2 comes before P-HOLD-10
+  entries.sort((a, b) => {
+    const cmp = a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' });
+    return binSortAsc ? cmp : -cmp;
+  });
+  return entries;
+}
+
+function renderResults() {
+  const tbody = document.getElementById('binResultsBody');
+  const hasWip = wipData.length > 0;
+  const entries = visibleEntries();
+  const filtered = (document.getElementById('binFilter').value || '').trim() || document.getElementById('groupFilter').value;
+
+  document.getElementById('binCountLabel').textContent = '(' + entries.length + ')';
+
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="no-data">' + (filtered ? 'No bins match the filter.' : 'No bins with units found.') + '</td></tr>';
+    document.getElementById('resultsCard').style.display = 'block';
+    return;
+  }
+
+  const greenThreshold = parseInt(document.getElementById('greenThreshold').value) || 85;
+
+  tbody.innerHTML = entries.map(([binId, data]) => {
+    const common = '<td class="bin-id">' + esc(binId) + '</td>'
+      + '<td>' + (esc(data.group) || '—') + '</td>'
+      + '<td style="font-size:12px;color:#555;">' + (esc(data.description) || '—') + '</td>'
+      + '<td style="font-size:12px;color:#555;">' + (esc(data.location) || '—') + '</td>'
+      + '<td class="num" style="font-weight:600;">' + data.totalUnits + '</td>';
+
+    if (hasWip && data.disassociatedCount !== null) {
+      const disPct = data.totalUnits > 0 ? Math.round((data.disassociatedCount / data.totalUnits) * 100) : 0;
+      const pctColor = disPct >= greenThreshold ? '#28a745' : disPct >= 50 ? '#fd7e14' : '#dc3545';
+      return '<tr data-bin="' + esc(binId) + '" onclick="showBinBreakdown(this.dataset.bin)">'
+        + common
+        + '<td class="num" style="font-weight:700;color:#28a745;">' + data.disassociatedCount + '</td>'
+        + '<td class="num" style="font-weight:700;color:#fd7e14;">' + data.awaitingCount + '</td>'
+        + '<td class="num" style="color:#888;">' + data.notInWipCount + '</td>'
+        + '<td class="num" style="font-weight:700;color:' + pctColor + ';">' + disPct + '%</td>'
+        + '</tr>';
+    }
+    return '<tr>' + common
+      + '<td class="num" style="color:#ccc;">—</td>'
+      + '<td class="num" style="color:#ccc;">—</td>'
+      + '<td class="num" style="color:#ccc;">—</td>'
+      + '<td class="num" style="color:#ccc;">—</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('resultsCard').style.display = 'block';
+}
+
+// ---- DETAIL MODAL ----
+function showBinBreakdown(binId) {
+  selectedBinId = binId;
+  const data = binWipMap[binId];
+  if (!data) return;
+
+  const disPct = data.totalUnits > 0 ? Math.round((data.disassociatedCount / data.totalUnits) * 100) : 0;
+  document.getElementById('modalTitle').textContent = 'Bin: ' + binId;
+  document.getElementById('modalSub').textContent = (data.group ? data.group + ' — ' : '') + data.totalUnits + ' units in bin • Dis-Association: ' + disPct + '%'
+    + (data.description ? ' • ' + data.description : '');
+
+  let html = '';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
+  html += '<div style="text-align:center;padding:12px;background:#e8f5e9;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#28a745;">' + data.disassociatedCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Dis-Associated</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:#fff3e0;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#fd7e14;">' + data.awaitingCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Awaiting</div></div>';
+  html += '<div style="text-align:center;padding:12px;background:#f5f5f5;border-radius:8px;"><div style="font-size:24px;font-weight:700;color:#888;">' + data.notInWipCount + '</div><div style="font-size:10px;color:#666;text-transform:uppercase;">Not in WIP</div></div>';
+  html += '</div>';
+
+  const sorted = Object.entries(data.breakdown).sort((a,b) => b[1].length - a[1].length);
+
+  if (data.matchedCount > 0) {
+    html += '<div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:6px;">Process Distribution</div>';
+    html += '<div class="process-bar">';
+    sorted.forEach(([process, units]) => {
+      const pct = (units.length / data.totalUnits * 100).toFixed(1);
+      const color = AWAITING_PROCESSES.includes(process.toUpperCase()) ? '#fd7e14' : '#28a745';
+      html += '<div class="process-bar-seg" style="width:' + pct + '%;background:' + color + ';" title="' + esc(process) + ': ' + units.length + ' (' + pct + '%)">' + (parseFloat(pct) > 8 ? units.length : '') + '</div>';
+    });
+    if (data.notInWipCount > 0) {
+      const notPct = (data.notInWipCount / data.totalUnits * 100).toFixed(1);
+      html += '<div class="process-bar-seg" style="width:' + notPct + '%;background:#ddd;" title="Not in WIP: ' + data.notInWipCount + ' (' + notPct + '%)">' + (parseFloat(notPct) > 8 ? data.notInWipCount : '') + '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<table class="breakdown-table"><thead><tr><th>Process</th><th>Status</th><th>Count</th><th>% of Bin</th></tr></thead><tbody>';
+  sorted.forEach(([process, units]) => {
+    const pct = (units.length / data.totalUnits * 100).toFixed(1);
+    const isAwaiting = AWAITING_PROCESSES.includes(process.toUpperCase());
+    const statusLabel = isAwaiting ? 'Awaiting' : 'Dis-Associated';
+    const statusColor = isAwaiting ? '#fd7e14' : '#28a745';
+    html += '<tr onclick="toggleProcessIMEIs(this)" style="cursor:pointer;">'
+      + '<td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + statusColor + ';margin-right:8px;"></span>' + esc(process) + '</td>'
+      + '<td style="font-size:11px;font-weight:600;color:' + statusColor + ';">' + statusLabel + '</td>'
+      + '<td style="font-weight:700;">' + units.length + '</td>'
+      + '<td>' + pct + '%</td>'
+      + '</tr>';
+    html += unitListRow(units);
+  });
+
+  if (data.notInWipUnits && data.notInWipUnits.length > 0) {
+    const notPct = (data.notInWipUnits.length / data.totalUnits * 100).toFixed(1);
+    html += '<tr onclick="toggleProcessIMEIs(this)" style="cursor:pointer;">'
+      + '<td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#888;margin-right:8px;"></span>Not in WIP</td>'
+      + '<td style="font-size:11px;font-weight:600;color:#888;">—</td>'
+      + '<td style="font-weight:700;">' + data.notInWipUnits.length + '</td>'
+      + '<td>' + notPct + '%</td>'
+      + '</tr>';
+    html += unitListRow(data.notInWipUnits);
+  }
+  html += '</tbody></table>';
+
+  html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#888;">'
+    + 'Total units in bin: ' + data.totalUnits + ' | Dis-Associated: ' + data.disassociatedCount + ' | Awaiting: ' + data.awaitingCount + ' | Not in WIP: ' + data.notInWipCount
+    + '</div>';
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function unitListRow(units) {
+  let h = '<tr class="imei-detail-row" style="display:none;"><td colspan="4" style="padding:0 12px 12px 30px;"><div style="max-height:200px;overflow-y:auto;font-size:11px;font-family:Consolas,monospace;background:#f8f9fa;padding:8px 12px;border-radius:4px;">';
+  units.forEach(u => { h += '<div style="padding:2px 0;">' + esc(u.imei) + (u.serial ? ' | ' + esc(u.serial) : '') + '</div>'; });
+  return h + '</div></td></tr>';
+}
+
+function toggleProcessIMEIs(rowEl) {
+  const detailRow = rowEl.nextElementSibling;
+  if (detailRow && detailRow.classList.contains('imei-detail-row')) {
+    detailRow.style.display = detailRow.style.display === 'none' ? 'table-row' : 'none';
+  }
+}
+
+function closeModal() { document.getElementById('detailModal').classList.remove('show'); }
+
+// ---- EXPORTS ----
+function exportBinCSV() {
+  if (!selectedBinId || !binWipMap[selectedBinId]) return;
+  const data = binWipMap[selectedBinId];
+  let csv = 'IMEI,Serial Number,Device Model,Process,Status\n';
+  Object.entries(data.breakdown).forEach(([process, units]) => {
+    const status = AWAITING_PROCESSES.includes(process.toUpperCase()) ? 'Awaiting Dis-Association' : 'Dis-Associated';
+    units.forEach(u => { csv += [csvCell(u.imei), csvCell(u.serial), csvCell(u.model), csvCell(process), csvCell(status)].join(',') + '\n'; });
+  });
+  (data.notInWipUnits || []).forEach(u => {
+    csv += [csvCell(u.imei), csvCell(u.serial), csvCell(u.model), csvCell(''), csvCell('Not in WIP File')].join(',') + '\n';
+  });
+  downloadCSV(csv, 'WIP_Bin_' + selectedBinId + '.csv');
+  showToast('CSV exported for ' + selectedBinId, 'success');
+}
+
+function exportSummaryCSV() {
+  const entries = visibleEntries();
+  if (!entries.length) { showToast('No data to export', 'error'); return; }
+  const hasWip = wipData.length > 0;
+
+  let csv = 'Bin ID,Bin Group,Description,Location,Units in Bin,Dis-Associated,Awaiting Dis-Association,Not in WIP File,Dis-Association %\n';
+  entries.forEach(([binId, d]) => {
+    if (hasWip && d.disassociatedCount !== null) {
+      const disPct = d.totalUnits > 0 ? Math.round((d.disassociatedCount / d.totalUnits) * 100) : 0;
+      csv += [csvCell(binId), csvCell(d.group), csvCell(d.description), csvCell(d.location), d.totalUnits, d.disassociatedCount, d.awaitingCount, d.notInWipCount, disPct + '%'].join(',') + '\n';
+    } else {
+      csv += [csvCell(binId), csvCell(d.group), csvCell(d.description), csvCell(d.location), d.totalUnits, '', '', '', ''].join(',') + '\n';
+    }
+  });
+  downloadCSV(csv, 'wip-status-by-bins.csv');
+  showToast('CSV exported', 'success');
+}
+
+function exportUnitCSV() {
+  const entries = visibleEntries();
+  if (!entries.length) { showToast('No data to export', 'error'); return; }
+
+  let csv = 'Bin ID,Bin Group,IMEI,Serial Number,Device Model,WIP Process,Status\n';
+  entries.forEach(([binId, d]) => {
+    if (wipData.length && d.disassociatedCount !== null) {
+      Object.entries(d.breakdown).forEach(([process, units]) => {
+        const status = AWAITING_PROCESSES.includes(process.toUpperCase()) ? 'Awaiting Dis-Association' : 'Dis-Associated';
+        units.forEach(u => { csv += [csvCell(binId), csvCell(d.group), csvCell(u.imei), csvCell(u.serial), csvCell(u.model), csvCell(process), csvCell(status)].join(',') + '\n'; });
+      });
+      d.notInWipUnits.forEach(u => {
+        csv += [csvCell(binId), csvCell(d.group), csvCell(u.imei), csvCell(u.serial), csvCell(u.model), csvCell(''), csvCell('Not in WIP File')].join(',') + '\n';
+      });
+    } else {
+      // No WIP file loaded — list the units with blank process/status
+      const byBin = groupUnitsByBin()[binId.toLowerCase()];
+      (byBin ? byBin.units : []).forEach(u => {
+        csv += [csvCell(binId), csvCell(d.group), csvCell(u.imei), csvCell(u.serial), csvCell(u.model), csvCell(''), csvCell('')].join(',') + '\n';
+      });
+    }
+  });
+  downloadCSV(csv, 'wip-bin-unit-detail.csv');
+  showToast('Unit detail CSV exported', 'success');
+}
+
+// ---- LOAD BIN DATA ----
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading bin data...');
+  try {
+    const [unitsJson, binsJson, groupsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readallbinunits' }),
+      jsonpRequest(scriptUrl, { action: 'readcyclecountbins' }),
+      jsonpRequest(scriptUrl, { action: 'readbingroups' }).catch(() => ({ success: false }))
+    ]);
+    if (unitsJson.success) allBinUnits = unitsJson.data || [];
+    else throw new Error(unitsJson.error || 'Failed to load units');
+    if (binsJson.success) allBins = binsJson.data || [];
+
+    if (groupsJson && groupsJson.success && groupsJson.data) {
+      const current = document.getElementById('groupFilter').value;
+      document.getElementById('groupFilter').innerHTML = '<option value="">All Groups</option>'
+        + groupsJson.data.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('');
+      document.getElementById('groupFilter').value = current;
+    }
+
+    setStatus('connected', 'Connected');
+
+    buildBinMap();
+    if (wipData.length) crossReference();
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    showToast('Failed to load bin data: ' + err.message, 'error');
+  }
+}
+
+// ---- NAV ----
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+
+// Init
+loadData();
+</script>
+</body>
+</html>
