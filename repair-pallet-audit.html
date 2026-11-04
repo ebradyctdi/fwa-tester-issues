@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWA - Repair Pallet Audit</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 6px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #1a3a5c; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.85); padding: 16px 16px 8px; letter-spacing: 1px; cursor: pointer; user-select: none; font-weight: 600; }
+  .sidebar-nav .nav-section:hover { color: white; background: rgba(255,255,255,0.05); }
+  .sidebar-nav .nav-group { display: none; }
+  .sidebar-nav .nav-group.open { display: block; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; width: 100%; }
+</style>
+<style>
+  .scan-section { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .scan-section h2 { font-size: 16px; margin-bottom: 14px; color: #1a3a5c; }
+  .scan-input { width: 100%; padding: 12px 16px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-family: Consolas, monospace; transition: border-color 0.2s; }
+  .scan-input:focus { outline: none; border-color: #1a3a5c; }
+  .scan-input:disabled { background: #f5f5f5; color: #999; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: white; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .kpi-val { font-size: 32px; font-weight: 700; }
+  .kpi-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #1a3a5c; color: white; }
+  .btn-primary:hover:not(:disabled) { background: #2c5f8a; }
+  .btn-success { background: #28a745; color: white; }
+  .btn-success:hover:not(:disabled) { background: #218838; }
+  .btn-danger { background: #dc3545; color: white; }
+  .btn-danger:hover:not(:disabled) { background: #c82333; }
+  .btn-reset { background: #6c757d; color: white; }
+  .btn-reset:hover:not(:disabled) { background: #5a6268; }
+  .imei-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .imei-table th { background: #1a3a5c; color: white; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .imei-table td { padding: 6px 10px; border-bottom: 1px solid #eee; font-family: Consolas, monospace; }
+  .imei-table tr.matched td { background: #d4edda; }
+  .imei-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .imei-chip { padding: 6px 10px; border-radius: 6px; font-family: Consolas, monospace; font-size: 12px; text-align: center; background: #f0f2f5; border: 1px solid #dee2e6; transition: all 0.15s; }
+  .imei-chip.matched { background: #d4edda; border-color: #28a745; color: #155724; }
+  .imei-chip.matched::before { content: '✅ '; }
+  .imei-chip.matched-imei-only { background: #d6eaf8; border-color: #5dade2; color: #1a5276; }
+  .imei-chip.matched-imei-only::before { content: '☑️ '; }
+  .imei-chip .issue-btn { display: none; margin-left: 6px; background: #fd7e14; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 2px 6px; cursor: pointer; font-weight: 600; }
+  .imei-chip.audit-mode .issue-btn { display: inline-block; }
+  .imei-chip.has-issue { border-color: #fd7e14; }
+  .imei-chip.has-issue::after { content: ' ⚠️'; }
+  .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .status-indicator.pending { background: #dee2e6; }
+  .status-indicator.matched { background: #28a745; }
+  .phase-indicator { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .phase-load { background: #fff3cd; color: #856404; }
+  .phase-audit { background: #d4edda; color: #155724; }
+  .phase-complete { background: #cce5ff; color: #004085; }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; }
+  .modal-header { padding: 16px 24px; color: white; background: #1a3a5c; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .form-group input, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-label { color: #666; }
+  .metric-value { font-weight: 700; font-family: Consolas, monospace; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">FWA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Tester Health</div>
+    <div class="nav-group">
+    <a href="index.html"><span class="icon">🏠</span> Overview</a>
+    <a href="report-issue.html"><span class="icon">🚨</span> Report An Issue</a>
+    <a href="open-issues.html"><span class="icon">⚠️</span> Open Issues</a>
+    <a href="issue-history.html"><span class="icon">📋</span> Issue History</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Non-Conforming Inventory</div>
+    <div class="nav-group">
+    <a href="add-to-bin.html"><span class="icon">➕</span> Add/Remove Units to Bin</a>
+    <a href="bin-cycle-count.html"><span class="icon">🔢</span> Bin Cycle Count</a>
+    <a href="bin-review.html"><span class="icon">📦</span> Bin Review</a>
+    <a href="unit-lookup.html"><span class="icon">🔎</span> Unit Lookup</a>
+    <a href="wip-status-bins.html"><span class="icon">📊</span> WIP Status by Bins</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ Audit Tools</div>
+    <div class="nav-group">
+    <a href="audit-dashboard.html"><span class="icon">📊</span> Audit Dashboard</a>
+    <a href="device-audit-review.html"><span class="icon">🔎</span> Device Audit Review</a>
+    <a href="pallet-audit.html"><span class="icon">📦</span> Pallet Audit Tool</a>
+    <a href="pallet-issues.html"><span class="icon">⚠️</span> Open Pallet Issues</a>
+    <a href="pallet-audit-log.html"><span class="icon">📜</span> Audit Log</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ WNC Repair Tools</div>
+    <div class="nav-group">
+    <a href="repaired-pallet-build.html"><span class="icon">🔧</span> Repaired Pallet Build</a>
+    <a href="repair-pallet-label.html"><span class="icon">🏷️</span> Repair Pallet Label Re-Print</a>
+    <a href="repair-pallet-audit.html" class="active"><span class="icon">✅</span> Repair Pallet Audit</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ System</div>
+    <div class="nav-group">
+    <a href="testers.html"><span class="icon">🖥️</span> Testers</a>
+    <a href="email-schedule.html"><span class="icon">📧</span> Email Schedule</a>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    </div>
+    <div class="nav-section" onclick="toggleNavGroup(this)">▶ X - Product/Device Issues</div>
+    <div class="nav-group">
+    <a href="receipt-issues.html"><span class="icon">🔍</span> Issue Logger</a>
+    <a href="receipt-history.html"><span class="icon">📜</span> Issue History</a>
+    <a href="receipt-carts.html"><span class="icon">🛒</span> Carts</a>
+    <a href="cart-label.html"><span class="icon">🏷️</span> Cart Label Maker</a>
+    <a href="wip-status.html"><span class="icon">📊</span> WIP Status by Carts</a>
+    </div>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Repair Pallet Audit</h1><div class="header-sub">CTDI — WNC Repair Tools</div></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="phase-indicator phase-load" id="phaseLabel">Phase: Load Pallet</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- Reset -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <span></span>
+      <button class="btn btn-reset" onclick="resetAll()">Reset / New Audit</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi" style="border-top:4px solid #1a3a5c;"><div class="kpi-val" id="kpiTotal">0</div><div class="kpi-label">IMEIs on Pallet</div></div>
+      <div class="kpi" style="border-top:4px solid #28a745;"><div class="kpi-val" id="kpiQuality">0</div><div class="kpi-label">Quality Checked During Audit</div></div>
+      <div class="kpi" style="border-top:4px solid #5dade2;"><div class="kpi-val" id="kpiMatched">0</div><div class="kpi-label">Matched During Audit</div></div>
+      <div class="kpi" style="border-top:4px solid #fd7e14;"><div class="kpi-val" id="kpiRemaining">0</div><div class="kpi-label">Remaining</div></div>
+      <div class="kpi" style="border-top:4px solid #dc3545;"><div class="kpi-val" id="kpiIssues">0</div><div class="kpi-label">Issues Logged</div></div>
+    </div>
+
+    <!-- Audit Location -->
+    <div class="scan-section" id="locationSection">
+      <h2>Audit Location</h2>
+      <select id="auditLocationSelect" class="scan-input" style="cursor:pointer;">
+        <option value="">Loading locations...</option>
+      </select>
+    </div>
+
+    <!-- Pallet Disposition -->
+    <div class="scan-section" id="dispositionSection">
+      <h2>Pallet Disposition</h2>
+      <select id="palletDispositionSelect" class="scan-input" style="cursor:pointer;">
+        <option value="">-- Select Disposition --</option>
+        <option value="CLR">CLR</option>
+        <option value="ICE">ICE</option>
+        <option value="IFF">IFF</option>
+        <option value="RNR">RNR</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    </div>
+
+    <!-- PHASE 1: Load Pallet -->
+    <div id="loadSection">
+      <div class="scan-section">
+        <h2>Step 1: Scan Closed Repair Pallet ID</h2>
+        <input type="text" class="scan-input" id="palletInput" placeholder="Scan repair pallet barcode (RPR...)..." autofocus>
+        <div style="margin-top:8px;font-size:12px;color:#888;">Only pallets that were built and closed in Repaired Pallet Build can be audited.</div>
+        <div id="palletStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
+      </div>
+
+      <div class="scan-section" id="manifestSection" style="display:none;">
+        <h2>Step 2: Review Pallet &amp; Begin Audit</h2>
+        <div id="manifestInfo"></div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary" id="beginAuditBtn" onclick="beginAudit()" disabled>Begin Audit</button>
+        </div>
+      </div>
+    </div>
+    <!-- PHASE 2: Audit -->
+    <div id="auditSection" style="display:none;">
+      <div class="scan-section">
+        <h2>Scan Unit IMEIs</h2>
+        <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:600;color:#555;">Scan Mode:</span>
+          <div style="display:flex;border-radius:6px;overflow:hidden;border:2px solid #28a745;">
+            <button type="button" id="btnModeQuality" onclick="setAuditScanMode('quality')" style="padding:8px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#28a745;color:white;">Quality Check & IMEI Record</button>
+            <button type="button" id="btnModeImei" onclick="setAuditScanMode('imei')" style="padding:8px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:white;color:#333;">Just IMEI Record</button>
+          </div>
+        </div>
+        <input type="hidden" id="auditScanTypeValue" value="quality">
+        <input type="text" class="scan-input" id="auditScanInput" placeholder="Scan IMEI barcode or unit QR code...">
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="auditPalletLabel" style="font-size:13px;font-weight:600;color:#1a3a5c;"></span>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-danger" onclick="openReportIssueModal()">Report Issue</button>
+            <button class="btn btn-success" onclick="completeAudit()">Complete Audit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Print Label Section -->
+    <div class="scan-section" id="printLabelSection" style="display:none;">
+      <h2>Audit Complete — Print Label</h2>
+      <div style="display:flex;justify-content:center;margin:20px 0;">
+        <div id="labelPreview" style="width:4in;height:6in;background:white;border:2px solid #ddd;padding:0.2in 0.25in;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-family:'Segoe UI',Arial,sans-serif;">
+          <div><img src="https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp" style="width:180px;display:block;margin:0 auto;"></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div style="font-size:36px;font-weight:900;letter-spacing:6px;text-align:center;">FWA</div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;text-align:center;">Repair Pallet Audit</div>
+          <div id="prevPalletID" style="font-size:36px;font-weight:900;font-family:'Arial Black',Consolas,monospace;text-align:center;"></div>
+          <div style="text-align:center;"><svg id="prevBarcode"></svg></div>
+          <div id="prevPartNumber" style="font-size:14px;text-align:center;color:#000;font-weight:600;"></div>
+          <div style="width:100%;border-top:2px solid #000;"></div>
+          <div id="prevResult" style="font-size:32px;font-weight:900;text-align:center;letter-spacing:2px;color:#000;"></div>
+          <div id="prevMetrics" style="font-size:13px;text-align:center;color:#000;line-height:1.6;"></div>
+          <div id="prevIssues" style="font-size:13px;text-align:center;color:#000;font-weight:700;"></div>
+          <div id="prevAuditor" style="font-size:12px;text-align:center;color:#000;"></div>
+          <div id="prevTimestamp" style="font-size:16px;text-align:center;color:#000;font-weight:700;"></div>
+          <div id="prevNotes" style="font-size:11px;text-align:center;color:#000;font-style:italic;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn btn-primary" onclick="printAuditLabel()" style="padding:14px 40px;font-size:16px;">🖨️ Print Audit Label</button>
+      </div>
+    </div>
+
+    <!-- IMEI Table -->
+    <div class="scan-section" id="imeiTableSection" style="display:none;">
+      <h2>Pallet IMEIs <span id="tableCountLabel" style="font-size:12px;color:#888;font-weight:normal;"></span></h2>
+      <div id="imeiGridContainer" class="imei-grid"></div>
+    </div>
+  </div>
+</div>
+<!-- Complete Audit Modal -->
+<div class="modal-overlay" id="completeModal" onclick="if(event.target===this)closeCompleteModal()">
+  <div class="modal">
+    <div class="modal-header"><h3>Audit Summary</h3></div>
+    <div class="modal-body">
+      <div id="auditMetrics" style="margin-bottom:16px;"></div>
+      <div class="form-group">
+        <label>Auditor Name</label>
+        <input type="text" id="auditorName" placeholder="Enter your name...">
+      </div>
+      <div class="form-group">
+        <label>Audit Notes</label>
+        <textarea id="auditNotes" placeholder="Optional notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeCompleteModal()">Cancel</button>
+      <button class="btn btn-success" id="passBtn" onclick="submitAudit('PASS')">✓ OK To Ship</button>
+      <button class="btn btn-danger" id="failBtn" onclick="submitAudit('FAIL')">✗ Hold for Action</button>
+    </div>
+  </div>
+</div>
+
+<!-- Error/Info Modal -->
+<div class="modal-overlay" id="alertModal" onclick="if(event.target===this)closeAlert()">
+  <div class="modal">
+    <div class="modal-header" id="alertHeader" style="background:#dc3545;"><h3 id="alertTitle">Alert</h3></div>
+    <div class="modal-body"><p id="alertMessage"></p></div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeAlert()">Ignore - Do Not Record Unit</button>
+      <button class="btn btn-danger" id="alertRecordIssueBtn" style="display:none;" onclick="recordUnexpectedIssue()">Record as Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Unit Issue Modal (from chip) -->
+<div class="modal-overlay" id="issueModal" onclick="if(event.target===this)closeIssueModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#fd7e14;"><h3>Report Unit Issue</h3></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>IMEI</label>
+        <input type="text" id="issueImei" readonly style="background:#f5f5f5;">
+      </div>
+      <div class="form-group">
+        <label>Reported By</label>
+        <input type="text" id="issueReportedBy" placeholder="Your name...">
+      </div>
+      <div class="form-group">
+        <label>Issue Description</label>
+        <textarea id="issueDescription" placeholder="Describe the issue..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeIssueModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitUnitIssue()">Report Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Issue Modal (from button) -->
+<div class="modal-overlay" id="reportIssueModal" onclick="if(event.target===this)closeReportIssueModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#dc3545;"><h3>Report Unit Issue</h3></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>IMEI</label>
+        <input type="text" id="reportIssueImei" placeholder="Scan or enter IMEI..." style="font-family:Consolas,monospace;">
+      </div>
+      <div class="form-group">
+        <label>Reported By</label>
+        <input type="text" id="reportIssueReportedBy" placeholder="Your name...">
+      </div>
+      <div class="form-group">
+        <label>Issue Description</label>
+        <textarea id="reportIssueDescription" placeholder="Describe the issue..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-reset" onclick="closeReportIssueModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitReportIssue()">Report Issue</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- Work Instruction Modal -->
+<div class="modal-overlay" id="workInstructionModal" onclick="if(event.target===this)closeWorkInstruction()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;max-width:800px;width:95%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="padding:16px 24px;background:#0d6efd;color:white;display:flex;justify-content:space-between;align-items:center;"><h3 style="font-size:16px;margin:0;">📋 Pallet Audit Work Instruction</h3><button onclick="closeWorkInstruction()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:14px;">✕</button></div>
+    <iframe id="workInstructionFrame" src="" style="flex:1;border:none;width:100%;min-height:70vh;"></iframe>
+  </div>
+</div>
+
+<script>
+const URL_KEY = 'fwa_script_url';
+let scriptUrl = '';
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxg0d1Q5eLoPXFr4FDyPrH8qpLKVpb7eapUKZG0EbcfCLcQ0i_DAl1HaAwmU18t_HN-OA/exec'; } catch(e) {}
+
+let auditLocation = '';
+let palletDisposition = '';
+let palletID = '';
+let partNumber = '';
+let palletIMEIs = []; // all IMEIs loaded from barcode scans
+let matchedIMEIs = new Set(); // IMEIs matched during audit
+let qualityIMEIs = new Set(); // IMEIs scanned with Quality Check mode
+let unmatchedIMEIs = []; // IMEIs scanned that were NOT on the pallet
+let issuedIMEIs = new Set(); // IMEIs that have reported issues
+let issueCount = 0; // total issues logged during audit
+let barcodeScanCount = 0;
+let auditStartTime = null;
+let auditMode = false;
+let lastUnexpectedIMEI = '';
+let lastAuditResult = '';
+let lastAuditor = '';
+let lastAuditNotes = '';
+let _jsonpCounter = 0;
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+// --- Load Audit Locations ---
+async function loadAuditLocations() {
+  const select = document.getElementById('auditLocationSelect');
+  const palletInput = document.getElementById('palletInput');
+  palletInput.disabled = true;
+  palletInput.placeholder = 'Select audit location and disposition first...';
+  try {
+    const res = await jsonpRequest(scriptUrl, { action: 'readauditlocations' });
+    select.innerHTML = '<option value="">-- Select Location --</option>';
+    if (res.success && res.data && res.data.length > 0) {
+      res.data.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        select.appendChild(opt);
+      });
+    } else {
+      select.innerHTML = '<option value="">No locations found</option>';
+    }
+  } catch(err) {
+    select.innerHTML = '<option value="">Failed to load locations</option>';
+  }
+}
+
+document.getElementById('auditLocationSelect').addEventListener('change', function() {
+  auditLocation = this.value;
+  checkReadyForPallet();
+});
+
+document.getElementById('palletDispositionSelect').addEventListener('change', function() {
+  palletDisposition = this.value;
+  checkReadyForPallet();
+});
+
+function checkReadyForPallet() {
+  const palletInput = document.getElementById('palletInput');
+  if (auditLocation && palletDisposition) {
+    palletInput.disabled = false;
+    palletInput.placeholder = 'Scan repair pallet barcode (RPR...)...';
+    palletInput.focus();
+  } else {
+    palletInput.disabled = true;
+    palletInput.placeholder = 'Select audit location and disposition first...';
+  }
+}
+
+loadAuditLocations();
+// --- Pallet ID Scan (loads manifest from Repaired Pallet Build data) ---
+let serialToImei = {};
+function failLoad(title, msg) {
+  showAlert(title, msg);
+  const pi = document.getElementById('palletInput');
+  pi.value = ''; pi.disabled = false; pi.focus();
+  document.getElementById('palletStatus').innerHTML = '';
+}
+document.getElementById('palletInput').addEventListener('keydown', async function(e) {
+  if (e.key !== 'Enter') return;
+  const val = this.value.trim().toUpperCase();
+  if (!val) return;
+  if (val.length !== 11 || !val.startsWith('RPR')) {
+    showAlert('Invalid Pallet ID', 'Repair Pallet ID must be 11 characters and start with "RPR". You entered: ' + val);
+    this.value = '';
+    return;
+  }
+  this.disabled = true;
+  document.getElementById('palletStatus').innerHTML = '<span style="color:#888;">Loading pallet ' + val + '...</span>';
+  try {
+    const [pRes, uRes] = await Promise.all([
+      jsonpRequest(scriptUrl, { action: 'readrepairpallets' }),
+      jsonpRequest(scriptUrl, { action: 'readrepairpalletbuild' })
+    ]);
+    if (!pRes.success || !uRes.success) { failLoad('Load Failed', 'Could not read repair pallet data. Please try again.'); return; }
+    const pallet = (pRes.data || []).find(p => (p['Pallet ID'] || '').trim().toUpperCase() === val);
+    if (!pallet) { failLoad('Pallet Not Found', 'Pallet ' + val + ' was not found in Repaired Pallet Build.'); return; }
+    const status = (pallet['Pallet Status'] || '').trim();
+    if (status.toLowerCase() === 'open') { failLoad('Pallet Still Open', 'Pallet ' + val + ' is still open. Close it in Repaired Pallet Build before auditing.'); return; }
+    const units = (uRes.data || []).filter(u => (u['Pallet ID'] || '').trim().toUpperCase() === val && (u['Status'] || '').trim() === 'On Pallet');
+    if (units.length === 0) { failLoad('No Units', 'Pallet ' + val + ' has no units on it.'); return; }
+
+    palletID = (pallet['Pallet ID'] || '').trim();
+    const sku = (pallet['SKU'] || '').trim();
+    partNumber = VALID_PART_NUMBERS.find(p => sku.toUpperCase().startsWith(p)) || sku;
+    palletIMEIs = []; serialToImei = {};
+    units.forEach(u => {
+      const imei = (u['IMEI'] || '').trim();
+      if (imei && !palletIMEIs.includes(imei)) palletIMEIs.push(imei);
+      const sn = (u['Serial Number'] || '').trim().toUpperCase();
+      if (imei && sn) serialToImei[sn] = imei;
+    });
+
+    document.getElementById('palletStatus').innerHTML = '<span style="color:#28a745;font-weight:600;">\u2713 Pallet: ' + palletID + '</span>';
+    document.getElementById('manifestInfo').innerHTML = ''
+      + '<div class="metric-row"><span class="metric-label">SKU</span><span class="metric-value">' + (sku || '\u2014') + '</span></div>'
+      + '<div class="metric-row"><span class="metric-label">Pallet PO #</span><span class="metric-value">' + ((pallet['Pallet PO #'] || '\u2014')) + '</span></div>'
+      + '<div class="metric-row"><span class="metric-label">Ship To</span><span class="metric-value">' + ((pallet['Ship To'] || '\u2014')) + '</span></div>'
+      + '<div class="metric-row"><span class="metric-label">Closed</span><span class="metric-value">' + ((pallet['Pallet Close Date'] || '\u2014')) + '</span></div>'
+      + '<div class="metric-row"><span class="metric-label">Units on Pallet</span><span class="metric-value">' + palletIMEIs.length + '</span></div>';
+    document.getElementById('manifestSection').style.display = 'block';
+    document.getElementById('beginAuditBtn').disabled = false;
+    updateKPIs();
+    renderTable();
+    document.getElementById('beginAuditBtn').focus();
+  } catch (err) {
+    failLoad('Load Failed', 'Error loading pallet: ' + err.message);
+  }
+});
+
+const VALID_PART_NUMBERS = ['WNC-CR200A', 'ASK-NCM1100'];
+// --- Begin Audit ---
+async function beginAudit() {
+  if (palletIMEIs.length === 0) return;
+
+  // Check for open issues on this pallet or its IMEIs
+  try {
+    const issuesJson = await jsonpRequest(scriptUrl, { action: 'readpalletauditissues' });
+    if (issuesJson.success && issuesJson.data) {
+      const openIssues = issuesJson.data.filter(i => {
+        if ((i['Status']||'').trim().toUpperCase() === 'RESOLVED') return false;
+        const issuePallet = (i['Pallet ID']||'').trim();
+        const issueIMEI = (i['IMEI']||'').trim();
+        // Match by pallet ID or by IMEI being in our manifest
+        return issuePallet === palletID || palletIMEIs.includes(issueIMEI);
+      });
+      if (openIssues.length > 0) {
+        let msg = '⚠️ There are ' + openIssues.length + ' open issue(s) associated with this pallet or its IMEIs:\n\n';
+        openIssues.slice(0, 5).forEach(i => {
+          msg += '• ' + (i['IMEI']||'—') + ' — ' + (i['Issue']||'') + '\n';
+        });
+        if (openIssues.length > 5) msg += '... and ' + (openIssues.length - 5) + ' more\n';
+        msg += '\nDo you want to continue with the audit?';
+        if (!confirm(msg)) return;
+      }
+    }
+  } catch(e) { /* proceed even if issues check fails */ }
+
+  auditStartTime = new Date();
+  auditMode = true;
+  document.getElementById('loadSection').style.display = 'none';
+  document.getElementById('auditSection').style.display = 'block';
+  document.getElementById('auditPalletLabel').textContent = 'Pallet: ' + palletID;
+  document.getElementById('phaseLabel').className = 'phase-indicator phase-audit';
+  document.getElementById('phaseLabel').textContent = 'Phase: Auditing';
+  document.getElementById('auditScanInput').focus();
+  updateKPIs();
+  renderTable();
+}
+
+// --- Audit Scan (individual IMEI or QR code) ---
+document.getElementById('auditScanInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    let val = this.value.trim();
+    this.value = '';
+    if (!val) return;
+
+    // Check if this is a QR code scan (longer than 15 chars, contains device info)
+    if (val.length > 15 && (val.includes(';E:') || val.includes('ROUTER:'))) {
+      const imeiMatch = val.match(/;E:(\d{15})/);
+      if (imeiMatch) {
+        val = imeiMatch[1];
+      } else {
+        showAlert('QR Parse Error', 'Could not find a valid IMEI in the scanned QR code.');
+        this.focus();
+        return;
+      }
+    }
+
+    // Allow scanning a unit serial number (maps to its IMEI from the pallet build)
+    if (serialToImei[val.toUpperCase()]) val = serialToImei[val.toUpperCase()];
+
+    // Validate IMEI length
+    if (val.length !== 15) {
+      showAlert('Invalid IMEI', 'IMEI must be 15 characters long. You scanned ' + val.length + ' characters: ' + val);
+      this.focus();
+      return;
+    }
+
+    // Check if already scanned
+    if (matchedIMEIs.has(val)) {
+      showAlert('Duplicate Scan', 'IMEI ' + val + ' was already scanned as part of this audit.');
+      return;
+    }
+
+    // Check if on pallet list
+    if (palletIMEIs.includes(val)) {
+      matchedIMEIs.add(val);
+      // Track if quality check mode
+      const scanType = document.getElementById('auditScanTypeValue').value;
+      if (scanType === 'quality') qualityIMEIs.add(val);
+      updateKPIs();
+      renderTable();
+      showToast('Match: ' + val, 'success');
+    } else {
+      unmatchedIMEIs.push(val);
+      updateKPIs();
+      lastUnexpectedIMEI = val;
+      document.getElementById('alertRecordIssueBtn').style.display = 'inline-block';
+      showAlert('IMEI Not Found', 'IMEI ' + val + ' is NOT on the pallet manifest for ' + palletID + '.');
+    }
+
+    this.focus();
+  }
+});
+// --- Complete Audit ---
+function completeAudit() {
+  const metrics = document.getElementById('auditMetrics');
+  metrics.innerHTML = ''
+    + '<div class="metric-row"><span class="metric-label">Pallet ID</span><span class="metric-value">' + palletID + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">Total IMEIs on Pallet</span><span class="metric-value">' + palletIMEIs.length + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">IMEIs Scanned During Audit</span><span class="metric-value">' + matchedIMEIs.size + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">Remaining Unscanned</span><span class="metric-value">' + (palletIMEIs.length - matchedIMEIs.size) + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">Issues Recorded</span><span class="metric-value" style="color:#fd7e14;">' + issueCount + '</span></div>'
+    + '<div class="metric-row"><span class="metric-label">Match Rate</span><span class="metric-value">' + (palletIMEIs.length > 0 ? Math.round((matchedIMEIs.size / palletIMEIs.length) * 100) : 0) + '%</span></div>';
+
+  // Disable "OK To Ship" if there are open issues
+  const passBtn = document.getElementById('passBtn');
+  const failBtn = document.getElementById('failBtn');
+  if (issueCount > 0) {
+    passBtn.disabled = true;
+    passBtn.title = 'Cannot ship — there are open issues on this pallet';
+  } else {
+    passBtn.disabled = false;
+    passBtn.title = '';
+  }
+  failBtn.disabled = false;
+
+  document.getElementById('completeModal').classList.add('show');
+}
+
+function closeCompleteModal() {
+  document.getElementById('completeModal').classList.remove('show');
+}
+
+let _submitting = false;
+let _auditSaved = false;
+
+async function submitAudit(result) {
+  if (_submitting || _auditSaved) return;
+  const auditor = document.getElementById('auditorName').value.trim();
+  const notes = document.getElementById('auditNotes').value.trim();
+
+  if (!auditor) {
+    showToast('Auditor name is required', 'error');
+    return;
+  }
+
+  if (result === 'FAIL' && !notes) {
+    showToast('Audit Notes are required when holding for action', 'error');
+    document.getElementById('auditNotes').focus();
+    return;
+  }
+
+  _submitting = true;
+  document.getElementById('passBtn').disabled = true;
+  document.getElementById('failBtn').disabled = true;
+
+  if (!scriptUrl) {
+    showToast('No Apps Script URL configured — go to Settings', 'error');
+    return;
+  }
+
+  const ts = formatTimestamp(auditStartTime);
+
+  try {
+    const params = {
+      action: 'logpalletaudit',
+      palletid: palletID,
+      partnumber: partNumber,
+      timestamp: ts,
+      totalimeis: palletIMEIs.length.toString(),
+      scannedimeis: matchedIMEIs.size.toString(),
+      result: result,
+      auditor: auditor,
+      notes: notes,
+      location: auditLocation,
+      disposition: palletDisposition,
+      issuecount: issueCount.toString(),
+      unitsaudited: (new Set([...matchedIMEIs, ...qualityIMEIs, ...issuedIMEIs])).size.toString()
+    };
+
+    // Add up to 120 matched IMEIs
+    const matchedArr = Array.from(matchedIMEIs);
+    for (let i = 0; i < 120; i++) {
+      params['imei' + (i + 1)] = matchedArr[i] || '';
+    }
+
+    // Add up to 120 quality IMEIs
+    const qualityArr = Array.from(qualityIMEIs);
+    for (let i = 0; i < 120; i++) {
+      params['qimei' + (i + 1)] = qualityArr[i] || '';
+    }
+
+    const json = await jsonpRequest(scriptUrl, params);
+    if (json.success) {
+      showToast('Audit saved — ' + result, 'success');
+      closeCompleteModal();
+      document.getElementById('phaseLabel').className = 'phase-indicator phase-complete';
+      document.getElementById('phaseLabel').textContent = 'Phase: Complete';
+      document.getElementById('auditScanInput').disabled = true;
+      // Show print label button
+      document.getElementById('printLabelSection').style.display = 'block';
+      lastAuditResult = result;
+      lastAuditor = auditor;
+      lastAuditNotes = notes;
+      updateLabelPreview();
+      // Keep _submitting = true to prevent any further submissions
+      _auditSaved = true;
+    } else {
+      showToast(json.error || 'Failed to save', 'error');
+      _submitting = false;
+      document.getElementById('passBtn').disabled = false;
+      document.getElementById('failBtn').disabled = false;
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+    _submitting = false;
+    document.getElementById('passBtn').disabled = false;
+    document.getElementById('failBtn').disabled = false;
+  }
+}
+// --- Helpers ---
+function updateKPIs() {
+  document.getElementById('kpiTotal').textContent = palletIMEIs.length;
+  document.getElementById('kpiQuality').textContent = qualityIMEIs.size;
+  document.getElementById('kpiMatched').textContent = matchedIMEIs.size;
+  document.getElementById('kpiRemaining').textContent = palletIMEIs.length - matchedIMEIs.size;
+  document.getElementById('kpiIssues').textContent = issueCount;
+}
+
+function renderTable() {
+  if (palletIMEIs.length === 0) {
+    document.getElementById('imeiTableSection').style.display = 'none';
+    return;
+  }
+  document.getElementById('imeiTableSection').style.display = 'block';
+  document.getElementById('tableCountLabel').textContent = '(' + palletIMEIs.length + ' units)';
+  let html = '';
+  palletIMEIs.forEach((imei) => {
+    const isMatched = matchedIMEIs.has(imei);
+    const isQuality = qualityIMEIs.has(imei);
+    const hasIssue = issuedIMEIs.has(imei);
+    let cls = '';
+    if (isMatched && isQuality) cls += ' matched';
+    else if (isMatched) cls += ' matched-imei-only';
+    if (auditMode) cls += ' audit-mode';
+    if (hasIssue) cls += ' has-issue';
+    html += '<div class="imei-chip' + cls + '">' + imei
+      + '<button class="issue-btn" onclick="openIssueModal(\'' + imei + '\')">⚠️</button>'
+      + '</div>';
+  });
+  document.getElementById('imeiGridContainer').innerHTML = html;
+}
+
+function showWorkInstruction() {
+  document.getElementById('workInstructionFrame').src = 'work-instruction-pallet-audit.html';
+  document.getElementById('workInstructionModal').style.display = 'flex';
+}
+
+function setAuditScanMode(mode) {
+  document.getElementById('auditScanTypeValue').value = mode;
+  const btnImei = document.getElementById('btnModeImei');
+  const btnQuality = document.getElementById('btnModeQuality');
+  if (mode === 'quality') {
+    btnQuality.style.background = '#28a745';
+    btnQuality.style.color = 'white';
+    btnImei.style.background = 'white';
+    btnImei.style.color = '#333';
+  } else {
+    btnImei.style.background = '#5dade2';
+    btnImei.style.color = 'white';
+    btnQuality.style.background = 'white';
+    btnQuality.style.color = '#333';
+  }
+  document.getElementById('auditScanInput').focus();
+}
+function closeWorkInstruction() {
+  document.getElementById('workInstructionModal').style.display = 'none';
+  document.getElementById('workInstructionFrame').src = '';
+}
+
+function resetAll() {
+  palletID = '';
+  partNumber = '';
+  palletIMEIs = [];
+  serialToImei = {};
+  matchedIMEIs = new Set();
+  qualityIMEIs = new Set();
+  unmatchedIMEIs = [];
+  issuedIMEIs = new Set();
+  issueCount = 0;
+  auditStartTime = null;
+  auditMode = false;
+  _submitting = false;
+  _auditSaved = false;
+  document.getElementById('palletInput').value = '';
+  document.getElementById('palletInput').disabled = !(auditLocation && palletDisposition);
+  document.getElementById('palletStatus').innerHTML = '';
+  document.getElementById('manifestSection').style.display = 'none';
+  document.getElementById('manifestInfo').innerHTML = '';
+  document.getElementById('beginAuditBtn').disabled = true;
+  document.getElementById('loadSection').style.display = 'block';
+  document.getElementById('auditSection').style.display = 'none';
+  document.getElementById('auditScanInput').value = '';
+  document.getElementById('auditScanInput').disabled = false;
+  document.getElementById('imeiTableSection').style.display = 'none';
+  document.getElementById('phaseLabel').className = 'phase-indicator phase-load';
+  document.getElementById('phaseLabel').textContent = 'Phase: Load Pallet';
+  document.getElementById('auditorName').value = '';
+  document.getElementById('auditNotes').value = '';
+  document.getElementById('printLabelSection').style.display = 'none';
+  lastAuditResult = '';
+  lastAuditor = '';
+  lastAuditNotes = '';
+  updateKPIs();
+  document.getElementById('palletInput').focus();
+}
+function formatTimestamp(d) {
+  if (!d) d = new Date();
+  var hours = d.getHours();
+  var ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + hours + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0') + ' ' + ampm + ' EST';
+}
+function openReportIssueModal() {
+  document.getElementById('reportIssueImei').value = '';
+  document.getElementById('reportIssueReportedBy').value = '';
+  document.getElementById('reportIssueDescription').value = '';
+  document.getElementById('reportIssueModal').classList.add('show');
+  document.getElementById('reportIssueImei').focus();
+}
+
+function closeReportIssueModal() {
+  document.getElementById('reportIssueModal').classList.remove('show');
+}
+
+async function submitReportIssue() {
+  if (_submitting) return;
+  const imei = document.getElementById('reportIssueImei').value.trim();
+  const reportedBy = document.getElementById('reportIssueReportedBy').value.trim();
+  const issue = document.getElementById('reportIssueDescription').value.trim();
+
+  if (!imei) { showToast('IMEI is required', 'error'); return; }
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!issue) { showToast('Issue description is required', 'error'); return; }
+
+  _submitting = true;
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logpalletauditissue',
+      palletid: palletID,
+      imei: imei,
+      reportedby: reportedBy,
+      issue: issue
+    });
+    if (json.success) {
+      issuedIMEIs.add(imei);
+      issueCount++;
+      closeReportIssueModal();
+      renderTable();
+      updateKPIs();
+      showToast('Issue reported for ' + imei, 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+}
+
+function openIssueModal(imei) {
+  document.getElementById('issueImei').value = imei;
+  document.getElementById('issueReportedBy').value = '';
+  document.getElementById('issueDescription').value = '';
+  document.getElementById('issueModal').classList.add('show');
+}
+
+function closeIssueModal() {
+  document.getElementById('issueModal').classList.remove('show');
+}
+
+async function submitUnitIssue() {
+  if (_submitting) return;
+  const imei = document.getElementById('issueImei').value.trim();
+  const reportedBy = document.getElementById('issueReportedBy').value.trim();
+  const issue = document.getElementById('issueDescription').value.trim();
+
+  if (!reportedBy) { showToast('Reported By is required', 'error'); return; }
+  if (!issue) { showToast('Issue description is required', 'error'); return; }
+
+  _submitting = true;
+
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logpalletauditissue',
+      palletid: palletID,
+      imei: imei,
+      reportedby: reportedBy,
+      issue: issue
+    });
+    if (json.success) {
+      issuedIMEIs.add(imei);
+      issueCount++;
+      closeIssueModal();
+      renderTable();
+      updateKPIs();
+      showToast('Issue reported for ' + imei, 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+}
+
+async function recordUnexpectedIssue() {
+  if (!lastUnexpectedIMEI) return;
+  if (_submitting) return;
+  _submitting = true;
+  const imei = lastUnexpectedIMEI;
+  try {
+    const json = await jsonpRequest(scriptUrl, {
+      action: 'logpalletauditissue',
+      palletid: palletID,
+      imei: imei,
+      reportedby: 'Audit System',
+      issue: 'IMEI unexpectedly found on pallet (not on manifest)'
+    });
+    if (json.success) {
+      issuedIMEIs.add(imei);
+      issueCount++;
+      updateKPIs();
+      renderTable();
+      closeAlert();
+      showToast('Issue recorded for ' + imei, 'success');
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+}
+
+function showAlert(title, message) {
+  document.getElementById('alertTitle').textContent = title;
+  document.getElementById('alertMessage').textContent = message;
+  document.getElementById('alertModal').classList.add('show');
+}
+function closeAlert() {
+  document.getElementById('alertModal').classList.remove('show');
+  document.getElementById('alertRecordIssueBtn').style.display = 'none';
+  lastUnexpectedIMEI = '';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+function updateLabelPreview() {
+  const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
+  const ts = formatTimestamp(auditStartTime);
+
+  document.getElementById('prevPalletID').textContent = palletID;
+  document.getElementById('prevPartNumber').textContent = partNumber ? 'P/N: ' + partNumber : '';
+  document.getElementById('prevResult').textContent = resultText;
+  document.getElementById('prevResult').style.color = '#000';
+  if (lastAuditResult !== 'PASS') {
+    document.getElementById('prevResult').style.border = '3px solid #000';
+    document.getElementById('prevResult').style.padding = '4px 12px';
+  } else {
+    document.getElementById('prevResult').style.border = 'none';
+    document.getElementById('prevResult').style.padding = '0';
+  }
+  document.getElementById('prevMetrics').innerHTML = (qualityIMEIs.size > 0 ? 'Quality Audit: ' + qualityIMEIs.size + ' Units Inspected<br>' : '') + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs Verified on Pallet';
+  document.getElementById('prevIssues').textContent = issueCount > 0 ? 'Issues Recorded: ' + issueCount : '';
+  document.getElementById('prevAuditor').textContent = 'Auditor: ' + lastAuditor;
+  document.getElementById('prevTimestamp').textContent = ts;
+  document.getElementById('prevNotes').textContent = lastAuditNotes ? 'Note: ' + lastAuditNotes : '';
+
+  try {
+    JsBarcode('#prevBarcode', palletID, { format: 'CODE128', width: 3, height: 70, displayValue: true, fontSize: 16, font: 'Consolas', margin: 4 });
+  } catch(e) {}
+}
+
+function printAuditLabel() {
+  const ts = formatTimestamp(auditStartTime);
+  const resultText = lastAuditResult === 'PASS' ? '✓ OK To Ship' : '✗ Hold For Action';
+  const logoUrl = 'https://riedel-networks.net/hs-fs/hubfs/Website-Assets/Referenzen/CTDI_Logo.webp?width=1773&height=386&name=CTDI_Logo.webp';
+
+  // Generate barcode SVG
+  const barcodeContainer = document.createElement('div');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  barcodeContainer.appendChild(svg);
+  try {
+    JsBarcode(svg, palletID, { format: 'CODE128', width: 3, height: 70, displayValue: true, fontSize: 16, font: 'Consolas', margin: 4 });
+  } catch(e) {}
+  const barcodeHtml = svg.outerHTML;
+
+  const win = window.open('', '_blank', 'width=400,height=600');
+  win.document.write('<!DOCTYPE html><html><head><style>'
+    + '* { box-sizing: border-box; margin: 0; padding: 0; }'
+    + 'html, body { width: 4in; height: 6in; margin: 0; padding: 0; overflow: hidden; }'
+    + '@page { size: 4in 6in; margin: 0; }'
+    + '.label { width: 4in; height: 6in; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0.2in 0.25in; font-family: Segoe UI, Arial, sans-serif; overflow: hidden; }'
+    + '.logo img { width: 180px; display: block; margin: 0 auto; }'
+    + '.fwa { font-size: 36px; font-weight: 900; letter-spacing: 6px; text-align: center; }'
+    + '.divider { width: 100%; border-top: 2px solid #000; }'
+    + '.pallet-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-align: center; }'
+    + '.pallet-id { font-size: 36px; font-weight: 900; font-family: Arial Black, Consolas, monospace; text-align: center; }'
+    + '.part-number { font-size: 14px; text-align: center; color: #000; font-weight: 600; }'
+    + '.bc { text-align: center; }'
+    + '.bc svg { display: block; margin: 0 auto; max-width: 3.5in; }'
+    + '.result { font-size: 32px; font-weight: 900; text-align: center; color: #000; letter-spacing: 2px;' + (lastAuditResult !== 'PASS' ? ' border: 3px solid #000; padding: 4px 12px;' : '') + ' }'
+    + '.metrics { font-size: 13px; text-align: center; color: #000; line-height: 1.6; }'
+    + '.issues-recorded { font-size: 13px; text-align: center; color: #000; font-weight: 700; }'
+    + '.auditor { font-size: 12px; text-align: center; color: #000; margin-top: 4px; }'
+    + '.timestamp { font-size: 16px; text-align: center; color: #000; font-weight: 700; }'
+    + '.notes { font-size: 11px; text-align: center; color: #000; font-style: italic; margin-top: 4px; }'
+    + '</style></head><body><div class="label">'
+    + '<div class="logo"><img src="' + logoUrl + '"></div>'
+    + '<div class="divider"></div>'
+    + '<div class="fwa">FWA</div>'
+    + '<div class="divider"></div>'
+    + '<div class="pallet-header">Repair Pallet Audit</div>'
+    + '<div class="pallet-id">' + palletID + '</div>'
+    + '<div class="bc">' + barcodeHtml + '</div>'
+    + (partNumber ? '<div class="part-number">P/N: ' + partNumber + '</div>' : '')
+    + '<div class="divider"></div>'
+    + '<div class="result">' + resultText + '</div>'
+    + (qualityIMEIs.size > 0 ? '<div class="metrics">Quality Audit: ' + qualityIMEIs.size + ' Units Inspected</div>' : '')
+    + '<div class="metrics">' + matchedIMEIs.size + ' / ' + palletIMEIs.length + ' IMEIs Verified on Pallet</div>'
+    + (issueCount > 0 ? '<div class="issues-recorded">Issues Recorded: ' + issueCount + '</div>' : '')
+    + '<div class="auditor">Auditor: ' + lastAuditor + '</div>'
+    + '<div class="timestamp">' + ts + '</div>'
+    + (lastAuditNotes ? '<div class="notes">Note: ' + lastAuditNotes + '</div>' : '')
+    + '</div></body></html>');
+  win.document.close();
+  setTimeout(() => { win.print(); win.close(); }, 500);
+}
+
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+function toggleNavGroup(el) {
+  var group = el.nextElementSibling;
+  if (group && group.classList.contains('nav-group')) {
+    group.classList.toggle('open');
+    el.textContent = (group.classList.contains('open') ? '▼ ' : '▶ ') + el.textContent.replace(/^[▶▼] /, '');
+  }
+}
+document.querySelectorAll('.nav-group').forEach(function(g) {
+  if (g.querySelector('a.active')) {
+    g.classList.add('open');
+    var hdr = g.previousElementSibling;
+    if (hdr) hdr.textContent = hdr.textContent.replace('▶', '▼');
+  }
+});
+</script>
+</body>
+</html>

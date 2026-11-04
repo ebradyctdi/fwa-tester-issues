@@ -10,8 +10,16 @@ Web-based tool for CTDI's FWA (Fixed Wireless Access) operation to track tester 
 
 ## Current Apps Script URL
 ```
-https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpVOYFw-uv62quFS6tS0jRNL_uZZtCwQ/exec
+https://script.google.com/macros/s/AKfycbxg0d1Q5eLoPXFr4FDyPrH8qpLKVpb7eapUKZG0EbcfCLcQ0i_DAl1HaAwmU18t_HN-OA/exec
 ```
+
+### Redeploy rule
+After every Apps Script redeploy, replace the web app URL in ALL html files (including settings.html) and update the "Last updated" line on settings.html (currently **November 4, 2026**). Do not redeploy or change URLs unless the user asks.
+
+### Left menu rule
+Every page's left menu must be identical. Group order:
+Tester Health | Non-Conforming Inventory | Audit Tools | WNC Repair Tools | System | X - Product/Device Issues
+(Cart/Product-Device pages now live under "X - Product/Device Issues" at the bottom.)
 
 ## Google Sheet
 - **Name:** FWA Data
@@ -33,6 +41,17 @@ https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpV
 | Repair - Pallets | A-F (Pallet ID, Pallet PO #, SKU, Pallet Status, Pallet Open Date, Pallet Close Date) |
 | Repair - Pallet Build | A-F (Pallet ID, IMEI, Serial Number, Put to Pallet Date, Removed from Pallet Date, Status) |
 
+### Additional tabs (added since the table above)
+| Tab | Notes |
+|-----|-------|
+| Cycle Counts TXN | One row per unit transaction: IMEI, Serial, Device Model, Bin ID, Timestamp, User, Txn Type (default "At Bin"). A unit's location = its LATEST row; it is "in" a bin only if that latest row is "At Bin". |
+| Cycle Count Bins | Bin ID, Description, Location, (blank), Creation Timestamp, Status (Active/Inactive), Bin Group. Only Active bins appear in dropdowns and scans. |
+| Cycle Count History | Completed cycle count records |
+| DD - Bin Groups | Bin group names (dropdown source) |
+| Audit Locations | Audit location list |
+| Repair - Ship To Addresses | Ship-to addresses for repair pallets |
+| Pallet Audits (updated) | Column A is now Audit ID (AUD00000001 sequential), B Pallet ID, C Part Number, D Start Timestamp, E # IMEIs on Pallet, F # Scanned, G Result, H Performed By, I Notes, J Location, K Disposition..., then "# Units Audited" and IMEI scan columns. Verify exact column letters against google-apps-script.js (~lines 584-640) before changing anything. |
+
 ## Pages & Files
 
 ### Sidebar Navigation Structure (all pages share this)
@@ -42,24 +61,53 @@ https://script.google.com/macros/s/AKfycbypnA1G3GZM6YctdJoQ4CLndW9MazxYO6gzn5NpV
   - report-issue.html (Report An Issue)
   - open-issues.html (Open Issues)
   - issue-history.html (Issue History)
-▶ Product/Device Issues
-  - receipt-issues.html (Issue Logger)
-  - receipt-history.html (Issue History)
-  - receipt-carts.html (Carts)
-  - cart-label.html (Cart Label Maker)
-  - wip-status.html (WIP Status by Carts)
+▶ Non-Conforming Inventory
+  - add-to-bin.html (Add/Remove Units to Bin)
+  - bin-cycle-count.html (Bin Cycle Count)
+  - bin-review.html (Bin Review)
+  - unit-lookup.html (Unit Lookup)
+  - wip-status-bins.html (WIP Status by Bins)
 ▶ Audit Tools
+  - audit-dashboard.html (Audit Dashboard)
+  - device-audit-review.html (Device Audit Review)
   - pallet-audit.html (Pallet Audit Tool)
   - pallet-issues.html (Open Pallet Issues)
   - pallet-audit-log.html (Audit Log)
 ▶ WNC Repair Tools
   - repaired-pallet-build.html (Repaired Pallet Build)
   - repair-pallet-label.html (Repair Pallet Label Re-Print)
+  - repair-pallet-audit.html (Repair Pallet Audit)
 ▶ System
   - testers.html (Testers)
   - email-schedule.html (Email Schedule)
   - settings.html (Settings)
+▶ X - Product/Device Issues
+  - receipt-issues.html (Issue Logger)
+  - receipt-history.html (Issue History)
+  - receipt-carts.html (Carts)
+  - cart-label.html (Cart Label Maker)
+  - wip-status.html (WIP Status by Carts)
 ```
+
+### Repair Pallet Audit (repair-pallet-audit.html) - added Nov 4, 2026
+- Menu: WNC Repair Tools > Repair Pallet Audit (after Repair Pallet Label Re-Print); added to the menu of all 24 pages.
+- Copy of pallet-audit.html with a different load phase: scan an RPR pallet ID, and the manifest loads from `readrepairpallets` + `readrepairpalletbuild` (units with Status "On Pallet"). No part number / IMEI manifest scanning. Pallet must exist and be Closed.
+- Audit scan accepts IMEI, unit QR code, or serial number (mapped to IMEI). Quality Check / IMEI Record modes, issues, PASS/FAIL, and label printing work as in the Pallet Audit Tool.
+- Saves through the existing `logpalletaudit` / `logpalletauditissue` actions (no Apps Script change, no redeploy). Results appear in Audit Log, Audit Dashboard and Open Pallet Issues with RPR pallet IDs. Part Number is saved as the base part (e.g. WNC-CR200A) from the pallet SKU.
+- Not yet tested against live data.
+
+### Non-Conforming Inventory (bins)
+- Units are located by their latest "At Bin" row in "Cycle Counts TXN". Moving/removing a unit writes a newer row.
+- Only Active bins appear in dropdowns and scans. Bins are created/updated/retired via createcyclecountbin / updatecyclecountbin / retirecyclecountbin.
+- add-to-bin.html: add/remove units to a bin (logcyclecount). bin-cycle-count.html: count a bin vs expected units (readbinexpectedunits, completebincyclecount). bin-review.html: review bins and their units (readbindetails, readbinunitcounts, readallbinunits). unit-lookup.html: transaction history for an IMEI/Serial (lookupunittransactions). wip-status-bins.html: WIP file cross-reference by bin.
+- Bin groups managed with addbingroup / renamebingroup / deletebingroup / readbingroups.
+
+### Audit Dashboard / Device Audit Review
+- audit-dashboard.html: KPIs from Pallet Audits, including "By Unit - Units Audited" (sums the "# Units Audited" column).
+- device-audit-review.html: per-device audit review.
+
+## Open Issue (as of Nov 4, 2026)
+Audit Dashboard "By Unit - Units Audited" KPI shows 357,473,879,073,521. It sums the "# Units Audited" column (user says column M) on Pallet Audits. The value looks like an IMEI, so one or more rows probably have a shifted/bad value in that column. Row not found yet. Planned: find and fix the row, and add a guard in audit-dashboard.html and device-audit-review.html that ignores implausible values and logs the Audit IDs. Note: a backfill function in google-apps-script.js (~line 1523) refers to "# Units Audited" as col L, so confirm the real column letter against the sheet header first.
 
 ### Supporting Files (not in nav)
 | File | Purpose |
