@@ -1280,8 +1280,8 @@ function doGet(e) {
       if (!rpSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = rpSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = rpSheet.getRange(2, 1, lastRow - 1, 8).getValues();
-      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To', 'Firmware Version'];
+      var data = rpSheet.getRange(2, 1, lastRow - 1, 10).getValues();
+      var headers = ['Pallet ID', 'Pallet PO #', 'SKU', 'Pallet Status', 'Pallet Open Date', 'Pallet Close Date', 'Ship To', 'Firmware Version', 'Ship Date', 'BOL'];
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -1385,6 +1385,23 @@ function doGet(e) {
       rpSheet.getRange(sheetRow, 4).setValue('Open');
       rpSheet.getRange(sheetRow, 6).setValue('');
       return _respond({ success: true }, callback);
+    }
+
+    // ---- SHIP REPAIR PALLET ----
+    if (action === 'shiprepairpallet') {
+      var rpSheet = ss.getSheetByName('Repair - Pallets');
+      if (!rpSheet) return _respond({ success: false, error: 'Sheet not found' }, callback);
+      var row = parseInt(e.parameter.row);
+      if (isNaN(row)) return _respond({ success: false, error: 'Row required' }, callback);
+      var bol = (e.parameter.bol || '').toString().trim();
+      if (!bol) return _respond({ success: false, error: 'BOL # required' }, callback);
+      var sheetRow = row + 2;
+      var now = new Date();
+      var ts = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yyyy h:mm:ss a') + ' EST';
+      rpSheet.getRange(sheetRow, 4).setValue('Shipped');  // Column D = Pallet Status
+      rpSheet.getRange(sheetRow, 9).setValue(ts);          // Column I = Ship Date
+      rpSheet.getRange(sheetRow, 10).setValue(bol);        // Column J = BOL
+      return _respond({ success: true, shipDate: ts }, callback);
     }
 
     // ---- UPDATE REPAIR PALLET SHIP TO ----

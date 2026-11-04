@@ -163,8 +163,11 @@
     <!-- Closed Pallets Table -->
     <div class="card">
       <h2>Closed Pallets</h2>
-      <div style="margin-bottom:12px;">
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
         <input type="text" id="closedPalletFilter" placeholder="Filter by Pallet ID..." oninput="renderTable()" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:250px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#555;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="includeShippedFilter" onchange="renderTable()" style="cursor:pointer;width:16px;height:16px;"> Include Shipped Pallets
+        </label>
       </div>
       <div style="max-height:440px;overflow-y:auto;">
       <table>
@@ -175,9 +178,10 @@
           <th style="cursor:pointer;text-align:center;" onclick="sortClosedTable('Units')">Units <span id="csort_Units"></span></th>
           <th style="cursor:pointer;" onclick="sortClosedTable('Pallet Close Date')">Close Date <span id="csort_Pallet Close Date"></span></th>
           <th style="cursor:pointer;" onclick="sortClosedTable('Ship To')">Ship To <span id="csort_Ship To"></span></th>
+          <th style="cursor:pointer;" onclick="sortClosedTable('Pallet Status')">Status <span id="csort_Pallet Status"></span></th>
           <th></th>
         </tr></thead>
-        <tbody id="closedPalletTableBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+        <tbody id="closedPalletTableBody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
       </table>
       </div>
     </div>
@@ -307,6 +311,57 @@
   </div>
 </div>
 
+<!-- DUPLICATE UNIT CHECK MODAL -->
+<div class="modal-overlay" id="dupeCheckModal" onclick="if(event.target===this)closeDuplicateCheckModal()">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header" style="background:#fd7e14;">
+      <h3>⚠️ Units Previously Palletized</h3>
+    </div>
+    <div class="modal-body" id="dupeCheckBody"></div>
+    <div class="modal-footer">
+      <button onclick="confirmCloseAfterDupes()" style="background:#dc3545;color:white;font-weight:600;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Close Pallet Anyway</button>
+      <button onclick="closeDuplicateCheckModal()" style="background:#e9ecef;color:#333;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHIP PALLET MODAL -->
+<div class="modal-overlay" id="shipPalletModal" onclick="if(event.target===this)closeShipPallet()">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header" style="background:#28a745;">
+      <h3 id="shipPalletTitle">Ship Pallet</h3>
+    </div>
+    <div class="modal-body">
+      <p style="margin:0 0 14px;color:#555;font-size:13px;">Enter the BOL # to mark this pallet as Shipped. The ship date and time will be recorded automatically.</p>
+      <label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px;">BOL #</label>
+      <input type="text" id="shipBolInput" placeholder="Enter BOL #..." style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;" onkeydown="if(event.key==='Enter')doShipPallet()">
+    </div>
+    <div class="modal-footer">
+      <button id="shipPalletBtn" onclick="doShipPallet()" style="background:#28a745;color:white;font-weight:600;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🚚 Ship Pallet</button>
+      <button onclick="closeShipPallet()" style="background:#e9ecef;color:#333;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT LABEL CHOOSER MODAL -->
+<div class="modal-overlay" id="printChooserModal" onclick="if(event.target===this)closePrintChooser()">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header" style="background:#0d6efd;">
+      <h3 id="printChooserTitle">Print Labels</h3>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <p style="margin:0 0 16px;color:#555;font-size:13px;">Choose a label to print for this pallet.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="choosePalletLabel()" style="background:#0d6efd;color:white;font-weight:600;padding:12px 24px;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨️ Pallet Label</button>
+        <button onclick="chooseImeiLabel()" style="background:#6f42c1;color:white;font-weight:600;padding:12px 24px;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨️ IMEI Label</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closePrintChooser()" style="background:#e9ecef;color:#333;padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- PRINT LABEL MODAL -->
 <div class="modal-overlay" id="printLabelModal" onclick="if(event.target===this)closePrintLabelModal()">
   <div class="modal" style="max-width:420px;">
@@ -330,7 +385,7 @@ let tableSortCol = 'Pallet ID';
 let tableSortAsc = true;
 let closedSortCol = 'Pallet Close Date';
 let closedSortAsc = false;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxg0d1Q5eLoPXFr4FDyPrH8qpLKVpb7eapUKZG0EbcfCLcQ0i_DAl1HaAwmU18t_HN-OA/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwqr8dK4qLqn_To5f3fcn9yqoM6qciRVy9ukuaReGupogq8GAF53SriCLdy7oxND7Pgpg/exec'; } catch(e) {}
 
 function jsonpRequest(url, params) {
   return new Promise((resolve, reject) => {
@@ -366,6 +421,18 @@ function fmtDate(str) {
   const d = new Date(str);
   if (isNaN(d.getTime())) return str;
   return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// Matches the Apps Script "Put to Pallet Date" format: M/d/yyyy h:mm:ss a EST
+function nowPalletTimestamp() {
+  const d = new Date();
+  let hours = d.getHours();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear()
+    + ' ' + hours + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0')
+    + ' ' + ampm + ' EST';
 }
 
 function openLocationsModal() {
@@ -498,7 +565,7 @@ function updateSortArrows() {
     const el = document.getElementById('sort_' + c);
     if (el) el.textContent = tableSortCol === c ? (tableSortAsc ? '▲' : '▼') : '';
   });
-  const closedCols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Close Date'];
+  const closedCols = ['Pallet ID', 'Pallet PO #', 'SKU', 'Units', 'Pallet Close Date', 'Ship To', 'Pallet Status'];
   closedCols.forEach(c => {
     const el = document.getElementById('csort_' + c);
     if (el) el.textContent = closedSortCol === c ? (closedSortAsc ? '▲' : '▼') : '';
@@ -513,6 +580,8 @@ function renderTable() {
 
   let openPallets = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() === 'open');
   let closedPalletsList = allPallets.filter(p => (p['Pallet Status']||'').trim().toLowerCase() !== 'open');
+  const includeShipped = document.getElementById('includeShippedFilter') && document.getElementById('includeShippedFilter').checked;
+  if (!includeShipped) closedPalletsList = closedPalletsList.filter(p => (p['Pallet Status']||'').trim().toLowerCase() !== 'shipped');
 
   // Apply filters
   if (openFilter) openPallets = openPallets.filter(p => (p['Pallet ID']||'').toLowerCase().includes(openFilter));
@@ -565,7 +634,7 @@ function renderTable() {
 
   // Render closed pallets
   if (!closedPalletsList.length) {
-    closedTbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (closedFilter ? 'No closed pallets match the filter.' : 'No closed pallets.') + '</td></tr>';
+    closedTbody.innerHTML = '<tr><td colspan="8" class="empty-state">' + (closedFilter ? 'No closed pallets match the filter.' : 'No closed pallets.') + '</td></tr>';
   } else {
     const sortedClosed = closedPalletsList.slice().sort((a, b) => {
       let valA, valB;
@@ -586,8 +655,19 @@ function renderTable() {
       const palletId = (p['Pallet ID']||'').trim();
       const unitCount = unitCounts[palletId] || 0;
       const editBtn = '<button onclick="openEditPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#fd7e14;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Review / Reopen Pallet</button>';
-      const printBtn = ' <button onclick="openPrintLabelModal(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print Label</button>';
-      const printImeiBtn = ' <button onclick="printImeiLabel(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#6f42c1;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print IMEI Label</button>';
+      const printBtn = ' <button onclick="openPrintChooser(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#0d6efd;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Print Labels</button>';
+      const status = (p['Pallet Status']||'').trim();
+      const isShipped = status.toLowerCase() === 'shipped';
+      const shipBtn = isShipped ? '' : ' <button onclick="openShipPallet(\'' + palletId.replace(/'/g,"\\'") + '\')" style="padding:6px 14px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Ship Pallet</button>';
+      let statusBadge;
+      if (isShipped) {
+        const bol = (p['BOL']||'').trim();
+        statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;background:#d1e7dd;color:#0f5132;font-size:11px;font-weight:700;">SHIPPED</span>'
+          + (bol ? '<div style="font-size:10px;color:#888;margin-top:2px;">BOL: ' + bol + '</div>' : '')
+          + (p['Ship Date'] ? '<div style="font-size:10px;color:#888;">' + fmtDate(p['Ship Date']) + '</div>' : '');
+      } else {
+        statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;background:#e2e3e5;color:#41464b;font-size:11px;font-weight:700;">CLOSED</span>';
+      }
       return '<tr>'
         + '<td style="font-weight:700;font-family:Consolas,monospace;color:#1a3a5c;">' + palletId + '</td>'
         + '<td style="font-family:Consolas,monospace;">' + (p['Pallet PO #']||'—') + '</td>'
@@ -595,7 +675,8 @@ function renderTable() {
         + '<td style="font-weight:700;text-align:center;">' + unitCount + '</td>'
         + '<td>' + fmtDate(p['Pallet Close Date']) + '</td>'
         + '<td>' + (p['Ship To']||'—') + '</td>'
-        + '<td style="text-align:right;white-space:nowrap;">' + editBtn + printBtn + printImeiBtn + '</td>'
+        + '<td>' + statusBadge + '</td>'
+        + '<td style="text-align:right;white-space:nowrap;">' + editBtn + printBtn + shipBtn + '</td>'
         + '</tr>';
     }).join('');
   }
@@ -766,8 +847,62 @@ async function removeFromPallet(rowIdx, palletId) {
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
 }
 
+// Find IMEIs on the pallet being closed that were previously on a DIFFERENT
+// closed/shipped repair pallet. Returns an array of {imei, serial, prevPallet, prevDate}.
+function findPreviouslyPalletizedUnits(palletId) {
+  const currentImeis = allPalletBuildUnits
+    .filter(u => (u['Pallet ID']||'').trim() === palletId && (u['Status']||'').trim() === 'On Pallet')
+    .map(u => ({ imei: (u['IMEI']||'').trim(), serial: (u['Serial Number']||'').trim() }))
+    .filter(u => u.imei);
+
+  // Map pallet ID -> status (lowercased) for closed/shipped lookup
+  const palletStatus = {};
+  allPallets.forEach(p => { palletStatus[(p['Pallet ID']||'').trim()] = (p['Pallet Status']||'').trim().toLowerCase(); });
+
+  const results = [];
+  currentImeis.forEach(cur => {
+    // All build rows for this IMEI on a DIFFERENT pallet that is closed or shipped
+    const priors = allPalletBuildUnits.filter(u => {
+      const pid = (u['Pallet ID']||'').trim();
+      if (pid === palletId) return false;
+      if ((u['IMEI']||'').trim() !== cur.imei) return false;
+      const st = palletStatus[pid];
+      return st === 'closed' || st === 'shipped';
+    });
+    if (priors.length === 0) return;
+    // Most recent prior by Put to Pallet Date
+    priors.sort((a, b) => {
+      const da = Date.parse((a['Put to Pallet Date']||'').replace(' EST','')) || 0;
+      const db = Date.parse((b['Put to Pallet Date']||'').replace(' EST','')) || 0;
+      return db - da;
+    });
+    const latest = priors[0];
+    results.push({
+      imei: cur.imei,
+      serial: cur.serial || (latest['Serial Number']||'').trim(),
+      prevPallet: (latest['Pallet ID']||'').trim(),
+      prevDate: (latest['Put to Pallet Date']||'').trim()
+    });
+  });
+  return results;
+}
+
 async function closePalletAction() {
+  // Check for units previously on another closed/shipped repair pallet
+  const dupes = findPreviouslyPalletizedUnits(editPalletId);
+  if (dupes.length > 0) {
+    showDuplicateCheckModal(dupes);
+    return; // user continues from the modal
+  }
+  proceedCloseConfirm();
+}
+
+function proceedCloseConfirm() {
   if (!confirm('Close pallet "' + editPalletId + '"? This will mark it as Closed and record the close date.')) return;
+  doClosePallet();
+}
+
+async function doClosePallet() {
   const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === editPalletId);
   if (idx < 0) { showToast('Pallet not found', 'error'); return; }
 
@@ -785,7 +920,105 @@ async function closePalletAction() {
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
 }
 
+function showDuplicateCheckModal(dupes) {
+  const body = document.getElementById('dupeCheckBody');
+  let rows = dupes.map(d => ''
+    + '<tr>'
+    + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-size:12px;">' + d.imei + (d.serial ? '<div style="color:#888;font-size:10px;">' + d.serial + '</div>' : '') + '</td>'
+    + '<td style="padding:8px 10px;font-family:Consolas,monospace;font-size:12px;font-weight:700;color:#1a3a5c;">' + d.prevPallet + '</td>'
+    + '<td style="padding:8px 10px;font-size:12px;color:#555;">' + (d.prevDate || '—') + '</td>'
+    + '</tr>').join('');
+  body.innerHTML = ''
+    + '<p style="margin:0 0 12px;color:#856404;font-size:13px;">'
+    + '<strong>' + dupes.length + '</strong> unit' + (dupes.length === 1 ? ' was' : 's were') + ' previously on a different closed or shipped repair pallet. Review before closing.</p>'
+    + '<div style="max-height:320px;overflow-y:auto;border:1px solid #eee;border-radius:6px;">'
+    + '<table style="width:100%;border-collapse:collapse;">'
+    + '<thead><tr style="background:#f8f9fa;position:sticky;top:0;">'
+    + '<th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6c757d;">IMEI / Serial</th>'
+    + '<th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6c757d;">Previous Pallet</th>'
+    + '<th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6c757d;">Previous Add Date</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  document.getElementById('dupeCheckModal').classList.add('show');
+}
+
+function closeDuplicateCheckModal() {
+  document.getElementById('dupeCheckModal').classList.remove('show');
+}
+
+function confirmCloseAfterDupes() {
+  closeDuplicateCheckModal();
+  doClosePallet();
+}
+
 let printLabelPalletId = '';
+let printChooserPalletId = '';
+let shipPalletId = '';
+let _shipping = false;
+
+function openShipPallet(palletId) {
+  shipPalletId = palletId;
+  document.getElementById('shipPalletTitle').textContent = 'Ship Pallet: ' + palletId;
+  document.getElementById('shipBolInput').value = '';
+  document.getElementById('shipPalletBtn').disabled = false;
+  document.getElementById('shipPalletModal').classList.add('show');
+  setTimeout(() => document.getElementById('shipBolInput').focus(), 50);
+}
+
+function closeShipPallet() {
+  document.getElementById('shipPalletModal').classList.remove('show');
+  shipPalletId = '';
+}
+
+async function doShipPallet() {
+  if (_shipping) return;
+  const bol = document.getElementById('shipBolInput').value.trim();
+  if (!bol) { showToast('BOL # is required', 'error'); document.getElementById('shipBolInput').focus(); return; }
+  const idx = allPallets.findIndex(p => (p['Pallet ID']||'').trim() === shipPalletId);
+  if (idx < 0) { showToast('Pallet not found', 'error'); return; }
+
+  _shipping = true;
+  document.getElementById('shipPalletBtn').disabled = true;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'shiprepairpallet', row: idx, bol: bol });
+    if (json.success) {
+      showToast('Pallet ' + shipPalletId + ' marked as Shipped', 'success');
+      closeShipPallet();
+      await loadData();
+    } else {
+      showToast(json.error || 'Failed to ship pallet', 'error');
+      document.getElementById('shipPalletBtn').disabled = false;
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+    document.getElementById('shipPalletBtn').disabled = false;
+  } finally {
+    _shipping = false;
+  }
+}
+
+
+function openPrintChooser(palletId) {
+  printChooserPalletId = palletId;
+  document.getElementById('printChooserTitle').textContent = 'Print Labels: ' + palletId;
+  document.getElementById('printChooserModal').classList.add('show');
+}
+
+function closePrintChooser() {
+  document.getElementById('printChooserModal').classList.remove('show');
+  printChooserPalletId = '';
+}
+
+function choosePalletLabel() {
+  const id = printChooserPalletId;
+  document.getElementById('printChooserModal').classList.remove('show');
+  openPrintLabelModal(id);
+}
+
+function chooseImeiLabel() {
+  const id = printChooserPalletId;
+  closePrintChooser();
+  printImeiLabel(id);
+}
 
 function openPrintLabelModal(palletId) {
   printLabelPalletId = palletId;
@@ -1257,7 +1490,7 @@ async function processAddUnitsQueue() {
         const logEntry = addUnitsLog.find(e => e.imei === item.imei && e.status === 'pending');
         if (logEntry) logEntry.status = 'saved';
         // Add to local tracking
-        allPalletBuildUnits.push({ 'Pallet ID': item.palletId, 'IMEI': item.imei, 'Serial Number': item.serial || '', 'Put to Pallet Date': new Date().toString(), 'Status': 'On Pallet' });
+        allPalletBuildUnits.push({ 'Pallet ID': item.palletId, 'IMEI': item.imei, 'Serial Number': item.serial || '', 'Put to Pallet Date': nowPalletTimestamp(), 'Status': 'On Pallet' });
         renderAddUnitsLog();
       } else {
         showAddUnitFeedback('Failed: ' + item.imei + ' — ' + (json.error||''), 'error');

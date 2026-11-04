@@ -10,7 +10,7 @@ Web-based tool for CTDI's FWA (Fixed Wireless Access) operation to track tester 
 
 ## Current Apps Script URL
 ```
-https://script.google.com/macros/s/AKfycbxg0d1Q5eLoPXFr4FDyPrH8qpLKVpb7eapUKZG0EbcfCLcQ0i_DAl1HaAwmU18t_HN-OA/exec
+https://script.google.com/macros/s/AKfycbwqr8dK4qLqn_To5f3fcn9yqoM6qciRVy9ukuaReGupogq8GAF53SriCLdy7oxND7Pgpg/exec
 ```
 
 ### Redeploy rule
@@ -38,7 +38,7 @@ Tester Health | Non-Conforming Inventory | Audit Tools | WNC Repair Tools | Syst
 | Cart - Standard Note | A (Note text) |
 | Pallet Audits | A-ER: A-H headers (Pallet ID, Part Number, Audit Start Timestamp, # of IMEIs on Pallet, # of IMEIs Scanned During Audit, Audit Result, Audit Performed By, Notes), I-DX = IMEI Scan #1-120, DY-ER = Quality IMEI #1-20 |
 | Pallet Audit Issues | A-I (Pallet ID, IMEI, Timestamp, Reported By, Issue, Status, Resolved By, Resolution Timestamp, Resolution Note) |
-| Repair - Pallets | A-F (Pallet ID, Pallet PO #, SKU, Pallet Status, Pallet Open Date, Pallet Close Date) |
+| Repair - Pallets | A-J (Pallet ID, Pallet PO #, SKU, Pallet Status, Pallet Open Date, Pallet Close Date, Ship To, Firmware Version, Ship Date, BOL). Pallet Status is Open / Closed / Shipped. |
 | Repair - Pallet Build | A-F (Pallet ID, IMEI, Serial Number, Put to Pallet Date, Removed from Pallet Date, Status) |
 
 ### Additional tabs (added since the table above)
@@ -88,6 +88,15 @@ Tester Health | Non-Conforming Inventory | Audit Tools | WNC Repair Tools | Syst
   - cart-label.html (Cart Label Maker)
   - wip-status.html (WIP Status by Carts)
 ```
+
+### Close-pallet duplicate check - added Nov 4, 2026 (frontend only)
+- When closing a repair pallet, before confirming, the page checks each On-Pallet IMEI against all other repair pallets that are Closed or Shipped. If any were previously palletized, a warning modal lists IMEI/Serial, Previous Pallet, and Previous Add Date (most recent prior pallet per unit). User can Close Pallet Anyway or Cancel. Prior pallets still Open are ignored. Uses existing in-browser data (allPallets, allPalletBuildUnits); no backend change.
+
+### Ship a repair pallet - added Nov 4, 2026 (NEEDS APPS SCRIPT REDEPLOY)
+- Repair pallets now have a third status: Open / Closed / Shipped (Pallet Status, column D on Repair - Pallets).
+- repaired-pallet-build.html Closed Pallets table shows both Closed and Shipped pallets, with a Status column (badge + BOL + ship date). "Print Label" and "Print IMEI Label" were merged into one "Print Labels" button that opens a chooser popup.
+- Each closed (not yet shipped) pallet has a green "Ship Pallet" button. It opens a popup where the user enters a BOL # and clicks Ship. The backend sets Status="Shipped", Ship Date (column I) to now, and BOL (column J).
+- Backend: new `shiprepairpallet` action (row + bol); `readrepairpallets` now reads 10 columns (adds Ship Date, BOL). Requires a redeploy of google-apps-script.js. No new URL needed if you edit the existing deployment.
 
 ### Repair Pallet Audit (repair-pallet-audit.html) - added Nov 4, 2026
 - Menu: WNC Repair Tools > Repair Pallet Audit (after Repair Pallet Label Re-Print); added to the menu of all 24 pages.
