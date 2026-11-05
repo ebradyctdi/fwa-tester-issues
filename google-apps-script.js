@@ -580,10 +580,11 @@ function doGet(e) {
       if (!paSheet) return _respond({ success: true, data: [] }, callback);
       var lastRow = paSheet.getLastRow();
       if (lastRow < 2) return _respond({ success: true, data: [] }, callback);
-      var data = paSheet.getRange(2, 1, lastRow - 1, 253).getValues();
+      var data = paSheet.getRange(2, 1, lastRow - 1, 254).getValues();
       var headers = ['Audit ID', 'Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
       for (var i = 1; i <= 120; i++) { headers.push('IMEI Scan #' + i); }
       for (var i = 1; i <= 120; i++) { headers.push('Quality IMEI #' + i); }
+      headers.push('Labels Verified?');
       var rows = data.map(function(row) {
         var obj = {};
         headers.forEach(function(h, i) { obj[h] = row[i] ? row[i].toString() : ''; });
@@ -600,6 +601,7 @@ function doGet(e) {
         var auditHeaders = ['Audit ID', 'Pallet ID', 'Part Number', 'Audit Start Timestamp', '# of IMEIs on Pallet', '# of IMEIs Scanned During Audit', 'Audit Result', 'Audit Performed By', 'Notes', 'Location', 'Disposition', '# Issues Found', '# Units Audited'];
         for (var i = 1; i <= 120; i++) { auditHeaders.push('IMEI Scan #' + i); }
         for (var i = 1; i <= 120; i++) { auditHeaders.push('Quality IMEI #' + i); }
+        auditHeaders.push('Labels Verified?');
         paSheet.getRange(1, 1, 1, auditHeaders.length).setValues([auditHeaders]);
       }
 
@@ -618,6 +620,7 @@ function doGet(e) {
       var disposition = (e.parameter.disposition || '').toString().trim();
       var issuecount = (e.parameter.issuecount || '0').toString().trim();
       var unitsaudited = (e.parameter.unitsaudited || '0').toString().trim();
+      var labelsVerified = (e.parameter.labelsverified || '').toString().trim();
 
       if (!palletId) return _respond({ success: false, error: 'Pallet ID required' }, callback);
       if (!auditor) return _respond({ success: false, error: 'Auditor name required' }, callback);
@@ -636,6 +639,8 @@ function doGet(e) {
         row.push(qImeiVal);
       }
 
+      // Column IT (254): Labels Verified?
+      row.push(labelsVerified);
       paSheet.appendRow(row);
       // Force Audit ID column (A) to plain text so it displays as entered
       var newRowNum = paSheet.getLastRow();

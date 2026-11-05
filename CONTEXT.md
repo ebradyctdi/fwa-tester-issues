@@ -10,11 +10,11 @@ Web-based tool for CTDI's FWA (Fixed Wireless Access) operation to track tester 
 
 ## Current Apps Script URL
 ```
-https://script.google.com/macros/s/AKfycbwqr8dK4qLqn_To5f3fcn9yqoM6qciRVy9ukuaReGupogq8GAF53SriCLdy7oxND7Pgpg/exec
+https://script.google.com/macros/s/AKfycbwtEjC3-UslvCb_RKNvplmExLUMD0339GUsP7MuVJbxlihm9HFRwG_Y8LWBfqQ7Dw44/exec
 ```
 
 ### Redeploy rule
-After every Apps Script redeploy, replace the web app URL in ALL html files (including settings.html) and update the "Last updated" line on settings.html (currently **November 4, 2026**). Do not redeploy or change URLs unless the user asks.
+After every Apps Script redeploy, replace the web app URL in ALL html files (including settings.html) and update the "Last updated" line on settings.html (currently **November 5, 2026**). Do not redeploy or change URLs unless the user asks.
 
 ### Left menu rule
 Every page's left menu must be identical. Group order:
@@ -89,6 +89,9 @@ Tester Health | Non-Conforming Inventory | Audit Tools | WNC Repair Tools | Syst
   - wip-status.html (WIP Status by Carts)
 ```
 
+### Labels Verified question - added Nov 5, 2026 (NEEDS APPS SCRIPT REDEPLOY)
+- Audit Summary popup (pallet-audit.html and repair-pallet-audit.html) asks "Have you verified all pallet labels?" (Yes / No) below the summary stats and above Auditor Name. OK To Ship stays disabled until Yes is selected (and there are no open issues). Hold for Action does not require it.
+- Saved to Pallet Audits column IT (254, header "Labels Verified?") as Yes / No / blank. logpalletaudit takes a new labelsverified param; readpalletaudits now reads 254 columns. Older audit rows have a blank value.
 ### Close-pallet duplicate check - added Nov 4, 2026 (frontend only)
 - When closing a repair pallet, before confirming, the page checks each On-Pallet IMEI against all other repair pallets that are Closed or Shipped. If any were previously palletized, a warning modal lists IMEI/Serial, Previous Pallet, and Previous Add Date (most recent prior pallet per unit). User can Close Pallet Anyway or Cancel. Prior pallets still Open are ignored. Uses existing in-browser data (allPallets, allPalletBuildUnits); no backend change.
 
